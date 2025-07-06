@@ -15,3 +15,10 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 ### version 1.0  
 - Versão mobile criada, com leitura de arquivos, reprodução e upload.  
 - Versão desktop apenas recebe e armazena em uma pasta local.  
+
+### version 1.1  
+- Adição do player e botões utilitários.  
+- Adição do slider e nome da música atual.  
+- Adição de um tema padrão.  
+- Botões em funcionamento (Pause/Play, Prox, Prev, Random, Loop).  
+- Música muda de cor para ficar em destaque quando tocada.  
