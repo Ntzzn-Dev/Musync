@@ -21,6 +21,7 @@ Future<void> main() async {
       androidNotificationChannelId: 'com.nathandv.musync_and',
       androidNotificationChannelName: 'Audio playback',
       androidNotificationOngoing: true,
+      androidShowNotificationBadge: true,
     ),
   );
   runApp(MyApp());
@@ -56,7 +57,7 @@ class _MusicPageState extends State<MusicPage> {
   ValueNotifier<String> tituloAtual = ValueNotifier('');
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
-  int currentPlayingIndex = 0;
+  ValueNotifier<int> currentPlayingIndex = ValueNotifier(0);
 
   List<MediaItem> songs = [];
 
@@ -227,26 +228,35 @@ class _MusicPageState extends State<MusicPage> {
                       itemBuilder: (context, index) {
                         final item = mediaItems[index];
 
-                        return ListTile(
-                          title: Text(item.title),
-                          subtitle: Text(item.artist ?? "Artista desconhecido"),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.send),
-                            onPressed: () => _sendFileToPC(File(item.id)),
-                          ),
-                          tileColor:
-                              currentPlayingIndex == index
-                                  ? const Color.fromARGB(51, 243, 160, 34)
-                                  : null,
-                          onTap: () async {
-                            try {
-                              await widget.audioHandler.skipToQueueItem(index);
-                              setState(() {
-                                currentPlayingIndex = index;
-                              });
-                            } catch (e) {
-                              log('Erro ao tocar música: $e');
-                            }
+                        return ValueListenableBuilder<int>(
+                          valueListenable: currentPlayingIndex,
+                          builder: (context, value, child) {
+                            return ListTile(
+                              title: Text(item.title),
+                              subtitle: Text(
+                                item.artist ?? "Artista desconhecido",
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.send),
+                                onPressed: () => _sendFileToPC(File(item.id)),
+                              ),
+                              tileColor:
+                                  value == index
+                                      ? const Color.fromARGB(51, 243, 160, 34)
+                                      : null,
+                              onTap: () async {
+                                try {
+                                  await widget.audioHandler.skipToQueueItem(
+                                    index,
+                                  );
+                                  setState(() {
+                                    currentPlayingIndex.value = index;
+                                  });
+                                } catch (e) {
+                                  log('Erro ao tocar música: $e');
+                                }
+                              },
+                            );
                           },
                         );
                       },
@@ -377,9 +387,9 @@ class _MusicPageState extends State<MusicPage> {
                             shape: const CircleBorder(),
                           ),
                           onPressed: () {
+                            currentPlayingIndex.value =
+                                widget.audioHandler.currentIndex! + 1;
                             widget.audioHandler.skipToPrevious();
-                            currentPlayingIndex =
-                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_left_sharp),
                         ),
@@ -417,9 +427,9 @@ class _MusicPageState extends State<MusicPage> {
                             shape: const CircleBorder(),
                           ),
                           onPressed: () {
+                            currentPlayingIndex.value =
+                                widget.audioHandler.currentIndex! + 1;
                             widget.audioHandler.skipToNext();
-                            currentPlayingIndex =
-                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_right_sharp),
                         ),

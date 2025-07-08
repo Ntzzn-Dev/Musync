@@ -27,3 +27,8 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Mudança da forma de reproduzir os audios.  
 - Adição de uma notificação interativa.  
 - Mudança na forma de procurar arquivos de musica.  
+
+### version 1.3  
+- Correção do modo aleatório inicial.  
+- Criação de um aleatório mais elaborado.  
+- Adição de botão personalizado nas notificações.  
