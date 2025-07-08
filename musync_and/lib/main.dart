@@ -3,15 +3,23 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/fetch_songs.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
 import 'services/audioPlayerBase.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
+
+enum ModeEnum { titleAZ, titleZA, dataAZ, dataZA }
+
+extension ModeEnumExt on ModeEnum {
+  ModeEnum next() {
+    final nextIndex = (index + 1) % ModeEnum.values.length;
+    return ModeEnum.values[nextIndex];
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -59,52 +67,96 @@ class _MusicPageState extends State<MusicPage> {
   ValueNotifier<int> toLoop = ValueNotifier(0);
   ValueNotifier<int> currentPlayingIndex = ValueNotifier(0);
 
+  var modeAtual = ModeEnum.titleAZ;
+
   List<MediaItem> songs = [];
 
   @override
   void initState() {
-    FetchSongs.execute().then((value) {
-      setState(() {
-        songs = value;
-      });
-      widget.audioHandler.initSongs(songs: songs);
-    });
-
     super.initState();
-    _loadItems();
+    _savePreferences();
+    _initFetchSongs();
+    _loadLastUse();
     _loadIp();
-    _requestPermissionAndLoad();
   }
 
-  void _loadItems() async {
-    widget.audioHandler.isShuffleEnabled().then((enabled) {
-      toRandom.value = enabled;
+  Future<void> _initFetchSongs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dirStrings = prefs.getStringList('directorys') ?? [];
+
+    final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
+
+    setState(() {
+      songs = fetchedSongs;
     });
 
-    final loopMode = await widget.audioHandler.isLoopEnabled();
-    toLoop.value =
-        {LoopMode.off: 0, LoopMode.one: 1, LoopMode.all: 2}[loopMode]!;
+    widget.audioHandler.initSongs(songs: songs);
   }
 
-  Future<void> _requestPermissionAndLoad() async {
-    var status = await Permission.manageExternalStorage.status;
+  Future<void> reorder(ModeEnum modeAtual) async {
+    switch (modeAtual) {
+      case ModeEnum.titleAZ:
+        final ordenadas = [...songs]
+          ..sort((a, b) => a.title.trim().compareTo(b.title.trim()));
+        setState(() {
+          songs = ordenadas;
+        });
+        await widget.audioHandler.recreateQueue(songs: songs);
+        break;
+      case ModeEnum.titleZA:
+        final ordenadas = [...songs]
+          ..sort((a, b) => b.title.trim().compareTo(a.title.trim()));
+        setState(() {
+          songs = ordenadas;
+        });
+        break;
+      case ModeEnum.dataAZ:
+        setState(() {
+          songs.sort((a, b) {
+            try {
+              final rawA = a.extras?['lastModified'];
+              final rawB = b.extras?['lastModified'];
 
-    if (!status.isGranted) {
-      status = await Permission.manageExternalStorage.request();
+              final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
+              final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
+
+              if (dateA == null || dateB == null) {
+                return 0;
+              }
+              return dateA.compareTo(dateB);
+            } catch (e) {
+              log('Erro durante sort por data: $e');
+              return 0;
+            }
+          });
+        });
+
+        break;
+      case ModeEnum.dataZA:
+        setState(() {
+          songs.sort((a, b) {
+            try {
+              final rawA = a.extras?['lastModified'];
+              final rawB = b.extras?['lastModified'];
+
+              final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
+              final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
+
+              if (dateA == null || dateB == null) {
+                return 0;
+              }
+              return dateB.compareTo(dateA);
+            } catch (e) {
+              log('Erro durante sort por data: $e');
+              return 0;
+            }
+          });
+        });
+
+        break;
     }
 
-    final musicDir = Directory(
-      '/storage/emulated/0/snaptube/download/SnapTube Audio',
-    );
-    if (musicDir.existsSync()) {
-      final files = musicDir.listSync(recursive: true);
-      setState(() {
-        mp3Files = files.where((file) => file.path.endsWith('.mp3')).toList();
-      });
-      log('Arquivos encontrados: ${mp3Files.length}');
-    } else {
-      log('Diretório não encontrado');
-    }
+    await widget.audioHandler.recreateQueue(songs: songs);
   }
 
   Future<void> _sendFileToPC(File file) async {
@@ -146,34 +198,38 @@ class _MusicPageState extends State<MusicPage> {
     });
   }
 
+  Future<void> _savePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('random_act', toRandom.value);
+    prefs.setInt('loop_act', toLoop.value);
+    prefs.setStringList('directorys', [
+      '/storage/emulated/0/snaptube/download/SnapTube Audio',
+    ]);
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    toRandom.value = prefs.getBool('random_act') ?? false;
+    toLoop.value = prefs.getInt('loop_act') ?? 0;
+  }
+
+  void _loadLastUse() async {
+    _loadPreferences();
+
+    widget.audioHandler.setShuffleModeEnabled(toRandom.value);
+
+    final intToLoopMode = {0: LoopMode.off, 1: LoopMode.one, 2: LoopMode.all};
+
+    LoopMode selectedMode = intToLoopMode[toLoop.value] ?? LoopMode.off;
+
+    widget.audioHandler.setLoopModeEnabled(selectedMode);
+  }
+
   String formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final minutes = twoDigits(d.inMinutes.remainder(60));
     final seconds = twoDigits(d.inSeconds.remainder(60));
     return '$minutes:$seconds';
-  }
-
-  void readMetaData(String path) async {
-    final metadata = await MetadataRetriever.fromFile(File(path));
-
-    tituloAtual.value = metadata.trackName ?? '';
-
-    for (String arts in metadata.trackArtistNames ?? []) {
-      log(arts);
-    }
-
-    log('${metadata.albumName} album');
-    log('${metadata.albumArtistName} artista');
-    log('${metadata.trackNumber} track');
-    log('${metadata.albumLength} tamanho albun');
-    log('${metadata.year} ano');
-    log('${metadata.genre} genero');
-    log('${metadata.authorName} autor');
-    log('${metadata.writerName} escritor');
-    log('${metadata.discNumber} disc');
-    log('${metadata.mimeType} mime');
-    log('${metadata.trackDuration} duracao');
-    log('${metadata.bitrate} bitrate');
   }
 
   @override
@@ -200,7 +256,7 @@ class _MusicPageState extends State<MusicPage> {
                     IconButton(
                       icon: const Icon(Icons.save),
                       onPressed: () async {
-                        final prefs = await SharedPreferences.getInstance();
+                        /*final prefs = await SharedPreferences.getInstance();
                         await prefs.setString(
                           'pc_ip',
                           _ipController.text.trim(),
@@ -210,7 +266,9 @@ class _MusicPageState extends State<MusicPage> {
                         });
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('IP salvo!')),
-                        );
+                        );*/
+                        modeAtual = modeAtual.next();
+                        await reorder(modeAtual);
                       },
                     ),
                   ],
@@ -386,10 +444,10 @@ class _MusicPageState extends State<MusicPage> {
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: const CircleBorder(),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
+                            await widget.audioHandler.skipToPrevious();
                             currentPlayingIndex.value =
                                 widget.audioHandler.currentIndex! + 1;
-                            widget.audioHandler.skipToPrevious();
                           },
                           child: Icon(Icons.keyboard_double_arrow_left_sharp),
                         ),
@@ -426,10 +484,10 @@ class _MusicPageState extends State<MusicPage> {
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: const CircleBorder(),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
+                            await widget.audioHandler.skipToNext();
                             currentPlayingIndex.value =
                                 widget.audioHandler.currentIndex! + 1;
-                            widget.audioHandler.skipToNext();
                           },
                           child: Icon(Icons.keyboard_double_arrow_right_sharp),
                         ),

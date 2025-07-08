@@ -32,3 +32,9 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Correção do modo aleatório inicial.  
 - Criação de um aleatório mais elaborado.  
 - Adição de botão personalizado nas notificações.  
+
+### version 1.4  
+- Pesquisa de arquivos apenas em pastas selecionada, ou todos os arquivos do dispositivo.  
+- Definição de preferencias.  
+- Correção da marca da musica atual na lista.  
+- Adição de modos de organização de filas (Titulo A-Z, Titulo Z-A, Data A-Z, Data Z-A).  

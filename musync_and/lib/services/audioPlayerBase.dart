@@ -88,6 +88,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
+  Future<void> recreateQueue({required List<MediaItem> songs}) async {
+    audPl.playbackEventStream.listen(_broadcastState);
+
+    final audSrc = songs.map(_createAudioSource).toList();
+
+    await audPl.setAudioSource(ConcatenatingAudioSource(children: audSrc));
+
+    queue.add(songs);
+
+    _listenForCurrentSongIndexChanges();
+
+    audPl.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed) skipToNext();
+    });
+  }
+
   Stream<Duration> get positionStream => audPl.positionStream;
 
   Duration? get duration => audPl.duration;
