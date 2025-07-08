@@ -22,3 +22,8 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Adição de um tema padrão.  
 - Botões em funcionamento (Pause/Play, Prox, Prev, Random, Loop).  
 - Música muda de cor para ficar em destaque quando tocada.  
+
+### version 1.2  
+- Mudança da forma de reproduzir os audios.  
+- Adição de uma notificação interativa.  
+- Mudança na forma de procurar arquivos de musica.  

@@ -1,17 +1,29 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/services/fetch_songs.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
+import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
-import 'dart:math' as mt;
+import 'services/audioPlayerBase.dart';
 
-void main() {
-  runApp(const MyApp());
+MyAudioHandler _audioHandler = MyAudioHandler();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  _audioHandler = await AudioService.init(
+    builder: () => MyAudioHandler(),
+    config: AudioServiceConfig(
+      androidNotificationChannelId: 'com.nathandv.musync_and',
+      androidNotificationChannelName: 'Audio playback',
+      androidNotificationOngoing: true,
+    ),
+  );
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -23,13 +35,15 @@ class MyApp extends StatelessWidget {
       title: 'Musync',
       theme: lighttheme(),
       themeMode: ThemeMode.system,
-      home: const MusicPage(),
+      home: MusicPage(audioHandler: _audioHandler),
     );
   }
 }
 
 class MusicPage extends StatefulWidget {
-  const MusicPage({super.key});
+  final MyAudioHandler audioHandler;
+
+  const MusicPage({super.key, required this.audioHandler});
 
   @override
   State<MusicPage> createState() => _MusicPageState();
@@ -37,26 +51,38 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> {
   List<FileSystemEntity> mp3Files = [];
-  final AudioPlayer _player = AudioPlayer();
   final TextEditingController _ipController = TextEditingController();
   String pcIp = '';
-  bool isPlaying = false;
   ValueNotifier<String> tituloAtual = ValueNotifier('');
-  ValueNotifier<bool> toLoop = ValueNotifier(false);
   ValueNotifier<bool> toRandom = ValueNotifier(false);
+  ValueNotifier<int> toLoop = ValueNotifier(0);
   int currentPlayingIndex = 0;
+
+  List<MediaItem> songs = [];
 
   @override
   void initState() {
+    FetchSongs.execute().then((value) {
+      setState(() {
+        songs = value;
+      });
+      widget.audioHandler.initSongs(songs: songs);
+    });
+
     super.initState();
+    _loadItems();
     _loadIp();
     _requestPermissionAndLoad();
+  }
 
-    _player.playerStateStream.listen((playerState) {
-      if (playerState.processingState == ProcessingState.completed) {
-        _playNext();
-      }
+  void _loadItems() async {
+    widget.audioHandler.isShuffleEnabled().then((enabled) {
+      toRandom.value = enabled;
     });
+
+    final loopMode = await widget.audioHandler.isLoopEnabled();
+    toLoop.value =
+        {LoopMode.off: 0, LoopMode.one: 1, LoopMode.all: 2}[loopMode]!;
   }
 
   Future<void> _requestPermissionAndLoad() async {
@@ -149,48 +175,6 @@ class _MusicPageState extends State<MusicPage> {
     log('${metadata.bitrate} bitrate');
   }
 
-  void _playNext() async {
-    if (currentPlayingIndex + 1 < mp3Files.length) {
-      if (toRandom.value) {
-        final random = mt.Random();
-        currentPlayingIndex = random.nextInt(mp3Files.length);
-      } else {
-        currentPlayingIndex++;
-      }
-      final nextFile = mp3Files[currentPlayingIndex];
-      try {
-        await _player.setFilePath(nextFile.path);
-        readMetaData(nextFile.path);
-        _player.play();
-        setState(() {});
-      } catch (e) {
-        log('Erro ao tocar próxima música: $e');
-      }
-    } else {
-      if (toLoop.value) {
-        currentPlayingIndex = -1;
-        _playNext();
-      } else {
-        _player.stop();
-      }
-    }
-  }
-
-  void _playPrev() async {
-    if (currentPlayingIndex - 1 > -1) {
-      currentPlayingIndex--;
-      final prevFile = mp3Files[currentPlayingIndex];
-      try {
-        await _player.setFilePath(prevFile.path);
-        readMetaData(prevFile.path);
-        _player.play();
-        setState(() {});
-      } catch (e) {
-        log('Erro ao tocar música anterior: $e');
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -233,32 +217,39 @@ class _MusicPageState extends State<MusicPage> {
               ),
               const Divider(),
               Expanded(
-                child: ListView.builder(
-                  itemCount: mp3Files.length,
-                  itemBuilder: (context, index) {
-                    final file = mp3Files[index];
-                    return ListTile(
-                      title: Text(p.basename(file.path).replaceAll('.mp3', '')),
-                      onTap: () async {
-                        try {
-                          await _player.setFilePath(file.path);
-                          readMetaData(file.path);
-                          _player.play();
-                          setState(() {
-                            currentPlayingIndex = index;
-                          });
-                        } catch (e) {
-                          log('Erro ao tocar música: $e');
-                        }
+                child: StreamBuilder<List<MediaItem>>(
+                  stream: widget.audioHandler.queue,
+                  builder: (context, snapshot) {
+                    final mediaItems = snapshot.data ?? [];
+
+                    return ListView.builder(
+                      itemCount: mediaItems.length,
+                      itemBuilder: (context, index) {
+                        final item = mediaItems[index];
+
+                        return ListTile(
+                          title: Text(item.title),
+                          subtitle: Text(item.artist ?? "Artista desconhecido"),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.send),
+                            onPressed: () => _sendFileToPC(File(item.id)),
+                          ),
+                          tileColor:
+                              currentPlayingIndex == index
+                                  ? const Color.fromARGB(51, 243, 160, 34)
+                                  : null,
+                          onTap: () async {
+                            try {
+                              await widget.audioHandler.skipToQueueItem(index);
+                              setState(() {
+                                currentPlayingIndex = index;
+                              });
+                            } catch (e) {
+                              log('Erro ao tocar música: $e');
+                            }
+                          },
+                        );
                       },
-                      trailing: IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () => _sendFileToPC(File(file.path)),
-                      ),
-                      tileColor:
-                          currentPlayingIndex == index
-                              ? Color.fromARGB(51, 243, 160, 34)
-                              : null,
                     );
                   },
                 ),
@@ -284,17 +275,23 @@ class _MusicPageState extends State<MusicPage> {
                 ),
                 child: Column(
                   children: [
-                    ValueListenableBuilder<String>(
-                      valueListenable: tituloAtual,
-                      builder: (context, value, child) {
-                        return Text(value);
+                    StreamBuilder<MediaItem?>(
+                      stream: widget.audioHandler.mediaItem,
+                      builder: (context, snapshot) {
+                        final mediaItem = snapshot.data;
+
+                        if (mediaItem == null) {
+                          return const Text("...");
+                        }
+                        return Text(mediaItem.title);
                       },
                     ),
                     StreamBuilder<Duration>(
-                      stream: _player.positionStream,
+                      stream: widget.audioHandler.positionStream,
                       builder: (context, snapshot) {
                         final position = snapshot.data ?? Duration.zero;
-                        final total = _player.duration ?? Duration.zero;
+                        final total =
+                            widget.audioHandler.duration ?? Duration.zero;
 
                         return Column(
                           children: [
@@ -318,7 +315,7 @@ class _MusicPageState extends State<MusicPage> {
                                           .clamp(0, total.inMilliseconds)
                                           .toDouble(),
                                   onChanged: (value) {
-                                    _player.seek(
+                                    widget.audioHandler.seek(
                                       Duration(milliseconds: value.toInt()),
                                     );
                                   },
@@ -356,8 +353,12 @@ class _MusicPageState extends State<MusicPage> {
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 shape: const CircleBorder(),
                               ),
-                              onPressed: () {
-                                toRandom.value = !toRandom.value;
+                              onPressed: () async {
+                                final newValue = !value;
+                                await widget.audioHandler.setShuffleModeEnabled(
+                                  newValue,
+                                );
+                                toRandom.value = newValue;
                               },
                               child: Icon(
                                 value
@@ -376,13 +377,15 @@ class _MusicPageState extends State<MusicPage> {
                             shape: const CircleBorder(),
                           ),
                           onPressed: () {
-                            _playPrev();
+                            widget.audioHandler.skipToPrevious();
+                            currentPlayingIndex =
+                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_left_sharp),
                         ),
                         const SizedBox(width: 16),
                         StreamBuilder<bool>(
-                          stream: _player.playingStream,
+                          stream: widget.audioHandler.playingStream,
                           builder: (context, snapshot) {
                             final isPlaying = snapshot.data ?? false;
                             return ElevatedButton(
@@ -393,7 +396,9 @@ class _MusicPageState extends State<MusicPage> {
                                 shape: const CircleBorder(),
                               ),
                               onPressed: () {
-                                isPlaying ? _player.pause() : _player.play();
+                                isPlaying
+                                    ? widget.audioHandler.pause()
+                                    : widget.audioHandler.play();
                               },
                               child: Icon(
                                 isPlaying
@@ -412,12 +417,14 @@ class _MusicPageState extends State<MusicPage> {
                             shape: const CircleBorder(),
                           ),
                           onPressed: () {
-                            _playNext();
+                            widget.audioHandler.skipToNext();
+                            currentPlayingIndex =
+                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_right_sharp),
                         ),
                         const SizedBox(width: 16),
-                        ValueListenableBuilder<bool>(
+                        ValueListenableBuilder<int>(
                           valueListenable: toLoop,
                           builder: (context, value, child) {
                             return ElevatedButton(
@@ -427,13 +434,31 @@ class _MusicPageState extends State<MusicPage> {
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 shape: const CircleBorder(),
                               ),
-                              onPressed: () {
-                                toLoop.value = !toLoop.value;
+                              onPressed: () async {
+                                LoopMode newloop = LoopMode.off;
+                                final newValue = value == 2 ? 0 : value + 1;
+                                switch (value) {
+                                  case 0:
+                                    newloop = LoopMode.off;
+                                    break;
+                                  case 1:
+                                    newloop = LoopMode.all;
+                                    break;
+                                  case 2:
+                                    newloop = LoopMode.one;
+                                    break;
+                                }
+                                await widget.audioHandler.setLoopModeEnabled(
+                                  newloop,
+                                );
+                                toLoop.value = newValue;
                               },
                               child: Icon(
-                                value
-                                    ? Icons.repeat_one_rounded
-                                    : Icons.repeat_rounded,
+                                value == 0
+                                    ? Icons.arrow_right_alt_rounded
+                                    : value == 1
+                                    ? Icons.repeat_rounded
+                                    : Icons.repeat_one_rounded,
                               ),
                             );
                           },
@@ -452,7 +477,7 @@ class _MusicPageState extends State<MusicPage> {
 
   @override
   void dispose() {
-    _player.dispose();
+    widget.audioHandler.stop();
     super.dispose();
   }
 }
