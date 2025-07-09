@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:marquee/marquee.dart';
 
@@ -80,7 +78,9 @@ Future<void> showPopupList(
       return StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: Center(child: Text(label)),
+            title: Center(
+              child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
             content: createOrdem(values),
             insetPadding: const EdgeInsets.symmetric(horizontal: 16),
             actions: [

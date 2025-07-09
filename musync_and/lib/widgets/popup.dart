@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:marquee/marquee.dart';
+import 'package:musync_and/widgets/letreiro.dart';
 
 Future<void> showPopup(
   BuildContext context,
@@ -12,21 +12,12 @@ Future<void> showPopup(
       return StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: SizedBox(
-              height: 50,
-              child: Marquee(
-                text: label,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                scrollAxis: Axis.horizontal,
-                blankSpace: 20,
-                velocity: 60,
-                pauseAfterRound: Duration(seconds: 1),
-                startPadding: 10,
-                accelerationDuration: Duration(seconds: 1),
-                accelerationCurve: Curves.linear,
-                decelerationDuration: Duration(milliseconds: 500),
-                decelerationCurve: Curves.easeOut,
-              ),
+            title: Letreiro(
+              key: ValueKey(label),
+              texto: label,
+              blankSpace: 90,
+              fullTime: 12,
+              timeStoped: 1500,
             ),
             content: SingleChildScrollView(
               child: Column(
@@ -45,7 +36,13 @@ Future<void> showPopup(
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
-                              child: Text(options[index]['opt']),
+                              child: Text(
+                                options[index]['opt'],
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
                             ),
                           ),
                         ),

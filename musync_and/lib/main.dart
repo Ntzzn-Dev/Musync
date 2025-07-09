@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
+import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popupList.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -69,6 +70,13 @@ class _MusicPageState extends State<MusicPage> {
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
   ValueNotifier<int> currentPlayingIndex = ValueNotifier(0);
+  double bottomPosition = 0; // valor inicial do bottom
+
+  void _toggleBottom() {
+    setState(() {
+      bottomPosition = bottomPosition == 0 ? -100 : 0; // alterna entre 0 e 100
+    });
+  }
 
   var modeAtual = ModeEnum.titleAZ;
 
@@ -161,6 +169,30 @@ class _MusicPageState extends State<MusicPage> {
     await widget.audioHandler.recreateQueue(songs: songs);
   }
 
+  void showSpec(MediaItem item) {
+    showPopupList(
+      context,
+      item.title,
+      [
+        {'valor1': 'Nome', 'valor2': item.title},
+        {'valor1': 'Album', 'valor2': item.album},
+        {'valor1': 'Artista', 'valor2': item.artist},
+        {'valor1': 'Duracao', 'valor2': formatDuration(item.duration!, true)},
+        {'valor1': 'Caminho', 'valor2': item.extras?['path']},
+        {
+          'valor1': 'Data',
+          'valor2': DateFormat(
+            'HH:mm:ss dd/MM/yyyy',
+          ).format(DateTime.parse(item.extras?['lastModified'])),
+        },
+      ],
+      [
+        {'name': 'Dado', 'flex': 1, 'centralize': true, 'bold': true},
+        {'name': 'Valor', 'flex': 3, 'centralize': true, 'bold': false},
+      ],
+    );
+  }
+
   Future<void> deletarMusica(MediaItem item) async {
     final file = File(item.extras?['path']);
     if (await file.exists()) {
@@ -169,7 +201,7 @@ class _MusicPageState extends State<MusicPage> {
           songs.remove(item);
         });
         await widget.audioHandler.recreateQueue(songs: songs);
-        //await file.delete(); --------------------------------------------------------------------------------------------------- DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
+        //await file.delete(); ---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
         log('Arquivo deletado: ${item.title}');
       } catch (e) {
         log('Erro ao deletar: $e');
@@ -251,6 +283,17 @@ class _MusicPageState extends State<MusicPage> {
     final minutes = twoDigits(d.inMinutes.remainder(60));
     final seconds = twoDigits(d.inSeconds.remainder(60));
     return '${h ? '$hours:' : ''}$minutes:$seconds';
+  }
+
+  Widget titleText(String text, double fontsize) {
+    return Letreiro(
+      key: ValueKey(text),
+      texto: text,
+      blankSpace: 90,
+      fullTime: 12,
+      timeStoped: 1500,
+      fontSize: fontsize,
+    );
   }
 
   @override
@@ -338,60 +381,7 @@ class _MusicPageState extends State<MusicPage> {
                                         {
                                           'opt': 'Informações',
                                           'funct': () {
-                                            showPopupList(
-                                              context,
-                                              item.title,
-                                              [
-                                                {
-                                                  'valor1': 'Nome',
-                                                  'valor2': item.title,
-                                                },
-                                                {
-                                                  'valor1': 'Album',
-                                                  'valor2': item.album,
-                                                },
-                                                {
-                                                  'valor1': 'Artista',
-                                                  'valor2': item.artist,
-                                                },
-                                                {
-                                                  'valor1': 'Duracao',
-                                                  'valor2': formatDuration(
-                                                    item.duration!,
-                                                    true,
-                                                  ),
-                                                },
-                                                {
-                                                  'valor1': 'Caminho',
-                                                  'valor2':
-                                                      item.extras?['path'],
-                                                },
-                                                {
-                                                  'valor1': 'Data',
-                                                  'valor2': DateFormat(
-                                                    'HH:mm:ss dd/MM/yyyy',
-                                                  ).format(
-                                                    DateTime.parse(
-                                                      item.extras?['lastModified'],
-                                                    ),
-                                                  ),
-                                                },
-                                              ],
-                                              [
-                                                {
-                                                  'name': 'Dado',
-                                                  'flex': 1,
-                                                  'centralize': true,
-                                                  'bold': true,
-                                                },
-                                                {
-                                                  'name': 'Valor',
-                                                  'flex': 3,
-                                                  'centralize': true,
-                                                  'bold': false,
-                                                },
-                                              ],
-                                            );
+                                            showSpec(item);
                                           },
                                         },
                                       ]),
@@ -423,216 +413,236 @@ class _MusicPageState extends State<MusicPage> {
               ),
             ],
           ),
-          Positioned(
-            bottom: 0,
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            bottom: bottomPosition,
             left: 0,
             right: 0,
-            child: Card(
-              margin: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: Color.fromARGB(255, 255, 255, 255),
-              surfaceTintColor: Colors.transparent,
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: 20,
+            child: GestureDetector(
+              onTap: _toggleBottom,
+              child: Card(
+                margin: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  children: [
-                    StreamBuilder<MediaItem?>(
-                      stream: widget.audioHandler.mediaItem,
-                      builder: (context, snapshot) {
-                        final mediaItem = snapshot.data;
+                color: Color.fromARGB(255, 255, 255, 255),
+                surfaceTintColor: Colors.transparent,
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 20,
+                  ),
+                  child: Column(
+                    children: [
+                      StreamBuilder<MediaItem?>(
+                        stream: widget.audioHandler.mediaItem,
+                        builder: (context, snapshot) {
+                          final mediaItem = snapshot.data;
 
-                        if (mediaItem == null) {
-                          return const Text("...");
-                        }
-                        return Text(mediaItem.title);
-                      },
-                    ),
-                    StreamBuilder<Duration>(
-                      stream: widget.audioHandler.positionStream,
-                      builder: (context, snapshot) {
-                        final position = snapshot.data ?? Duration.zero;
-                        final total =
-                            widget.audioHandler.duration ?? Duration.zero;
+                          if (mediaItem == null) {
+                            return const Text("...");
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 0,
+                            ),
+                            child: Column(
+                              children: [
+                                titleText(mediaItem.title, 16),
+                                titleText(mediaItem.artist ?? '', 11),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      StreamBuilder<Duration>(
+                        stream: widget.audioHandler.positionStream,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          final total =
+                              widget.audioHandler.duration ?? Duration.zero;
 
-                        return Column(
-                          children: [
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 2,
-                                thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 6,
+                          return Column(
+                            children: [
+                              SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 2,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12,
+                                  ),
                                 ),
-                                overlayShape: const RoundSliderOverlayShape(
-                                  overlayRadius: 12,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 0),
+                                  child: Slider(
+                                    min: 0,
+                                    max: total.inMilliseconds.toDouble(),
+                                    value:
+                                        position.inMilliseconds
+                                            .clamp(0, total.inMilliseconds)
+                                            .toDouble(),
+                                    onChanged: (value) {
+                                      widget.audioHandler.seek(
+                                        Duration(milliseconds: value.toInt()),
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 0),
-                                child: Slider(
-                                  min: 0,
-                                  max: total.inMilliseconds.toDouble(),
-                                  value:
-                                      position.inMilliseconds
-                                          .clamp(0, total.inMilliseconds)
-                                          .toDouble(),
-                                  onChanged: (value) {
-                                    widget.audioHandler.seek(
-                                      Duration(milliseconds: value.toInt()),
-                                    );
-                                  },
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22.0,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(formatDuration(position, false)),
+                                    Text(formatDuration(total, false)),
+                                  ],
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22.0,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(formatDuration(position, false)),
-                                  Text(formatDuration(total, false)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        ValueListenableBuilder<bool>(
-                          valueListenable: toRandom,
-                          builder: (context, value, child) {
-                            return ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.all(15),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: const CircleBorder(),
-                              ),
-                              onPressed: () async {
-                                final newValue = !value;
-                                await widget.audioHandler.setShuffleModeEnabled(
-                                  newValue,
-                                );
-                                toRandom.value = newValue;
-                              },
-                              child: Icon(
-                                value
-                                    ? Icons.shuffle
-                                    : Icons.arrow_right_alt_rounded,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size.zero,
-                            padding: EdgeInsets.all(15),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: const CircleBorder(),
+                            ],
+                          );
+                        },
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ValueListenableBuilder<bool>(
+                            valueListenable: toRandom,
+                            builder: (context, value, child) {
+                              return ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.all(15),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: const CircleBorder(),
+                                ),
+                                onPressed: () async {
+                                  final newValue = !value;
+                                  await widget.audioHandler
+                                      .setShuffleModeEnabled(newValue);
+                                  toRandom.value = newValue;
+                                },
+                                child: Icon(
+                                  value
+                                      ? Icons.shuffle
+                                      : Icons.arrow_right_alt_rounded,
+                                ),
+                              );
+                            },
                           ),
-                          onPressed: () async {
-                            await widget.audioHandler.skipToPrevious();
-                            currentPlayingIndex.value =
-                                widget.audioHandler.currentIndex!;
-                          },
-                          child: Icon(Icons.keyboard_double_arrow_left_sharp),
-                        ),
-                        const SizedBox(width: 16),
-                        StreamBuilder<bool>(
-                          stream: widget.audioHandler.playingStream,
-                          builder: (context, snapshot) {
-                            final isPlaying = snapshot.data ?? false;
-                            return ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.all(15),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: const CircleBorder(),
-                              ),
-                              onPressed: () {
-                                isPlaying
-                                    ? widget.audioHandler.pause()
-                                    : widget.audioHandler.play();
-                              },
-                              child: Icon(
-                                isPlaying
-                                    ? Icons.pause_outlined
-                                    : Icons.play_arrow_outlined,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size.zero,
-                            padding: EdgeInsets.all(15),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: const CircleBorder(),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size.zero,
+                              padding: EdgeInsets.all(15),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: const CircleBorder(),
+                            ),
+                            onPressed: () async {
+                              await widget.audioHandler.skipToPrevious();
+                              currentPlayingIndex.value =
+                                  widget.audioHandler.currentIndex!;
+                            },
+                            child: Icon(Icons.keyboard_double_arrow_left_sharp),
                           ),
-                          onPressed: () async {
-                            await widget.audioHandler.skipToNext();
-                            currentPlayingIndex.value =
-                                widget.audioHandler.currentIndex!;
-                          },
-                          child: Icon(Icons.keyboard_double_arrow_right_sharp),
-                        ),
-                        const SizedBox(width: 16),
-                        ValueListenableBuilder<int>(
-                          valueListenable: toLoop,
-                          builder: (context, value, child) {
-                            return ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.all(15),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: const CircleBorder(),
-                              ),
-                              onPressed: () async {
-                                LoopMode newloop = LoopMode.off;
-                                final newValue = value == 2 ? 0 : value + 1;
-                                switch (value) {
-                                  case 0:
-                                    newloop = LoopMode.off;
-                                    break;
-                                  case 1:
-                                    newloop = LoopMode.all;
-                                    break;
-                                  case 2:
-                                    newloop = LoopMode.one;
-                                    break;
-                                }
-                                await widget.audioHandler.setLoopModeEnabled(
-                                  newloop,
-                                );
-                                toLoop.value = newValue;
-                              },
-                              child: Icon(
-                                value == 0
-                                    ? Icons.arrow_right_alt_rounded
-                                    : value == 1
-                                    ? Icons.repeat_rounded
-                                    : Icons.repeat_one_rounded,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 16),
+                          StreamBuilder<bool>(
+                            stream: widget.audioHandler.playingStream,
+                            builder: (context, snapshot) {
+                              final isPlaying = snapshot.data ?? false;
+                              return ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.all(15),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: const CircleBorder(),
+                                ),
+                                onPressed: () {
+                                  isPlaying
+                                      ? widget.audioHandler.pause()
+                                      : widget.audioHandler.play();
+                                },
+                                child: Icon(
+                                  isPlaying
+                                      ? Icons.pause_outlined
+                                      : Icons.play_arrow_outlined,
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size.zero,
+                              padding: EdgeInsets.all(15),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: const CircleBorder(),
+                            ),
+                            onPressed: () async {
+                              await widget.audioHandler.skipToNext();
+                              currentPlayingIndex.value =
+                                  widget.audioHandler.currentIndex!;
+                            },
+                            child: Icon(
+                              Icons.keyboard_double_arrow_right_sharp,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          ValueListenableBuilder<int>(
+                            valueListenable: toLoop,
+                            builder: (context, value, child) {
+                              return ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: Size.zero,
+                                  padding: EdgeInsets.all(15),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: const CircleBorder(),
+                                ),
+                                onPressed: () async {
+                                  LoopMode newloop = LoopMode.off;
+                                  final newValue = value == 2 ? 0 : value + 1;
+                                  switch (value) {
+                                    case 0:
+                                      newloop = LoopMode.all;
+                                      break;
+                                    case 1:
+                                      newloop = LoopMode.one;
+                                      break;
+                                    case 2:
+                                      newloop = LoopMode.off;
+                                      break;
+                                  }
+                                  await widget.audioHandler.setLoopModeEnabled(
+                                    newloop,
+                                  );
+                                  toLoop.value = newValue;
+                                },
+                                child: Icon(
+                                  value == 0
+                                      ? Icons.arrow_right_alt_rounded
+                                      : value == 1
+                                      ? Icons.repeat_rounded
+                                      : Icons.repeat_one_rounded,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -45,3 +45,9 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Criação do botão de more options.  
 - Adição do popup para more options.  
 - Adição da tabela de informações da música.  
+
+### version 1.6  
+- Criação de um letreiro próprio.  
+- Musica atual é salva como a primeira quando o aleatório é ativado.  
+- Correção do aleatório personalizado com o loop.  
+- Barra de player dinâmica com um clique.  

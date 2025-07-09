@@ -125,7 +125,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await audPl.setLoopMode(mode);
   }
 
-  Future<Enum> isLoopEnabled() async {
+  Future<LoopMode> isLoopEnabled() async {
     return audPl.loopMode;
   }
 
@@ -160,10 +160,15 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     int countSongs = queue.value.length;
     played.clear();
     unplayed = List.generate(countSongs, (i) => i)..shuffle();
+    played.add(audPl.currentIndex ?? 0);
   }
 
   Future<void> playNext() async {
     if (unplayed.isEmpty) return;
+
+    repeat().then((value) {
+      if (value) return;
+    });
 
     int nextIndex = unplayed.removeAt(0);
 
@@ -175,10 +180,25 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> playPrevious() async {
     if (played.length <= 1) return;
 
+    repeat().then((value) {
+      if (value) return;
+    });
+
     played.removeLast();
 
     int prevIndex = played.last;
     await audPl.seek(Duration.zero, index: prevIndex);
     await audPl.play();
+  }
+
+  Future<bool> repeat() async {
+    final modo = await isLoopEnabled();
+
+    if (modo == LoopMode.one) {
+      await audPl.seek(Duration.zero);
+      await audPl.play();
+      return true;
+    }
+    return false;
   }
 }
