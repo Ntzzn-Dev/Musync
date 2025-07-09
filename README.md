@@ -38,3 +38,10 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Definição de preferencias.  
 - Correção da marca da musica atual na lista.  
 - Adição de modos de organização de filas (Titulo A-Z, Titulo Z-A, Data A-Z, Data Z-A).  
+
+### version 1.5  
+- Correção da marca da musica atual na lista.  
+- Opção de delete de músicas.  
+- Criação do botão de more options.  
+- Adição do popup para more options.  
+- Adição da tabela de informações da música.  

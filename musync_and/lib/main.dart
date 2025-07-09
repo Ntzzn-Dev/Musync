@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
+import 'package:musync_and/widgets/popup.dart';
+import 'package:musync_and/widgets/popupList.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
 import 'services/audioPlayerBase.dart';
+import 'package:intl/intl.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
 
@@ -101,7 +104,6 @@ class _MusicPageState extends State<MusicPage> {
         setState(() {
           songs = ordenadas;
         });
-        await widget.audioHandler.recreateQueue(songs: songs);
         break;
       case ModeEnum.titleZA:
         final ordenadas = [...songs]
@@ -157,6 +159,24 @@ class _MusicPageState extends State<MusicPage> {
     }
 
     await widget.audioHandler.recreateQueue(songs: songs);
+  }
+
+  Future<void> deletarMusica(MediaItem item) async {
+    final file = File(item.extras?['path']);
+    if (await file.exists()) {
+      try {
+        setState(() {
+          songs.remove(item);
+        });
+        await widget.audioHandler.recreateQueue(songs: songs);
+        //await file.delete(); --------------------------------------------------------------------------------------------------- DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
+        log('Arquivo deletado: ${item.title}');
+      } catch (e) {
+        log('Erro ao deletar: $e');
+      }
+    } else {
+      log('Arquivo não encontrado');
+    }
   }
 
   Future<void> _sendFileToPC(File file) async {
@@ -225,11 +245,12 @@ class _MusicPageState extends State<MusicPage> {
     widget.audioHandler.setLoopModeEnabled(selectedMode);
   }
 
-  String formatDuration(Duration d) {
+  String formatDuration(Duration d, bool h) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(d.inHours);
     final minutes = twoDigits(d.inMinutes.remainder(60));
     final seconds = twoDigits(d.inSeconds.remainder(60));
-    return '$minutes:$seconds';
+    return '${h ? '$hours:' : ''}$minutes:$seconds';
   }
 
   @override
@@ -290,13 +311,91 @@ class _MusicPageState extends State<MusicPage> {
                           valueListenable: currentPlayingIndex,
                           builder: (context, value, child) {
                             return ListTile(
+                              contentPadding: EdgeInsets.only(
+                                left: 16,
+                                right: 8,
+                              ),
                               title: Text(item.title),
                               subtitle: Text(
                                 item.artist ?? "Artista desconhecido",
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.send),
-                                onPressed: () => _sendFileToPC(File(item.id)),
+                              trailing: SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: IconButton(
+                                  icon: const Icon(Icons.more_vert_rounded),
+                                  iconSize: 22,
+                                  padding: EdgeInsets.zero,
+                                  onPressed:
+                                      () => showPopup(context, item.title, [
+                                        {
+                                          'opt': 'Apagar Audio',
+                                          'funct': () {
+                                            deletarMusica(item);
+                                            Navigator.of(context).pop();
+                                          },
+                                        },
+                                        {
+                                          'opt': 'Informações',
+                                          'funct': () {
+                                            showPopupList(
+                                              context,
+                                              item.title,
+                                              [
+                                                {
+                                                  'valor1': 'Nome',
+                                                  'valor2': item.title,
+                                                },
+                                                {
+                                                  'valor1': 'Album',
+                                                  'valor2': item.album,
+                                                },
+                                                {
+                                                  'valor1': 'Artista',
+                                                  'valor2': item.artist,
+                                                },
+                                                {
+                                                  'valor1': 'Duracao',
+                                                  'valor2': formatDuration(
+                                                    item.duration!,
+                                                    true,
+                                                  ),
+                                                },
+                                                {
+                                                  'valor1': 'Caminho',
+                                                  'valor2':
+                                                      item.extras?['path'],
+                                                },
+                                                {
+                                                  'valor1': 'Data',
+                                                  'valor2': DateFormat(
+                                                    'HH:mm:ss dd/MM/yyyy',
+                                                  ).format(
+                                                    DateTime.parse(
+                                                      item.extras?['lastModified'],
+                                                    ),
+                                                  ),
+                                                },
+                                              ],
+                                              [
+                                                {
+                                                  'name': 'Dado',
+                                                  'flex': 1,
+                                                  'centralize': true,
+                                                  'bold': true,
+                                                },
+                                                {
+                                                  'name': 'Valor',
+                                                  'flex': 3,
+                                                  'centralize': true,
+                                                  'bold': false,
+                                                },
+                                              ],
+                                            );
+                                          },
+                                        },
+                                      ]),
+                                ),
                               ),
                               tileColor:
                                   value == index
@@ -398,8 +497,8 @@ class _MusicPageState extends State<MusicPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(formatDuration(position)),
-                                  Text(formatDuration(total)),
+                                  Text(formatDuration(position, false)),
+                                  Text(formatDuration(total, false)),
                                 ],
                               ),
                             ),
@@ -447,7 +546,7 @@ class _MusicPageState extends State<MusicPage> {
                           onPressed: () async {
                             await widget.audioHandler.skipToPrevious();
                             currentPlayingIndex.value =
-                                widget.audioHandler.currentIndex! + 1;
+                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_left_sharp),
                         ),
@@ -487,7 +586,7 @@ class _MusicPageState extends State<MusicPage> {
                           onPressed: () async {
                             await widget.audioHandler.skipToNext();
                             currentPlayingIndex.value =
-                                widget.audioHandler.currentIndex! + 1;
+                                widget.audioHandler.currentIndex!;
                           },
                           child: Icon(Icons.keyboard_double_arrow_right_sharp),
                         ),

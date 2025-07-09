@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:developer';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -59,7 +56,10 @@ class FetchSongs {
               artist: song.artist,
               duration: Duration(milliseconds: song.duration!),
               artUri: uint8list == null ? null : Uri.dataFromBytes(bytes),
-              extras: {'lastModified': date.toIso8601String()},
+              extras: {
+                'lastModified': date.toIso8601String(),
+                'path': song.data,
+              },
             ),
           );
         }
