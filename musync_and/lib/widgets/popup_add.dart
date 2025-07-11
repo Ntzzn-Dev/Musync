@@ -54,7 +54,10 @@ Future<bool> showPopupAdd(
     (index) => false,
   );
 
-  List<String?> selectedValues = List.filled(fieldLabels.length, null);
+  List<String?> selectedValues = List.generate(
+    fieldLabels.length,
+    (i) => fieldValues?[i],
+  );
 
   final result = await showDialog<bool>(
     context: context,

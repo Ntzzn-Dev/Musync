@@ -1,10 +1,12 @@
 import 'dart:developer';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
+  final currentIndexNotifier = ValueNotifier<int?>(null);
 
   UriAudioSource _createAudioSource(MediaItem item) {
     return ProgressiveAudioSource(Uri.parse(item.id));
@@ -12,6 +14,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   void _listenForCurrentSongIndexChanges() {
     audPl.currentIndexStream.listen((index) {
+      currentIndexNotifier.value = index;
       final playlist = queue.value;
       if (index == null || playlist.isEmpty) return;
       mediaItem.add(playlist[index]);
@@ -72,11 +75,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> initSongs({required List<MediaItem> songs}) async {
     audPl.playbackEventStream.listen(_broadcastState);
 
-    final audSrc = songs.map(_createAudioSource);
+    final audSrc = songs.map(_createAudioSource).toList();
 
-    await audPl.setAudioSource(
-      ConcatenatingAudioSource(children: audSrc.toList()),
-    );
+    await audPl.setAudioSource(ConcatenatingAudioSource(children: audSrc));
 
     final newQueue = queue.value..addAll(songs);
     queue.add(newQueue);
@@ -89,6 +90,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<void> recreateQueue({required List<MediaItem> songs}) async {
+    final currentQueue = queue.value;
+
+    final isEqual =
+        currentQueue.length == songs.length &&
+        List.generate(
+          songs.length,
+          (i) => songs[i].id == currentQueue[i].id,
+        ).every((e) => e);
+
+    if (isEqual) {
+      log('Fila já está atualizada, não será recriada.');
+      return;
+    }
+
     audPl.playbackEventStream.listen(_broadcastState);
 
     final audSrc = songs.map(_createAudioSource).toList();
@@ -102,6 +117,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     audPl.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) skipToNext();
     });
+
+    if (shuffled) {
+      prepareShuffle();
+    }
   }
 
   Stream<Duration> get positionStream => audPl.positionStream;

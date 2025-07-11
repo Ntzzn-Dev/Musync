@@ -7,9 +7,11 @@ import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/letreiro.dart';
+import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
@@ -75,10 +77,8 @@ class _MusicPageState extends State<MusicPage> {
   String pcIp = '';
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
-  ValueNotifier<int> currentPlayingIndex = ValueNotifier(0);
   double bottomPosition = 0;
   int abaSelect = 0;
-  int idPlaylistAtual = -1;
 
   var modeAtual = ModeOrderEnum.titleAZ;
 
@@ -115,7 +115,7 @@ class _MusicPageState extends State<MusicPage> {
     widget.audioHandler.initSongs(songs: songsAll);
   }
 
-  Future<void> reorder(ModeOrderEnum modeAtual, {bool? reordenarFila}) async {
+  Future<void> reorder(ModeOrderEnum modeAtual) async {
     log(modeAtual.toString());
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
@@ -178,10 +178,6 @@ class _MusicPageState extends State<MusicPage> {
 
         break;
     }
-
-    if (reordenarFila != null && reordenarFila) {
-      await widget.audioHandler.recreateQueue(songs: songsNow);
-    }
   }
 
   void showSpec(MediaItem item) {
@@ -192,7 +188,10 @@ class _MusicPageState extends State<MusicPage> {
         {'valor1': 'Nome', 'valor2': item.title},
         {'valor1': 'Album', 'valor2': item.album},
         {'valor1': 'Artista', 'valor2': item.artist},
-        {'valor1': 'Duracao', 'valor2': formatDuration(item.duration!, true)},
+        {
+          'valor1': 'Duracao',
+          'valor2': Player.formatDuration(item.duration!, true),
+        },
         {'valor1': 'Caminho', 'valor2': item.extras?['path']},
         {
           'valor1': 'Data',
@@ -292,25 +291,6 @@ class _MusicPageState extends State<MusicPage> {
     widget.audioHandler.setLoopModeEnabled(selectedMode);
   }
 
-  String formatDuration(Duration d, bool h) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(d.inHours);
-    final minutes = twoDigits(d.inMinutes.remainder(60));
-    final seconds = twoDigits(d.inSeconds.remainder(60));
-    return '${h ? '$hours:' : ''}$minutes:$seconds';
-  }
-
-  Widget titleText(String text, double fontsize) {
-    return Letreiro(
-      key: ValueKey(text),
-      texto: text,
-      blankSpace: 90,
-      fullTime: 12,
-      timeStoped: 1500,
-      fontSize: fontsize,
-    );
-  }
-
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
       {
@@ -340,6 +320,18 @@ class _MusicPageState extends State<MusicPage> {
         },
       },
     ];
+  }
+
+  dynamic convertReorder(dynamic value) {
+    int? reorderFromString(String str) =>
+        {'Titulo A-Z': 1, 'Titulo Z-A': 2, 'Data A-Z': 3, 'Data Z-A': 4}[str];
+
+    String? reorderFromInt(int val) =>
+        {1: 'Titulo A-Z', 2: 'Titulo Z-A', 3: 'Data A-Z', 4: 'Data Z-A'}[val];
+
+    if (value is int) return reorderFromInt(value);
+    if (value is String) return reorderFromString(value);
+    return null;
   }
 
   Widget pageSelect(int pageIndex) {
@@ -377,7 +369,7 @@ class _MusicPageState extends State<MusicPage> {
               ),
             ),
             const Divider(),
-            content(Stream.value(songsNow)), //widget.audioHandler.queue),
+            content(Stream.value(songsNow)),
           ],
         );
       case 1:
@@ -403,28 +395,11 @@ class _MusicPageState extends State<MusicPage> {
                     },
                   ],
                   onConfirm: (valores) async {
-                    int typeReorder = 1;
-                    switch (valores[2]) {
-                      case 'Titulo A-Z':
-                        typeReorder = 1;
-                        break;
-                      case 'Titulo Z-A':
-                        typeReorder = 2;
-                        break;
-                      case 'Data A-Z':
-                        typeReorder = 3;
-                        break;
-                      case 'Data Z-A':
-                        typeReorder = 4;
-                        break;
-                      default:
-                    }
-
                     DatabaseHelper().insertPlaylist(
                       valores[0],
                       valores[1],
                       1,
-                      typeReorder,
+                      convertReorder(valores[2]),
                     );
 
                     final plss = await DatabaseHelper().loadPlaylists();
@@ -477,12 +452,6 @@ class _MusicPageState extends State<MusicPage> {
                               },
                             },
                             {
-                              'opt': 'id',
-                              'funct': () async {
-                                log(item.id.toString());
-                              },
-                            },
-                            {
                               'opt': 'Editar Playlist',
                               'funct': () async {
                                 await showPopupAdd(
@@ -502,30 +471,17 @@ class _MusicPageState extends State<MusicPage> {
                                       ],
                                     },
                                   ],
-                                  fieldValues: [item.title, item.subtitle],
+                                  fieldValues: [
+                                    item.title,
+                                    item.subtitle,
+                                    convertReorder(item.orderMode),
+                                  ],
                                   onConfirm: (valores) async {
-                                    int typeReorder = 1;
-                                    switch (valores[2]) {
-                                      case 'Titulo A-Z':
-                                        typeReorder = 1;
-                                        break;
-                                      case 'Titulo Z-A':
-                                        typeReorder = 2;
-                                        break;
-                                      case 'Data A-Z':
-                                        typeReorder = 3;
-                                        break;
-                                      case 'Data Z-A':
-                                        typeReorder = 4;
-                                        break;
-                                      default:
-                                    }
-
                                     await DatabaseHelper().updatePlaylist(
                                       item.id,
                                       title: valores[0],
                                       subtitle: valores[1],
-                                      orderMode: typeReorder,
+                                      orderMode: convertReorder(valores[2]),
                                     );
 
                                     pls =
@@ -558,7 +514,7 @@ class _MusicPageState extends State<MusicPage> {
                           songsNow = newsongs;
                         });
                       }
-                      reorder(modeAtual, reordenarFila: false);
+                      reorder(modeAtual);
                     },
                   );
                 },
@@ -574,20 +530,43 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Widget content(Stream<List<MediaItem>> medias) {
+    final ItemScrollController _itemScrollController = ItemScrollController();
+    final ItemPositionsListener _itemPositionsListener =
+        ItemPositionsListener.create();
+
     return Expanded(
       child: StreamBuilder<List<MediaItem>>(
         stream: medias,
         builder: (context, snapshot) {
           final mediaItems = snapshot.data ?? [];
 
-          return ListView.builder(
-            itemCount: mediaItems.length,
-            itemBuilder: (context, index) {
-              final item = mediaItems[index];
+          void _scrollToCenter(int index) {
+            if (index >= 0 && index < mediaItems.length) {
+              _itemScrollController.scrollTo(
+                index: index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                alignment: 0.25,
+              );
+            }
+          }
 
-              return ValueListenableBuilder<int>(
-                valueListenable: currentPlayingIndex,
-                builder: (context, value, child) {
+          return ValueListenableBuilder<int?>(
+            valueListenable: widget.audioHandler.currentIndexNotifier,
+            builder: (context, currentIndex, _) {
+              if (currentIndex != null &&
+                  currentIndex >= 0 &&
+                  currentIndex < mediaItems.length) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToCenter(currentIndex);
+                });
+              }
+              return ScrollablePositionedList.builder(
+                itemCount: mediaItems.length,
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
+                itemBuilder: (context, index) {
+                  final item = mediaItems[index];
                   return ListTile(
                     contentPadding: EdgeInsets.only(left: 16, right: 8),
                     title: Text(item.title),
@@ -608,25 +587,15 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     tileColor:
-                        value == index
+                        currentIndex == index
                             ? const Color.fromARGB(51, 243, 160, 34)
                             : null,
                     onTap: () async {
                       try {
-                        if (abaSelect == 2) {
-                          await widget.audioHandler.recreateQueue(
-                            songs: songsNow,
-                          );
-                        }
-                        if (abaSelect == 0) {
-                          await widget.audioHandler.recreateQueue(
-                            songs: songsAll,
-                          );
-                        }
+                        await widget.audioHandler.recreateQueue(
+                          songs: songsNow,
+                        );
                         await widget.audioHandler.skipToQueueItem(index);
-                        setState(() {
-                          currentPlayingIndex.value = index;
-                        });
                       } catch (e) {
                         log('Erro ao tocar música: $e');
                       }
@@ -650,7 +619,7 @@ class _MusicPageState extends State<MusicPage> {
           ElevatedButton(
             onPressed: () async {
               modeAtual = modeAtual.next();
-              await reorder(modeAtual, reordenarFila: false);
+              await reorder(modeAtual);
             },
             child: Icon(Icons.reorder_outlined),
           ),
@@ -741,230 +710,7 @@ class _MusicPageState extends State<MusicPage> {
             right: 0,
             child: GestureDetector(
               onTap: _toggleBottom,
-              child: Card(
-                margin: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                color: Color.fromARGB(255, 255, 255, 255),
-                surfaceTintColor: Colors.transparent,
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 20,
-                  ),
-                  child: Column(
-                    children: [
-                      StreamBuilder<MediaItem?>(
-                        stream: widget.audioHandler.mediaItem,
-                        builder: (context, snapshot) {
-                          final mediaItem = snapshot.data;
-
-                          if (mediaItem == null) {
-                            return const Text("...");
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 0,
-                            ),
-                            child: Column(
-                              children: [
-                                titleText(mediaItem.title, 16),
-                                titleText(mediaItem.artist ?? '', 11),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      StreamBuilder<Duration>(
-                        stream: widget.audioHandler.positionStream,
-                        builder: (context, snapshot) {
-                          final position = snapshot.data ?? Duration.zero;
-                          final total =
-                              widget.audioHandler.duration ?? Duration.zero;
-
-                          return Column(
-                            children: [
-                              SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  trackHeight: 2,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 6,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 0),
-                                  child: Slider(
-                                    min: 0,
-                                    max: total.inMilliseconds.toDouble(),
-                                    value:
-                                        position.inMilliseconds
-                                            .clamp(0, total.inMilliseconds)
-                                            .toDouble(),
-                                    onChanged: (value) {
-                                      widget.audioHandler.seek(
-                                        Duration(milliseconds: value.toInt()),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 22.0,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(formatDuration(position, false)),
-                                    Text(formatDuration(total, false)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ValueListenableBuilder<bool>(
-                            valueListenable: toRandom,
-                            builder: (context, value, child) {
-                              return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.all(15),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  shape: const CircleBorder(),
-                                ),
-                                onPressed: () async {
-                                  final newValue = !value;
-                                  await widget.audioHandler
-                                      .setShuffleModeEnabled(newValue);
-                                  toRandom.value = newValue;
-                                },
-                                child: Icon(
-                                  value
-                                      ? Icons.shuffle
-                                      : Icons.arrow_right_alt_rounded,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: Size.zero,
-                              padding: EdgeInsets.all(15),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: const CircleBorder(),
-                            ),
-                            onPressed: () async {
-                              await widget.audioHandler.skipToPrevious();
-                              currentPlayingIndex.value =
-                                  widget.audioHandler.currentIndex!;
-                            },
-                            child: Icon(Icons.keyboard_double_arrow_left_sharp),
-                          ),
-                          const SizedBox(width: 16),
-                          StreamBuilder<bool>(
-                            stream: widget.audioHandler.playingStream,
-                            builder: (context, snapshot) {
-                              final isPlaying = snapshot.data ?? false;
-                              return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.all(15),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  shape: const CircleBorder(),
-                                ),
-                                onPressed: () {
-                                  isPlaying
-                                      ? widget.audioHandler.pause()
-                                      : widget.audioHandler.play();
-                                },
-                                child: Icon(
-                                  isPlaying
-                                      ? Icons.pause_outlined
-                                      : Icons.play_arrow_outlined,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: Size.zero,
-                              padding: EdgeInsets.all(15),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: const CircleBorder(),
-                            ),
-                            onPressed: () async {
-                              await widget.audioHandler.skipToNext();
-                              currentPlayingIndex.value =
-                                  widget.audioHandler.currentIndex!;
-                            },
-                            child: Icon(
-                              Icons.keyboard_double_arrow_right_sharp,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          ValueListenableBuilder<int>(
-                            valueListenable: toLoop,
-                            builder: (context, value, child) {
-                              return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.all(15),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  shape: const CircleBorder(),
-                                ),
-                                onPressed: () async {
-                                  LoopMode newloop = LoopMode.off;
-                                  final newValue = value == 2 ? 0 : value + 1;
-                                  switch (value) {
-                                    case 0:
-                                      newloop = LoopMode.all;
-                                      break;
-                                    case 1:
-                                      newloop = LoopMode.one;
-                                      break;
-                                    case 2:
-                                      newloop = LoopMode.off;
-                                      break;
-                                  }
-                                  await widget.audioHandler.setLoopModeEnabled(
-                                    newloop,
-                                  );
-                                  toLoop.value = newValue;
-                                },
-                                child: Icon(
-                                  value == 0
-                                      ? Icons.arrow_right_alt_rounded
-                                      : value == 1
-                                      ? Icons.repeat_rounded
-                                      : Icons.repeat_one_rounded,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: Player(audioHandler: widget.audioHandler),
             ),
           ),
         ],
