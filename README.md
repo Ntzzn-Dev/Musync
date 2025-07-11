@@ -71,3 +71,7 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Correção para reativar o suffle quando a fila é recriada.  
 - Verificação se a lista atual é igual a próxima lista antes de recriar a fila.  
 - Scrollagem automática até a música tocando.  
+
+### version 1.9.1  
+- Correção do aleatório + loop.  
+- Separação de classe para a lista.  

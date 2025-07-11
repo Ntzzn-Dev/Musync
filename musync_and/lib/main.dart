@@ -7,6 +7,7 @@ import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/letreiro.dart';
+import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
@@ -180,51 +181,6 @@ class _MusicPageState extends State<MusicPage> {
     }
   }
 
-  void showSpec(MediaItem item) {
-    showPopupList(
-      context,
-      item.title,
-      [
-        {'valor1': 'Nome', 'valor2': item.title},
-        {'valor1': 'Album', 'valor2': item.album},
-        {'valor1': 'Artista', 'valor2': item.artist},
-        {
-          'valor1': 'Duracao',
-          'valor2': Player.formatDuration(item.duration!, true),
-        },
-        {'valor1': 'Caminho', 'valor2': item.extras?['path']},
-        {
-          'valor1': 'Data',
-          'valor2': DateFormat(
-            'HH:mm:ss dd/MM/yyyy',
-          ).format(DateTime.parse(item.extras?['lastModified'])),
-        },
-      ],
-      [
-        {'name': 'Dado', 'flex': 1, 'centralize': true, 'bold': true},
-        {'name': 'Valor', 'flex': 3, 'centralize': true, 'bold': false},
-      ],
-    );
-  }
-
-  Future<void> deletarMusica(MediaItem item) async {
-    final file = File(item.extras?['path']);
-    if (await file.exists()) {
-      try {
-        setState(() {
-          songsNow.remove(item);
-        });
-        await widget.audioHandler.recreateQueue(songs: songsNow);
-        //await file.delete(); ---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
-        log('Arquivo deletado: ${item.title}');
-      } catch (e) {
-        log('Erro ao deletar: $e');
-      }
-    } else {
-      log('Arquivo não encontrado');
-    }
-  }
-
   Future<void> _sendFileToPC(File file) async {
     if (pcIp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -291,37 +247,6 @@ class _MusicPageState extends State<MusicPage> {
     widget.audioHandler.setLoopModeEnabled(selectedMode);
   }
 
-  List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
-    return [
-      {
-        'opt': 'Apagar Audio',
-        'funct': () {
-          deletarMusica(item);
-          Navigator.of(context).pop();
-        },
-      },
-      {
-        'opt': 'Informações',
-        'funct': () {
-          showSpec(item);
-        },
-      },
-      {
-        'opt': 'Adicionar a Playlist',
-        'funct': () async {
-          DatabaseHelper().addToPlaylist(
-            1,
-            await Playlists.generateHashs(item.extras?['path']),
-          );
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Adicionado a playlist: ')),
-          );
-        },
-      },
-    ];
-  }
-
   dynamic convertReorder(dynamic value) {
     int? reorderFromString(String str) =>
         {'Titulo A-Z': 1, 'Titulo Z-A': 2, 'Data A-Z': 3, 'Data Z-A': 4}[str];
@@ -369,7 +294,7 @@ class _MusicPageState extends State<MusicPage> {
               ),
             ),
             const Divider(),
-            content(Stream.value(songsNow)),
+            ListContent(audioHandler: widget.audioHandler, songsNow: songsNow),
           ],
         );
       case 1:
@@ -523,91 +448,14 @@ class _MusicPageState extends State<MusicPage> {
           ],
         );
       case 2:
-        return Column(children: [content(Stream.value(songsNow))]);
+        return Column(
+          children: [
+            ListContent(audioHandler: widget.audioHandler, songsNow: songsNow),
+          ],
+        );
       default:
         return SizedBox.shrink();
     }
-  }
-
-  Widget content(Stream<List<MediaItem>> medias) {
-    final ItemScrollController _itemScrollController = ItemScrollController();
-    final ItemPositionsListener _itemPositionsListener =
-        ItemPositionsListener.create();
-
-    return Expanded(
-      child: StreamBuilder<List<MediaItem>>(
-        stream: medias,
-        builder: (context, snapshot) {
-          final mediaItems = snapshot.data ?? [];
-
-          void _scrollToCenter(int index) {
-            if (index >= 0 && index < mediaItems.length) {
-              _itemScrollController.scrollTo(
-                index: index,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                alignment: 0.25,
-              );
-            }
-          }
-
-          return ValueListenableBuilder<int?>(
-            valueListenable: widget.audioHandler.currentIndexNotifier,
-            builder: (context, currentIndex, _) {
-              if (currentIndex != null &&
-                  currentIndex >= 0 &&
-                  currentIndex < mediaItems.length) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToCenter(currentIndex);
-                });
-              }
-              return ScrollablePositionedList.builder(
-                itemCount: mediaItems.length,
-                itemScrollController: _itemScrollController,
-                itemPositionsListener: _itemPositionsListener,
-                itemBuilder: (context, index) {
-                  final item = mediaItems[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.only(left: 16, right: 8),
-                    title: Text(item.title),
-                    subtitle: Text(item.artist ?? "Artista desconhecido"),
-                    trailing: SizedBox(
-                      width: 52,
-                      height: 52,
-                      child: IconButton(
-                        icon: const Icon(Icons.more_vert_rounded),
-                        iconSize: 24,
-                        padding: EdgeInsets.zero,
-                        onPressed:
-                            () => showPopup(
-                              context,
-                              item.title,
-                              moreOptions(context, item),
-                            ),
-                      ),
-                    ),
-                    tileColor:
-                        currentIndex == index
-                            ? const Color.fromARGB(51, 243, 160, 34)
-                            : null,
-                    onTap: () async {
-                      try {
-                        await widget.audioHandler.recreateQueue(
-                          songs: songsNow,
-                        );
-                        await widget.audioHandler.skipToQueueItem(index);
-                      } catch (e) {
-                        log('Erro ao tocar música: $e');
-                      }
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
-    );
   }
 
   @override

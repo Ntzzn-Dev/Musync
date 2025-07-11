@@ -187,9 +187,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<void> playNext() async {
-    repeat().then((value) {
-      if (value) return;
-    });
+    final shouldStop = await repeat();
+    if (shouldStop) return;
 
     int nextIndex = unplayed.removeAt(0);
 
@@ -201,9 +200,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> playPrevious() async {
     if (played.length <= 1) return;
 
-    repeat().then((value) {
-      if (value) return;
-    });
+    final shouldStop = await repeat();
+    if (shouldStop) return;
 
     unplayed.add(played.last);
     played.removeLast();
@@ -227,7 +225,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return false;
     } else {
       if (unplayed.isEmpty) return true;
+      return false;
     }
-    return false;
   }
 }
