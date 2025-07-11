@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -59,6 +60,7 @@ class FetchSongs {
               extras: {
                 'lastModified': date.toIso8601String(),
                 'path': song.data,
+                'hash': await Playlists.generateHashs(song.data),
               },
             ),
           );

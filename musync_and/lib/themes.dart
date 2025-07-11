@@ -55,6 +55,12 @@ ThemeData lighttheme() {
         ),
       ),
     ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: Color.fromARGB(255, 243, 160, 34), width: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    ),
     textSelectionTheme: TextSelectionThemeData(
       selectionColor: Color.fromARGB(255, 243, 160, 34).withAlpha(60),
       cursorColor: Color.fromARGB(255, 0, 0, 0),

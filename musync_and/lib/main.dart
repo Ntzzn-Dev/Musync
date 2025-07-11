@@ -2,25 +2,29 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
+import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/popup.dart';
-import 'package:musync_and/widgets/popupList.dart';
+import 'package:musync_and/widgets/popup_add.dart';
+import 'package:musync_and/widgets/popup_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
-import 'services/audioPlayerBase.dart';
+import 'services/audio_player_base.dart';
 import 'package:intl/intl.dart';
+import 'package:crypto/crypto.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
 
-enum ModeEnum { titleAZ, titleZA, dataAZ, dataZA }
+enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA }
 
-extension ModeEnumExt on ModeEnum {
-  ModeEnum next() {
-    final nextIndex = (index + 1) % ModeEnum.values.length;
-    return ModeEnum.values[nextIndex];
+extension ModeEnumExt on ModeOrderEnum {
+  ModeOrderEnum next() {
+    final nextIndex = (index + 1) % ModeOrderEnum.values.length;
+    return ModeOrderEnum.values[nextIndex];
   }
 }
 
@@ -63,24 +67,26 @@ class MusicPage extends StatefulWidget {
 }
 
 class _MusicPageState extends State<MusicPage> {
-  List<FileSystemEntity> mp3Files = [];
   final TextEditingController _ipController = TextEditingController();
   String pcIp = '';
-  ValueNotifier<String> tituloAtual = ValueNotifier('');
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
   ValueNotifier<int> currentPlayingIndex = ValueNotifier(0);
-  double bottomPosition = 0; // valor inicial do bottom
+  double bottomPosition = 0;
+  int abaSelect = 0;
+  int idPlaylistAtual = -1;
+
+  var modeAtual = ModeOrderEnum.titleAZ;
+
+  List<MediaItem> songsAll = [];
+  List<MediaItem> songsNow = [];
+  List<Playlists> pls = [];
 
   void _toggleBottom() {
     setState(() {
       bottomPosition = bottomPosition == 0 ? -100 : 0; // alterna entre 0 e 100
     });
   }
-
-  var modeAtual = ModeEnum.titleAZ;
-
-  List<MediaItem> songs = [];
 
   @override
   void initState() {
@@ -98,31 +104,31 @@ class _MusicPageState extends State<MusicPage> {
     final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
 
     setState(() {
-      songs = fetchedSongs;
+      songsAll = fetchedSongs;
     });
 
-    widget.audioHandler.initSongs(songs: songs);
+    widget.audioHandler.initSongs(songs: songsAll);
   }
 
-  Future<void> reorder(ModeEnum modeAtual) async {
+  Future<void> reorder(ModeOrderEnum modeAtual) async {
     switch (modeAtual) {
-      case ModeEnum.titleAZ:
-        final ordenadas = [...songs]
+      case ModeOrderEnum.titleAZ:
+        final ordenadas = [...songsAll]
           ..sort((a, b) => a.title.trim().compareTo(b.title.trim()));
         setState(() {
-          songs = ordenadas;
+          songsAll = ordenadas;
         });
         break;
-      case ModeEnum.titleZA:
-        final ordenadas = [...songs]
+      case ModeOrderEnum.titleZA:
+        final ordenadas = [...songsAll]
           ..sort((a, b) => b.title.trim().compareTo(a.title.trim()));
         setState(() {
-          songs = ordenadas;
+          songsAll = ordenadas;
         });
         break;
-      case ModeEnum.dataAZ:
+      case ModeOrderEnum.dataAZ:
         setState(() {
-          songs.sort((a, b) {
+          songsAll.sort((a, b) {
             try {
               final rawA = a.extras?['lastModified'];
               final rawB = b.extras?['lastModified'];
@@ -142,9 +148,9 @@ class _MusicPageState extends State<MusicPage> {
         });
 
         break;
-      case ModeEnum.dataZA:
+      case ModeOrderEnum.dataZA:
         setState(() {
-          songs.sort((a, b) {
+          songsAll.sort((a, b) {
             try {
               final rawA = a.extras?['lastModified'];
               final rawB = b.extras?['lastModified'];
@@ -166,7 +172,7 @@ class _MusicPageState extends State<MusicPage> {
         break;
     }
 
-    await widget.audioHandler.recreateQueue(songs: songs);
+    await widget.audioHandler.recreateQueue(songs: songsNow);
   }
 
   void showSpec(MediaItem item) {
@@ -198,9 +204,9 @@ class _MusicPageState extends State<MusicPage> {
     if (await file.exists()) {
       try {
         setState(() {
-          songs.remove(item);
+          songsNow.remove(item);
         });
-        await widget.audioHandler.recreateQueue(songs: songs);
+        await widget.audioHandler.recreateQueue(songs: songsNow);
         //await file.delete(); ---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
         log('Arquivo deletado: ${item.title}');
       } catch (e) {
@@ -296,121 +302,312 @@ class _MusicPageState extends State<MusicPage> {
     );
   }
 
+  List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
+    return [
+      {
+        'opt': 'Apagar Audio',
+        'funct': () {
+          deletarMusica(item);
+          Navigator.of(context).pop();
+        },
+      },
+      {
+        'opt': 'Informações',
+        'funct': () {
+          showSpec(item);
+        },
+      },
+      {
+        'opt': 'Adicionar a Playlist',
+        'funct': () async {
+          DatabaseHelper().addToPlaylist(
+            1,
+            await Playlists.generateHashs(item.extras?['path']),
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Adicionado a playlist: ')),
+          );
+        },
+      },
+    ];
+  }
+
+  Widget pageSelect(int pageIndex) {
+    switch (pageIndex) {
+      case 0:
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _ipController,
+                      decoration: const InputDecoration(
+                        labelText: 'IP do PC',
+                        hintText: 'ex: 192.xxx.x.x',
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.save),
+                    onPressed: () async {
+                      /*final prefs = await SharedPreferences.getInstance();
+                                        await prefs.setString(
+                                          'pc_ip',
+                                          _ipController.text.trim(),
+                                        );
+                                        setState(() {
+                                          pcIp = _ipController.text.trim();
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('IP salvo!')),
+                                        );*/
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            content(widget.audioHandler.queue),
+          ],
+        );
+      case 1:
+        return Column(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                showPopupAdd(
+                  context,
+                  'Adicionar Playlist',
+                  [
+                    {'value': 'Título', 'type': 'necessary'},
+                    {'value': 'Subtitulo', 'type': 'text'},
+                  ],
+                  onConfirm: (valores) async {
+                    DatabaseHelper().insertPlaylist(
+                      valores[0],
+                      valores[1],
+                      1,
+                      1,
+                    );
+
+                    final plss = await DatabaseHelper().loadPlaylists();
+
+                    setState(() {
+                      pls = plss;
+                    });
+                  },
+                );
+              },
+              child: Text('+'),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: pls.length,
+                itemBuilder: (context, index) {
+                  final item = pls[index];
+                  // ADD BUTTON DE RETOMADA, SALVANDO MUSICA E PLAYSLIST LAST
+                  return ListTile(
+                    contentPadding: EdgeInsets.only(left: 16, right: 8),
+                    title: Text(item.title),
+                    subtitle: Text(item.subtitle),
+                    trailing: SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: IconButton(
+                        icon: const Icon(Icons.more_vert_rounded),
+                        iconSize: 24,
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          showPopup(context, item.title, [
+                            {
+                              'opt': 'Apagar Playlist',
+                              'funct': () {
+                                DatabaseHelper().removePlaylist(item.id);
+                              },
+                            },
+                          ]);
+                        },
+                      ),
+                    ),
+                    onTap: () async {
+                      abaSelect = 3;
+                      final newsongs = await item.findMusics(songsAll);
+                      if (newsongs != null) {
+                        setState(() {
+                          songsNow = newsongs;
+                        });
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      case 3:
+        return Column(children: [content(Stream.value(songsNow))]);
+      default:
+        return SizedBox.shrink();
+    }
+  }
+
+  Widget content(Stream<List<MediaItem>> medias) {
+    return Expanded(
+      child: StreamBuilder<List<MediaItem>>(
+        stream: medias,
+        builder: (context, snapshot) {
+          final mediaItems = snapshot.data ?? [];
+
+          return ListView.builder(
+            itemCount: mediaItems.length,
+            itemBuilder: (context, index) {
+              final item = mediaItems[index];
+
+              return ValueListenableBuilder<int>(
+                valueListenable: currentPlayingIndex,
+                builder: (context, value, child) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.only(left: 16, right: 8),
+                    title: Text(item.title),
+                    subtitle: Text(item.artist ?? "Artista desconhecido"),
+                    trailing: SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: IconButton(
+                        icon: const Icon(Icons.more_vert_rounded),
+                        iconSize: 24,
+                        padding: EdgeInsets.zero,
+                        onPressed:
+                            () => showPopup(
+                              context,
+                              item.title,
+                              moreOptions(context, item),
+                            ),
+                      ),
+                    ),
+                    tileColor:
+                        value == index
+                            ? const Color.fromARGB(51, 243, 160, 34)
+                            : null,
+                    onTap: () async {
+                      try {
+                        if (abaSelect == 3) {
+                          await widget.audioHandler.recreateQueue(
+                            // Fzer uma forma de retornar a fila completa na aba todas
+                            songs: songsNow,
+                          );
+                        }
+                        await widget.audioHandler.skipToQueueItem(index);
+                        setState(() {
+                          currentPlayingIndex.value = index;
+                        });
+                      } catch (e) {
+                        log('Erro ao tocar música: $e');
+                      }
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Músicas do Celular')),
+      appBar: AppBar(
+        title: const Text('Musync'),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              modeAtual = modeAtual.next();
+              await reorder(modeAtual);
+            },
+            child: Icon(Icons.reorder_outlined),
+          ),
+          SizedBox(width: 9),
+          ElevatedButton(onPressed: () async {}, child: Icon(Icons.settings)),
+        ],
+      ),
       body: Stack(
         children: [
           Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _ipController,
-                        decoration: const InputDecoration(
-                          labelText: 'IP do PC',
-                          hintText: 'ex: 192.xxx.x.x',
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          abaSelect = 0;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration:
+                            abaSelect == 0
+                                ? const BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Color.fromARGB(255, 243, 160, 34),
+                                      width: 3,
+                                    ),
+                                  ),
+                                )
+                                : null,
+                        child: Text(
+                          'Todas',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.save),
-                      onPressed: () async {
-                        /*final prefs = await SharedPreferences.getInstance();
-                        await prefs.setString(
-                          'pc_ip',
-                          _ipController.text.trim(),
-                        );
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        pls = await DatabaseHelper().loadPlaylists();
                         setState(() {
-                          pcIp = _ipController.text.trim();
+                          abaSelect = 1;
                         });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('IP salvo!')),
-                        );*/
-                        modeAtual = modeAtual.next();
-                        await reorder(modeAtual);
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration:
+                            abaSelect == 1
+                                ? const BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Color.fromARGB(255, 243, 160, 34),
+                                      width: 3,
+                                    ),
+                                  ),
+                                )
+                                : null,
+                        child: Text(
+                          'Playlists',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Divider(),
-              Expanded(
-                child: StreamBuilder<List<MediaItem>>(
-                  stream: widget.audioHandler.queue,
-                  builder: (context, snapshot) {
-                    final mediaItems = snapshot.data ?? [];
-
-                    return ListView.builder(
-                      itemCount: mediaItems.length,
-                      itemBuilder: (context, index) {
-                        final item = mediaItems[index];
-
-                        return ValueListenableBuilder<int>(
-                          valueListenable: currentPlayingIndex,
-                          builder: (context, value, child) {
-                            return ListTile(
-                              contentPadding: EdgeInsets.only(
-                                left: 16,
-                                right: 8,
-                              ),
-                              title: Text(item.title),
-                              subtitle: Text(
-                                item.artist ?? "Artista desconhecido",
-                              ),
-                              trailing: SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: IconButton(
-                                  icon: const Icon(Icons.more_vert_rounded),
-                                  iconSize: 22,
-                                  padding: EdgeInsets.zero,
-                                  onPressed:
-                                      () => showPopup(context, item.title, [
-                                        {
-                                          'opt': 'Apagar Audio',
-                                          'funct': () {
-                                            deletarMusica(item);
-                                            Navigator.of(context).pop();
-                                          },
-                                        },
-                                        {
-                                          'opt': 'Informações',
-                                          'funct': () {
-                                            showSpec(item);
-                                          },
-                                        },
-                                      ]),
-                                ),
-                              ),
-                              tileColor:
-                                  value == index
-                                      ? const Color.fromARGB(51, 243, 160, 34)
-                                      : null,
-                              onTap: () async {
-                                try {
-                                  await widget.audioHandler.skipToQueueItem(
-                                    index,
-                                  );
-                                  setState(() {
-                                    currentPlayingIndex.value = index;
-                                  });
-                                } catch (e) {
-                                  log('Erro ao tocar música: $e');
-                                }
-                              },
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
+              Expanded(child: pageSelect(abaSelect)),
             ],
           ),
           AnimatedPositioned(

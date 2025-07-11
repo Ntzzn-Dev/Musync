@@ -157,15 +157,17 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   List<int> unplayed = [];
 
   void prepareShuffle() {
-    int countSongs = queue.value.length;
     played.clear();
-    unplayed = List.generate(countSongs, (i) => i)..shuffle();
+    reshuffle();
     played.add(audPl.currentIndex ?? 0);
   }
 
-  Future<void> playNext() async {
-    if (unplayed.isEmpty) return;
+  void reshuffle() {
+    int countSongs = queue.value.length;
+    unplayed = List.generate(countSongs, (i) => i)..shuffle();
+  }
 
+  Future<void> playNext() async {
     repeat().then((value) {
       if (value) return;
     });
@@ -184,6 +186,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (value) return;
     });
 
+    unplayed.add(played.last);
     played.removeLast();
 
     int prevIndex = played.last;
@@ -198,6 +201,13 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       await audPl.seek(Duration.zero);
       await audPl.play();
       return true;
+    } else if (modo == LoopMode.all) {
+      if (unplayed.isEmpty) {
+        reshuffle();
+      }
+      return false;
+    } else {
+      if (unplayed.isEmpty) return true;
     }
     return false;
   }

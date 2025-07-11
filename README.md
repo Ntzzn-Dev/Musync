@@ -51,3 +51,11 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Musica atual é salva como a primeira quando o aleatório é ativado.  
 - Correção do aleatório personalizado com o loop.  
 - Barra de player dinâmica com um clique.  
+
+### version 1.7  
+- Criação das abas separadas.  
+- Criação dos conceitos de playlist.  
+- Reajuste na lógica do aleatório personalizado.  
+- Criação do banco de dados com playlists.  
+- Adição de um popup de criação.  
+- Criação de filas separadas. (Atual e Total)  
