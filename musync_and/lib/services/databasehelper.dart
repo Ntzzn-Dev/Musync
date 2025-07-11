@@ -39,7 +39,8 @@ class DatabaseHelper {
           CREATE TABLE playlists_musics (
             id_playlist INTEGER,
             hash_music TEXT,
-            FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE
+            FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
+            PRIMARY KEY (id_playlist, hash_music)
           )
         ''');
       },
@@ -76,25 +77,22 @@ class DatabaseHelper {
   }
 
   Future<void> updatePlaylist(
-    int id,
+    int id, {
     String? title,
     String? subtitle,
     int? ordem,
     int? orderMode,
-  ) async {
+  }) async {
     final db = await database;
 
-    await db.update(
-      'playlists',
-      {
-        'title': title,
-        'subtitle': subtitle,
-        'ordem': ordem,
-        'order_mode': orderMode,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    Map<String, dynamic> sql = {};
+
+    if (title != null) sql['title'] = title;
+    if (subtitle != null) sql['subtitle'] = subtitle;
+    if (ordem != null) sql['ordem'] = ordem;
+    if (orderMode != null) sql['order_mode'] = orderMode;
+
+    await db.update('playlists', sql, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> addToPlaylist(int idplaylist, String hashMusic) async {
@@ -103,7 +101,7 @@ class DatabaseHelper {
     await db.insert('playlists_musics', {
       'id_playlist': idplaylist,
       'hash_music': hashMusic,
-    });
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   Future<void> removeFromPlaylist(int idplaylist, String hashMusic) async {

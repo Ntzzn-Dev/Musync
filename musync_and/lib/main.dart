@@ -15,7 +15,6 @@ import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
 import 'services/audio_player_base.dart';
 import 'package:intl/intl.dart';
-import 'package:crypto/crypto.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
 
@@ -25,6 +24,10 @@ extension ModeEnumExt on ModeOrderEnum {
   ModeOrderEnum next() {
     final nextIndex = (index + 1) % ModeOrderEnum.values.length;
     return ModeOrderEnum.values[nextIndex];
+  }
+
+  ModeOrderEnum convert(int i) {
+    return ModeOrderEnum.values[i - 1];
   }
 }
 
@@ -40,6 +43,7 @@ Future<void> main() async {
       androidShowNotificationBadge: true,
     ),
   );
+  //await DatabaseHelper().deleteDatabaseFile();
   runApp(MyApp());
 }
 
@@ -84,7 +88,7 @@ class _MusicPageState extends State<MusicPage> {
 
   void _toggleBottom() {
     setState(() {
-      bottomPosition = bottomPosition == 0 ? -100 : 0; // alterna entre 0 e 100
+      bottomPosition = bottomPosition == 0 ? -100 : 0;
     });
   }
 
@@ -105,30 +109,33 @@ class _MusicPageState extends State<MusicPage> {
 
     setState(() {
       songsAll = fetchedSongs;
+      songsNow = songsAll;
     });
 
     widget.audioHandler.initSongs(songs: songsAll);
   }
 
-  Future<void> reorder(ModeOrderEnum modeAtual) async {
+  Future<void> reorder(ModeOrderEnum modeAtual, {bool? reordenarFila}) async {
+    log(modeAtual.toString());
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
-        final ordenadas = [...songsAll]
+        log('veio2');
+        final ordenadas = [...songsNow]
           ..sort((a, b) => a.title.trim().compareTo(b.title.trim()));
         setState(() {
-          songsAll = ordenadas;
+          songsNow = ordenadas;
         });
         break;
       case ModeOrderEnum.titleZA:
-        final ordenadas = [...songsAll]
+        final ordenadas = [...songsNow]
           ..sort((a, b) => b.title.trim().compareTo(a.title.trim()));
         setState(() {
-          songsAll = ordenadas;
+          songsNow = ordenadas;
         });
         break;
       case ModeOrderEnum.dataAZ:
         setState(() {
-          songsAll.sort((a, b) {
+          songsNow.sort((a, b) {
             try {
               final rawA = a.extras?['lastModified'];
               final rawB = b.extras?['lastModified'];
@@ -150,7 +157,7 @@ class _MusicPageState extends State<MusicPage> {
         break;
       case ModeOrderEnum.dataZA:
         setState(() {
-          songsAll.sort((a, b) {
+          songsNow.sort((a, b) {
             try {
               final rawA = a.extras?['lastModified'];
               final rawB = b.extras?['lastModified'];
@@ -172,7 +179,9 @@ class _MusicPageState extends State<MusicPage> {
         break;
     }
 
-    await widget.audioHandler.recreateQueue(songs: songsNow);
+    if (reordenarFila != null && reordenarFila) {
+      await widget.audioHandler.recreateQueue(songs: songsNow);
+    }
   }
 
   void showSpec(MediaItem item) {
@@ -354,24 +363,21 @@ class _MusicPageState extends State<MusicPage> {
                   IconButton(
                     icon: const Icon(Icons.save),
                     onPressed: () async {
-                      /*final prefs = await SharedPreferences.getInstance();
-                                        await prefs.setString(
-                                          'pc_ip',
-                                          _ipController.text.trim(),
-                                        );
-                                        setState(() {
-                                          pcIp = _ipController.text.trim();
-                                        });
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('IP salvo!')),
-                                        );*/
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('pc_ip', _ipController.text.trim());
+                      setState(() {
+                        pcIp = _ipController.text.trim();
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('IP salvo!')),
+                      );
                     },
                   ),
                 ],
               ),
             ),
             const Divider(),
-            content(widget.audioHandler.queue),
+            content(Stream.value(songsNow)), //widget.audioHandler.queue),
           ],
         );
       case 1:
@@ -385,13 +391,40 @@ class _MusicPageState extends State<MusicPage> {
                   [
                     {'value': 'Título', 'type': 'necessary'},
                     {'value': 'Subtitulo', 'type': 'text'},
+                    {
+                      'value': 'Modo de organização',
+                      'type': 'dropdown',
+                      'opts': [
+                        'Titulo A-Z',
+                        'Titulo Z-A',
+                        'Data A-Z',
+                        'Data Z-A',
+                      ],
+                    },
                   ],
                   onConfirm: (valores) async {
+                    int typeReorder = 1;
+                    switch (valores[2]) {
+                      case 'Titulo A-Z':
+                        typeReorder = 1;
+                        break;
+                      case 'Titulo Z-A':
+                        typeReorder = 2;
+                        break;
+                      case 'Data A-Z':
+                        typeReorder = 3;
+                        break;
+                      case 'Data Z-A':
+                        typeReorder = 4;
+                        break;
+                      default:
+                    }
+
                     DatabaseHelper().insertPlaylist(
                       valores[0],
                       valores[1],
                       1,
-                      1,
+                      typeReorder,
                     );
 
                     final plss = await DatabaseHelper().loadPlaylists();
@@ -421,12 +454,95 @@ class _MusicPageState extends State<MusicPage> {
                         icon: const Icon(Icons.more_vert_rounded),
                         iconSize: 24,
                         padding: EdgeInsets.zero,
-                        onPressed: () {
-                          showPopup(context, item.title, [
+                        onPressed: () async {
+                          await showPopup(context, item.title, [
                             {
                               'opt': 'Apagar Playlist',
-                              'funct': () {
-                                DatabaseHelper().removePlaylist(item.id);
+                              'funct': () async {
+                                if (await showPopupAdd(
+                                  context,
+                                  'Deletar playlist?',
+                                  [],
+                                )) {
+                                  await DatabaseHelper().removePlaylist(
+                                    item.id,
+                                  );
+
+                                  pls = await DatabaseHelper().loadPlaylists();
+
+                                  setState(() {});
+
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                            },
+                            {
+                              'opt': 'id',
+                              'funct': () async {
+                                log(item.id.toString());
+                              },
+                            },
+                            {
+                              'opt': 'Editar Playlist',
+                              'funct': () async {
+                                await showPopupAdd(
+                                  context,
+                                  'Editar Playlist',
+                                  [
+                                    {'value': 'Título', 'type': 'necessary'},
+                                    {'value': 'Subtitulo', 'type': 'text'},
+                                    {
+                                      'value': 'Modo de organização',
+                                      'type': 'dropdown',
+                                      'opts': [
+                                        'Titulo A-Z',
+                                        'Titulo Z-A',
+                                        'Data A-Z',
+                                        'Data Z-A',
+                                      ],
+                                    },
+                                  ],
+                                  fieldValues: [item.title, item.subtitle],
+                                  onConfirm: (valores) async {
+                                    int typeReorder = 1;
+                                    switch (valores[2]) {
+                                      case 'Titulo A-Z':
+                                        typeReorder = 1;
+                                        break;
+                                      case 'Titulo Z-A':
+                                        typeReorder = 2;
+                                        break;
+                                      case 'Data A-Z':
+                                        typeReorder = 3;
+                                        break;
+                                      case 'Data Z-A':
+                                        typeReorder = 4;
+                                        break;
+                                      default:
+                                    }
+
+                                    await DatabaseHelper().updatePlaylist(
+                                      item.id,
+                                      title: valores[0],
+                                      subtitle: valores[1],
+                                      orderMode: typeReorder,
+                                    );
+
+                                    pls =
+                                        await DatabaseHelper().loadPlaylists();
+
+                                    setState(() {});
+
+                                    await ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Playlist Atualizada'),
+                                      ),
+                                    );
+                                  },
+                                );
+                                Navigator.of(context).pop();
                               },
                             },
                           ]);
@@ -434,13 +550,15 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onTap: () async {
-                      abaSelect = 3;
+                      abaSelect = 2;
+                      modeAtual = modeAtual.convert(item.orderMode);
                       final newsongs = await item.findMusics(songsAll);
                       if (newsongs != null) {
                         setState(() {
                           songsNow = newsongs;
                         });
                       }
+                      reorder(modeAtual, reordenarFila: false);
                     },
                   );
                 },
@@ -448,7 +566,7 @@ class _MusicPageState extends State<MusicPage> {
             ),
           ],
         );
-      case 3:
+      case 2:
         return Column(children: [content(Stream.value(songsNow))]);
       default:
         return SizedBox.shrink();
@@ -495,10 +613,14 @@ class _MusicPageState extends State<MusicPage> {
                             : null,
                     onTap: () async {
                       try {
-                        if (abaSelect == 3) {
+                        if (abaSelect == 2) {
                           await widget.audioHandler.recreateQueue(
-                            // Fzer uma forma de retornar a fila completa na aba todas
                             songs: songsNow,
+                          );
+                        }
+                        if (abaSelect == 0) {
+                          await widget.audioHandler.recreateQueue(
+                            songs: songsAll,
                           );
                         }
                         await widget.audioHandler.skipToQueueItem(index);
@@ -528,7 +650,7 @@ class _MusicPageState extends State<MusicPage> {
           ElevatedButton(
             onPressed: () async {
               modeAtual = modeAtual.next();
-              await reorder(modeAtual);
+              await reorder(modeAtual, reordenarFila: false);
             },
             child: Icon(Icons.reorder_outlined),
           ),
@@ -548,6 +670,7 @@ class _MusicPageState extends State<MusicPage> {
                         setState(() {
                           abaSelect = 0;
                         });
+                        songsNow = songsAll;
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16.0),

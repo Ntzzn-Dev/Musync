@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 ThemeData lighttheme() {
   return ThemeData(
-    primarySwatch: Colors.indigo,
+    primarySwatch: Colors.orange,
     scaffoldBackgroundColor: Color.fromARGB(255, 242, 242, 242),
     appBarTheme: AppBarTheme(
       backgroundColor: Color.fromARGB(255, 237, 237, 237),
@@ -44,14 +44,62 @@ ThemeData lighttheme() {
         fontWeight: FontWeight.w900,
       ),
       hintStyle: TextStyle(color: Colors.grey),
+      outlineBorder: BorderSide(color: Colors.red),
 
       filled: true,
       fillColor: Color.fromRGBO(228, 228, 228, 0.5),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+      ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
           color: Color.fromARGB(255, 243, 160, 34),
           width: 2.0,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red, width: 2.0),
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Color.fromRGBO(228, 228, 228, 0.5),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Color.fromARGB(255, 243, 160, 34),
+            width: 2,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+      ),
+      textStyle: TextStyle(color: Colors.black87, fontSize: 16),
+      menuStyle: MenuStyle(
+        backgroundColor: MaterialStateProperty.all(
+          Color.fromARGB(255, 237, 237, 237),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     ),
@@ -66,6 +114,8 @@ ThemeData lighttheme() {
       cursorColor: Color.fromARGB(255, 0, 0, 0),
       selectionHandleColor: Color.fromARGB(255, 243, 160, 34),
     ),
+    focusColor: Color.fromARGB(255, 243, 160, 34),
+    highlightColor: Color.fromARGB(255, 243, 160, 34),
   );
 }
 

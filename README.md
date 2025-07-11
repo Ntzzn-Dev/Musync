@@ -59,3 +59,10 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Criação do banco de dados com playlists.  
 - Adição de um popup de criação.  
 - Criação de filas separadas. (Atual e Total)  
+
+### version 1.8  
+- Alteração e Remoção de playlists.  
+- Definição de playlist Atual.  
+- Reorder padrão de playlist.  
+- Dropdown no popup.  
+- Retorno a todas as musicas.  

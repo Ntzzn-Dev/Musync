@@ -1,6 +1,7 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/databasehelper.dart';
 import 'package:intl/intl.dart';
 
 Future<bool> showPopupAdd(
@@ -53,6 +54,8 @@ Future<bool> showPopupAdd(
     (index) => false,
   );
 
+  List<String?> selectedValues = List.filled(fieldLabels.length, null);
+
   final result = await showDialog<bool>(
     context: context,
     builder: (BuildContext context) {
@@ -103,153 +106,232 @@ Future<bool> showPopupAdd(
                           SizedBox(width: 15),
                         ],
                         Expanded(
-                          child: TextField(
-                            controller: controllers[index],
-                            maxLines: tipoFormatacao == 0 ? null : 1,
-                            keyboardType:
-                                tipoFormatacao == 0
-                                    ? TextInputType.multiline
-                                    : null,
-                            textInputAction:
-                                tipoFormatacao == 0
-                                    ? TextInputAction.newline
-                                    : null,
-                            inputFormatters:
-                                tipoFormatacao == 1
-                                    ? [
-                                      TextInputFormatter.withFunction((
-                                        oldValue,
-                                        newValue,
-                                      ) {
-                                        String digitsOnly = newValue.text
-                                            .replaceAll(RegExp(r'[^0-9]'), '');
+                          child:
+                              fieldLabels[index]['type'].toLowerCase().contains(
+                                    'dropdown',
+                                  )
+                                  ? DropdownButtonFormField<String>(
+                                    value: selectedValues[index],
+                                    dropdownColor: Colors.grey[200],
+                                    decoration: InputDecoration(
+                                      labelText: fieldLabels[index]['value'],
+                                      errorText:
+                                          hasError[index]
+                                              ? 'Campo inválido'
+                                              : null,
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color:
+                                              hasError[index]
+                                                  ? Colors.red
+                                                  : Colors.grey.shade400,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color:
+                                              hasError[index]
+                                                  ? Colors.red
+                                                  : Color.fromARGB(
+                                                    255,
+                                                    243,
+                                                    160,
+                                                    34,
+                                                  ),
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                    items:
+                                        (fieldLabels[index]['opts']
+                                                as List<String>)
+                                            .map((String value) {
+                                              return DropdownMenuItem<String>(
+                                                value: value,
+                                                child: Text(value),
+                                              );
+                                            })
+                                            .toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        selectedValues[index] = newValue;
+                                        controllers[index].text =
+                                            newValue ?? '';
+                                      });
+                                    },
+                                  )
+                                  : TextField(
+                                    controller: controllers[index],
+                                    maxLines: tipoFormatacao == 0 ? null : 1,
+                                    keyboardType:
+                                        tipoFormatacao == 0
+                                            ? TextInputType.multiline
+                                            : null,
+                                    textInputAction:
+                                        tipoFormatacao == 0
+                                            ? TextInputAction.newline
+                                            : null,
+                                    inputFormatters:
+                                        tipoFormatacao == 1
+                                            ? [
+                                              TextInputFormatter.withFunction((
+                                                oldValue,
+                                                newValue,
+                                              ) {
+                                                String digitsOnly = newValue
+                                                    .text
+                                                    .replaceAll(
+                                                      RegExp(r'[^0-9]'),
+                                                      '',
+                                                    );
 
-                                        if (newValue.text.length <
-                                            oldValue.text.length) {
-                                          if (digitsOnly.isNotEmpty &&
-                                              oldValue.text.contains('_')) {
-                                            digitsOnly = digitsOnly.substring(
-                                              0,
-                                              digitsOnly.length - 1,
+                                                if (newValue.text.length <
+                                                    oldValue.text.length) {
+                                                  if (digitsOnly.isNotEmpty &&
+                                                      oldValue.text.contains(
+                                                        '_',
+                                                      )) {
+                                                    digitsOnly = digitsOnly
+                                                        .substring(
+                                                          0,
+                                                          digitsOnly.length - 1,
+                                                        );
+                                                  }
+                                                }
+
+                                                String result = '';
+
+                                                for (int i = 0; i < 8; i++) {
+                                                  if (digitsOnly.length > i) {
+                                                    result += digitsOnly[i];
+                                                  } else {
+                                                    result += '_';
+                                                  }
+                                                }
+
+                                                result =
+                                                    '${result.substring(0, 2)}/${result.substring(2, 4)}/${result.substring(4)}';
+
+                                                return TextEditingValue(
+                                                  text: result,
+                                                  selection:
+                                                      TextSelection.collapsed(
+                                                        offset: result.length,
+                                                      ),
+                                                );
+                                              }),
+                                            ]
+                                            : tipoFormatacao == 2
+                                            ? [
+                                              TextInputFormatter.withFunction((
+                                                oldValue,
+                                                newValue,
+                                              ) {
+                                                String hexOnly = newValue.text
+                                                    .replaceAll(
+                                                      RegExp(r'[^0-9a-fA-F]'),
+                                                      '',
+                                                    );
+
+                                                if (newValue.text.length <
+                                                    oldValue.text.length) {
+                                                  if (hexOnly.isNotEmpty &&
+                                                      oldValue.text.contains(
+                                                        '_',
+                                                      )) {
+                                                    hexOnly = hexOnly.substring(
+                                                      0,
+                                                      hexOnly.length - 1,
+                                                    );
+                                                  }
+                                                }
+
+                                                String result = '';
+
+                                                for (int i = 0; i < 6; i++) {
+                                                  if (hexOnly.length > i) {
+                                                    result += hexOnly[i];
+                                                  } else {
+                                                    result += '_';
+                                                  }
+                                                }
+
+                                                result = '#$result';
+
+                                                return TextEditingValue(
+                                                  text: result,
+                                                  selection:
+                                                      TextSelection.collapsed(
+                                                        offset: result.length,
+                                                      ),
+                                                );
+                                              }),
+                                            ]
+                                            : tipoFormatacao == 3
+                                            ? [
+                                              TextInputFormatter.withFunction((
+                                                oldValue,
+                                                newValue,
+                                              ) {
+                                                String digitsOnly = newValue
+                                                    .text
+                                                    .replaceAll(
+                                                      RegExp(r'[^0-9]'),
+                                                      '',
+                                                    );
+
+                                                return TextEditingValue(
+                                                  text: digitsOnly,
+                                                  selection:
+                                                      TextSelection.collapsed(
+                                                        offset:
+                                                            digitsOnly.length,
+                                                      ),
+                                                );
+                                              }),
+                                            ]
+                                            : [],
+                                    decoration: InputDecoration(
+                                      labelText: fieldLabels[index]['value'],
+                                      errorText:
+                                          hasError[index]
+                                              ? 'Campo inválido'
+                                              : null,
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color:
+                                              hasError[index]
+                                                  ? Colors.red
+                                                  : Colors.grey.shade400,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (text) {
+                                      if (fieldLabels[index]['type']
+                                          .toLowerCase()
+                                          .contains('hex')) {
+                                        try {
+                                          String cleaned =
+                                              text.replaceAll('#', '').trim();
+                                          if (cleaned.length == 6 ||
+                                              cleaned.length == 8) {
+                                            Color newColor = Color(
+                                              int.parse('0xFF$cleaned'),
                                             );
+                                            setState(() {
+                                              hexColors[index] = newColor;
+                                            });
                                           }
-                                        }
-
-                                        String result = '';
-
-                                        for (int i = 0; i < 8; i++) {
-                                          if (digitsOnly.length > i) {
-                                            result += digitsOnly[i];
-                                          } else {
-                                            result += '_';
-                                          }
-                                        }
-
-                                        result =
-                                            '${result.substring(0, 2)}/${result.substring(2, 4)}/${result.substring(4)}';
-
-                                        return TextEditingValue(
-                                          text: result,
-                                          selection: TextSelection.collapsed(
-                                            offset: result.length,
-                                          ),
-                                        );
-                                      }),
-                                    ]
-                                    : tipoFormatacao == 2
-                                    ? [
-                                      TextInputFormatter.withFunction((
-                                        oldValue,
-                                        newValue,
-                                      ) {
-                                        String hexOnly = newValue.text
-                                            .replaceAll(
-                                              RegExp(r'[^0-9a-fA-F]'),
-                                              '',
-                                            );
-
-                                        if (newValue.text.length <
-                                            oldValue.text.length) {
-                                          if (hexOnly.isNotEmpty &&
-                                              oldValue.text.contains('_')) {
-                                            hexOnly = hexOnly.substring(
-                                              0,
-                                              hexOnly.length - 1,
-                                            );
-                                          }
-                                        }
-
-                                        String result = '';
-
-                                        for (int i = 0; i < 6; i++) {
-                                          if (hexOnly.length > i) {
-                                            result += hexOnly[i];
-                                          } else {
-                                            result += '_';
-                                          }
-                                        }
-
-                                        result = '#$result';
-
-                                        return TextEditingValue(
-                                          text: result,
-                                          selection: TextSelection.collapsed(
-                                            offset: result.length,
-                                          ),
-                                        );
-                                      }),
-                                    ]
-                                    : tipoFormatacao == 3
-                                    ? [
-                                      TextInputFormatter.withFunction((
-                                        oldValue,
-                                        newValue,
-                                      ) {
-                                        String digitsOnly = newValue.text
-                                            .replaceAll(RegExp(r'[^0-9]'), '');
-
-                                        return TextEditingValue(
-                                          text: digitsOnly,
-                                          selection: TextSelection.collapsed(
-                                            offset: digitsOnly.length,
-                                          ),
-                                        );
-                                      }),
-                                    ]
-                                    : [],
-                            decoration: InputDecoration(
-                              labelText: fieldLabels[index]['value'],
-                              errorText:
-                                  hasError[index] ? 'Campo inválido' : null,
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color:
-                                      hasError[index]
-                                          ? Colors.red
-                                          : Colors.grey.shade400,
-                                ),
-                              ),
-                            ),
-                            onChanged: (text) {
-                              if (fieldLabels[index]['type']
-                                  .toLowerCase()
-                                  .contains('hex')) {
-                                try {
-                                  String cleaned =
-                                      text.replaceAll('#', '').trim();
-                                  if (cleaned.length == 6 ||
-                                      cleaned.length == 8) {
-                                    Color newColor = Color(
-                                      int.parse('0xFF$cleaned'),
-                                    );
-                                    setState(() {
-                                      hexColors[index] = newColor;
-                                    });
-                                  }
-                                } catch (_) {}
-                              }
-                            },
-                          ),
+                                        } catch (_) {}
+                                      }
+                                    },
+                                  ),
                         ),
                       ],
                     ),
@@ -288,7 +370,7 @@ Future<bool> showPopupAdd(
                         }
                       }
 
-                      final values =
+                      List<String> values =
                           controllers
                               .map((controller) => controller.text)
                               .toList();
