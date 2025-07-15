@@ -41,7 +41,6 @@ class _PlayerState extends State<Player> {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Color.fromARGB(255, 255, 255, 255),
       surfaceTintColor: Colors.transparent,
       elevation: 4,
       child: Padding(

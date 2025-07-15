@@ -55,22 +55,12 @@ Future<void> showPopup(
             contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             actions: [
-              Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Confirmar'),
-                  ),
-                ],
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  style: ElevatedButton.styleFrom(foregroundColor: Colors.red),
+                  child: Icon(Icons.close),
+                ),
               ),
             ],
           );

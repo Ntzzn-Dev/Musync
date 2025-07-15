@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_list.dart';
@@ -31,6 +32,8 @@ class _ListContentState extends State<ListContent> {
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
 
+  bool isScrollable = true;
+
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
       {
@@ -44,6 +47,18 @@ class _ListContentState extends State<ListContent> {
         'opt': 'Informações',
         'funct': () {
           showSpec(item);
+        },
+      },
+      {
+        'opt': 'Editar App',
+        'funct': () {
+          /*Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DownloadPage(),
+              settings: RouteSettings(name: 'donwload'),
+            ),
+          );*/
         },
       },
       {
@@ -71,7 +86,7 @@ class _ListContentState extends State<ListContent> {
         {'valor1': 'Album', 'valor2': item.album},
         {'valor1': 'Artista', 'valor2': item.artist},
         {
-          'valor1': 'Duracao',
+          'valor1': 'Duração',
           'valor2': Player.formatDuration(item.duration!, true),
         },
         {'valor1': 'Caminho', 'valor2': item.extras?['path']},
@@ -108,81 +123,137 @@ class _ListContentState extends State<ListContent> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: StreamBuilder<List<MediaItem>>(
-        stream: Stream.value(widget.songsNow),
-        builder: (context, snapshot) {
-          final mediaItems = snapshot.data ?? [];
+  void initState() {
+    super.initState();
+    _itemPositionsListener.itemPositions.addListener(() {
+      final positions = _itemPositionsListener.itemPositions.value;
+      if (positions.isNotEmpty) {
+        final lastVisible = positions
+            .where((pos) => pos.itemTrailingEdge <= 1.0)
+            .map((pos) => pos.index)
+            .reduce((a, b) => a > b ? a : b);
 
-          void _scrollToCenter(int index) {
-            if (index >= 0 && index < mediaItems.length) {
-              _itemScrollController.scrollTo(
-                index: index,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                alignment: 0.25,
-              );
-            }
+        if (lastVisible == widget.songsNow.length - 1) {
+          isScrollable = true;
+        } else {
+          isScrollable = false;
+        }
+      }
+    });
+  }
+
+  int? _lastScrolledIndex;
+
+  void _scrollToCenter(int index) {
+    if (_lastScrolledIndex == index || isScrollable) return;
+    _lastScrolledIndex = index;
+
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.25,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaItems = widget.songsNow;
+
+    return Expanded(
+      child: ValueListenableBuilder<int?>(
+        valueListenable: widget.audioHandler.currentIndexNotifier,
+        builder: (context, currentIndex, _) {
+          if (currentIndex != null &&
+              currentIndex >= 0 &&
+              currentIndex < mediaItems.length) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToCenter(currentIndex);
+            });
           }
 
-          return ValueListenableBuilder<int?>(
-            valueListenable: widget.audioHandler.currentIndexNotifier,
-            builder: (context, currentIndex, _) {
-              if (currentIndex != null &&
-                  currentIndex >= 0 &&
-                  currentIndex < mediaItems.length) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToCenter(currentIndex);
-                });
-              }
-              return ScrollablePositionedList.builder(
-                itemCount: mediaItems.length,
-                itemScrollController: _itemScrollController,
-                itemPositionsListener: _itemPositionsListener,
-                itemBuilder: (context, index) {
-                  final item = mediaItems[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.only(left: 16, right: 8),
-                    title: Text(item.title),
-                    subtitle: Text(item.artist ?? "Artista desconhecido"),
-                    trailing: SizedBox(
-                      width: 52,
-                      height: 52,
-                      child: IconButton(
-                        icon: const Icon(Icons.more_vert_rounded),
-                        iconSize: 24,
-                        padding: EdgeInsets.zero,
-                        onPressed:
-                            () => showPopup(
-                              context,
-                              item.title,
-                              moreOptions(context, item),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox.expand(
+                  child: ScrollablePositionedList.builder(
+                    itemCount: mediaItems.length,
+                    itemScrollController: _itemScrollController,
+                    itemPositionsListener: _itemPositionsListener,
+                    itemBuilder: (context, index) {
+                      final item = mediaItems[index];
+                      final isSelected = currentIndex == index;
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        title: Text(
+                          item.title,
+                          style: TextStyle(
+                            color:
+                                Theme.of(
+                                  context,
+                                ).extension<CustomColors>()!.textForce,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item.artist ?? "Artista desconhecido",
+                          style: TextStyle(
+                            color:
+                                Theme.of(
+                                  context,
+                                ).extension<CustomColors>()!.subtextForce,
+                          ),
+                        ),
+                        trailing: SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.more_vert_rounded,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).extension<CustomColors>()!.textForce,
                             ),
-                      ),
-                    ),
-                    tileColor:
-                        currentIndex == index
-                            ? const Color.fromARGB(51, 243, 160, 34)
-                            : null,
-                    onTap: () async {
-                      try {
-                        await widget.audioHandler.recreateQueue(
-                          songs: widget.songsNow,
-                        );
-                        await widget.audioHandler.skipToQueueItem(index);
-                      } catch (e) {
-                        log('Erro ao tocar música: $e');
-                      }
+                            iconSize: 24,
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              showPopup(
+                                context,
+                                item.title,
+                                moreOptions(context, item),
+                              );
+                            },
+                          ),
+                        ),
+                        tileColor:
+                            isSelected
+                                ? const Color.fromARGB(51, 243, 160, 34)
+                                : null,
+                        onTap: () async {
+                          try {
+                            await widget.audioHandler.recreateQueue(
+                              songs: widget.songsNow,
+                            );
+                            await widget.audioHandler.skipToQueueItem(index);
+                          } catch (e) {
+                            log('Erro ao tocar música: $e');
+                          }
+                        },
+                      );
                     },
-                  );
-                },
+                  ),
+                ),
               );
             },
           );
         },
       ),
     );
-    ;
   }
 }

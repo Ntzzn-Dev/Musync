@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:audio_service/audio_service.dart';
@@ -40,33 +41,36 @@ class FetchSongs {
             }).toList();
       }
 
-      for (SongModel song in songs) {
-        if (song.isMusic == true) {
-          Uint8List? uint8list = await art(id: song.id);
-          List<int> bytes = [];
-          if (uint8list != null) {
-            bytes = uint8list.toList();
-          }
-          final date = DateTime.fromMillisecondsSinceEpoch(
-            song.dateAdded! * 1000,
-          );
-          items.add(
-            MediaItem(
-              id: song.uri!,
-              title: song.title,
-              artist: song.artist,
-              duration: Duration(milliseconds: song.duration!),
-              artUri: uint8list == null ? null : Uri.dataFromBytes(bytes),
-              extras: {
-                'lastModified': date.toIso8601String(),
-                'path': song.data,
-                'hash': await Playlists.generateHashs(song.data),
-              },
-            ),
-          );
-        }
-      }
+      final futures =
+          songs.map((song) async {
+            if (song.isMusic == true) {
+              final uint8list = await art(id: song.id);
+              final bytes = uint8list?.toList();
+              final date = DateTime.fromMillisecondsSinceEpoch(
+                song.dateAdded! * 1000,
+              );
+              final hash = await Playlists.generateHashs(song.data);
+
+              return MediaItem(
+                id: song.uri!,
+                title: song.title,
+                artist: song.artist,
+                duration: Duration(milliseconds: song.duration!),
+                artUri: uint8list == null ? null : Uri.dataFromBytes(bytes!),
+                extras: {
+                  'lastModified': date.toIso8601String(),
+                  'path': song.data,
+                  'hash': hash,
+                },
+              );
+            }
+            return null;
+          }).toList();
+
+      final results = await Future.wait(futures);
+      items = results.whereType<MediaItem>().toList();
     });
+
     return items;
   }
 }

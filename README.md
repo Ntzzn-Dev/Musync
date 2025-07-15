@@ -75,3 +75,7 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 ### version 1.9.1  
 - Correção do aleatório + loop.  
 - Separação de classe para a lista.  
+
+### version 1.10  
+- Adição do tema escuro.  
+- Correção do scroll da lista.  

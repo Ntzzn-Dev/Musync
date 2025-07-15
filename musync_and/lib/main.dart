@@ -6,18 +6,14 @@ import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
 import 'package:musync_and/services/playlists.dart';
-import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
-import 'package:musync_and/widgets/popup_list.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
 import 'services/audio_player_base.dart';
-import 'package:intl/intl.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
 
@@ -58,6 +54,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Musync',
       theme: lighttheme(),
+      darkTheme: darktheme(),
       themeMode: ThemeMode.system,
       home: MusicPage(audioHandler: _audioHandler),
     );
@@ -80,6 +77,7 @@ class _MusicPageState extends State<MusicPage> {
   ValueNotifier<int> toLoop = ValueNotifier(0);
   double bottomPosition = 0;
   int abaSelect = 0;
+  int idplAtual = -1;
 
   var modeAtual = ModeOrderEnum.titleAZ;
 
@@ -117,10 +115,8 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> reorder(ModeOrderEnum modeAtual) async {
-    log(modeAtual.toString());
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
-        log('veio2');
         final ordenadas = [...songsNow]
           ..sort((a, b) => a.title.trim().compareTo(b.title.trim()));
         setState(() {
@@ -345,13 +341,35 @@ class _MusicPageState extends State<MusicPage> {
                   // ADD BUTTON DE RETOMADA, SALVANDO MUSICA E PLAYSLIST LAST
                   return ListTile(
                     contentPadding: EdgeInsets.only(left: 16, right: 8),
-                    title: Text(item.title),
-                    subtitle: Text(item.subtitle),
+                    title: Text(
+                      item.title,
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    subtitle: Text(
+                      item.subtitle,
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.subtextForce,
+                      ),
+                    ),
                     trailing: SizedBox(
                       width: 52,
                       height: 52,
                       child: IconButton(
-                        icon: const Icon(Icons.more_vert_rounded),
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color:
+                              Theme.of(
+                                context,
+                              ).extension<CustomColors>()!.textForce,
+                        ),
                         iconSize: 24,
                         padding: EdgeInsets.zero,
                         onPressed: () async {
@@ -440,6 +458,7 @@ class _MusicPageState extends State<MusicPage> {
                         });
                       }
                       reorder(modeAtual);
+                      idplAtual = item.id;
                     },
                   );
                 },
@@ -468,6 +487,10 @@ class _MusicPageState extends State<MusicPage> {
             onPressed: () async {
               modeAtual = modeAtual.next();
               await reorder(modeAtual);
+              log('$abaSelect $idplAtual');
+              if (abaSelect == 2 && idplAtual != -1) {
+                //saveOrder();
+              }
             },
             child: Icon(Icons.reorder_outlined),
           ),
@@ -491,17 +514,18 @@ class _MusicPageState extends State<MusicPage> {
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16.0),
-                        decoration:
-                            abaSelect == 0
-                                ? const BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Color.fromARGB(255, 243, 160, 34),
-                                      width: 3,
-                                    ),
-                                  ),
-                                )
-                                : null,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          border: Border(
+                            bottom: BorderSide(
+                              color:
+                                  abaSelect == 0
+                                      ? Color.fromARGB(255, 243, 160, 34)
+                                      : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                        ),
                         child: Text(
                           'Todas',
                           style: TextStyle(
@@ -523,17 +547,18 @@ class _MusicPageState extends State<MusicPage> {
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16.0),
-                        decoration:
-                            abaSelect == 1
-                                ? const BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Color.fromARGB(255, 243, 160, 34),
-                                      width: 3,
-                                    ),
-                                  ),
-                                )
-                                : null,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          border: Border(
+                            bottom: BorderSide(
+                              color:
+                                  abaSelect == 1
+                                      ? Color.fromARGB(255, 243, 160, 34)
+                                      : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                        ),
                         child: Text(
                           'Playlists',
                           style: TextStyle(
