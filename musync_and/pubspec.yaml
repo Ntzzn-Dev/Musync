@@ -32,7 +32,7 @@ dependencies:
     sdk: flutter
   permission_handler: ^12.0.1
   just_audio: ^0.9.36
-  http: ^0.13.6
+  http: ^1.4.0
   shared_preferences: ^2.2.2
 
   # The following adds the Cupertino Icons font to your application.
@@ -45,6 +45,11 @@ dependencies:
   crypto: ^3.0.6
   path: ^1.9.1
   scrollable_positioned_list: ^0.3.8
+  youtube_explode_dart:
+    git:
+      url: https://github.com/Hexer10/youtube_explode_dart
+      ref: master
+  audiotags: ^1.4.5
 
 dev_dependencies:
   flutter_test:

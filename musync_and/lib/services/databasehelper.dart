@@ -1,5 +1,4 @@
 import 'dart:developer';
-import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';

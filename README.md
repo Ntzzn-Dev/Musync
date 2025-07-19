@@ -79,3 +79,8 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 ### version 1.10  
 - Adição do tema escuro.  
 - Correção do scroll da lista.  
+
+### version 2.0  
+- Alteração de Arquivo principal em kotlin.  
+- Adição de edição de arquivos (não 100% funcional).  
+- Implementação de um download de músicas via URL youtube.  

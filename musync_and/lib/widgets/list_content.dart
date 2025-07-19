@@ -3,15 +3,19 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:musync_and/pages/main_screen.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
+import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:audiotags/audiotags.dart';
 
 class ListContent extends StatefulWidget {
   final MyAudioHandler audioHandler;
@@ -52,13 +56,36 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Editar App',
         'funct': () {
-          /*Navigator.push(
+          Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => DownloadPage(),
+              builder: (context) => MainScreen(inputUrl: item.extras?['path']),
               settings: RouteSettings(name: 'donwload'),
             ),
-          );*/
+          );
+        },
+      },
+      {
+        'opt': 'Editar Música',
+        'funct': () {
+          showPopupAdd(
+            context,
+            item.title,
+            [
+              {'value': 'Título', 'type': 'text'},
+              {'value': 'Artista', 'type': 'text'},
+              {'value': 'Album', 'type': 'text'},
+              {'value': 'Gênero', 'type': 'text'},
+            ],
+            onConfirm: (valores) {
+              editarTags(item.extras?['path'], {
+                'title': valores[0],
+                'trackArtist': valores[1],
+                'album': valores[2],
+                'genre': valores[3],
+              });
+            },
+          );
         },
       },
       {
@@ -75,6 +102,44 @@ class _ListContentState extends State<ListContent> {
         },
       },
     ];
+  }
+
+  Future<void> editarTags(String filePath, Map<String, dynamic> newData) async {
+    try {
+      Tag? oldTag = await AudioTags.read(filePath);
+
+      Tag tag = Tag(
+        title: newData['title'] ?? oldTag?.title,
+        trackArtist: newData['trackArtist'] ?? oldTag?.trackArtist,
+        album: newData['album'] ?? oldTag?.album,
+        albumArtist: newData['albumArtist'] ?? oldTag?.albumArtist,
+        genre: newData['genre'] ?? oldTag?.genre,
+        year: newData['year'] ?? oldTag?.year,
+        trackNumber: newData['trackNumber'] ?? oldTag?.trackNumber,
+        trackTotal: newData['trackTotal'] ?? oldTag?.trackTotal,
+        discNumber: newData['discNumber'] ?? oldTag?.discNumber,
+        discTotal: newData['discTotal'] ?? oldTag?.discTotal,
+        pictures: [],
+      );
+
+      AudioTags.write(filePath, tag);
+
+      await atualizarNoMediaStore(filePath);
+    } catch (e) {
+      log("Erro ao editar tags: $e");
+    }
+  }
+
+  final MethodChannel _channel = MethodChannel(
+    'br.com.nathandv.musync_and/scanfile',
+  );
+
+  Future<void> atualizarNoMediaStore(String path) async {
+    try {
+      await _channel.invokeMethod('scanFile', {'path': path});
+    } catch (e) {
+      log('Erro ao escanear: $e');
+    }
   }
 
   void showSpec(MediaItem item) {
@@ -125,7 +190,7 @@ class _ListContentState extends State<ListContent> {
   @override
   void initState() {
     super.initState();
-    _itemPositionsListener.itemPositions.addListener(() {
+    /*_itemPositionsListener.itemPositions.addListener(() {
       final positions = _itemPositionsListener.itemPositions.value;
       if (positions.isNotEmpty) {
         final lastVisible = positions
@@ -139,7 +204,7 @@ class _ListContentState extends State<ListContent> {
           isScrollable = false;
         }
       }
-    });
+    });*/
   }
 
   int? _lastScrolledIndex;
