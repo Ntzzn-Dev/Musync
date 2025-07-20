@@ -8,6 +8,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
   final currentIndexNotifier = ValueNotifier<int?>(null);
 
+  static List<MediaItem> songsAll = [];
+
   UriAudioSource _createAudioSource(MediaItem item) {
     return ProgressiveAudioSource(Uri.parse(item.id));
   }

@@ -84,3 +84,14 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Alteração de Arquivo principal em kotlin.  
 - Adição de edição de arquivos (não 100% funcional).  
 - Implementação de um download de músicas via URL youtube.  
+
+### version 2.1  
+- Conversão de webm para mp3.  
+- Lista estática e compartilhada.  
+- Adição do genero e album na lista.  
+- Edição de arquivo agora sincronizado com a lista.  
+- Página dedicada ao download das faixas.  
+- Atualização de lista ao baixar uma faixa.  
+- Edição das tags antes mesmo de baixar a faixa.  
+- Visualização de porcentagem do método de baixar faixa.  
+- Botões ficam indisponíveis ao fazer o download da faixa atual.  

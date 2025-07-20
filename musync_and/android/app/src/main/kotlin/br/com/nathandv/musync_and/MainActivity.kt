@@ -13,7 +13,7 @@ class MainActivity : AudioServiceActivity() {
     private val CHANNEL = "br.com.nathandv.musync_and/scanfile"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine) // <- CHAMA PRIMEIRO
+        super.configureFlutterEngine(flutterEngine)
 
         GeneratedPluginRegistrant.registerWith(flutterEngine)
 

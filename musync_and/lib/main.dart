@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
@@ -81,7 +82,6 @@ class _MusicPageState extends State<MusicPage> {
 
   var modeAtual = ModeOrderEnum.titleAZ;
 
-  List<MediaItem> songsAll = [];
   List<MediaItem> songsNow = [];
   List<Playlists> pls = [];
 
@@ -107,11 +107,11 @@ class _MusicPageState extends State<MusicPage> {
     final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
 
     setState(() {
-      songsAll = fetchedSongs;
-      songsNow = songsAll;
+      MyAudioHandler.songsAll = fetchedSongs;
+      songsNow = MyAudioHandler.songsAll;
     });
 
-    widget.audioHandler.initSongs(songs: songsAll);
+    widget.audioHandler.initSongs(songs: MyAudioHandler.songsAll);
   }
 
   Future<void> reorder(ModeOrderEnum modeAtual) async {
@@ -451,7 +451,9 @@ class _MusicPageState extends State<MusicPage> {
                     onTap: () async {
                       abaSelect = 2;
                       modeAtual = modeAtual.convert(item.orderMode);
-                      final newsongs = await item.findMusics(songsAll);
+                      final newsongs = await item.findMusics(
+                        MyAudioHandler.songsAll,
+                      );
                       if (newsongs != null) {
                         setState(() {
                           songsNow = newsongs;
@@ -485,6 +487,19 @@ class _MusicPageState extends State<MusicPage> {
         actions: [
           ElevatedButton(
             onPressed: () async {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DownloadPage(),
+                  settings: RouteSettings(name: 'donwload'),
+                ),
+              );
+            },
+            child: Icon(Icons.download),
+          ),
+          SizedBox(width: 9),
+          ElevatedButton(
+            onPressed: () async {
               modeAtual = modeAtual.next();
               await reorder(modeAtual);
               log('$abaSelect $idplAtual');
@@ -510,7 +525,7 @@ class _MusicPageState extends State<MusicPage> {
                         setState(() {
                           abaSelect = 0;
                         });
-                        songsNow = songsAll;
+                        songsNow = MyAudioHandler.songsAll;
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16.0),

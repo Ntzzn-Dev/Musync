@@ -5,7 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:musync_and/pages/main_screen.dart';
+import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -54,15 +54,9 @@ class _ListContentState extends State<ListContent> {
         },
       },
       {
-        'opt': 'Editar App',
-        'funct': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainScreen(inputUrl: item.extras?['path']),
-              settings: RouteSettings(name: 'donwload'),
-            ),
-          );
+        'opt': 'slça',
+        'funct': () async {
+          await Playlists.atualizarNoMediaStore(item.extras?['path']);
         },
       },
       {
@@ -77,13 +71,47 @@ class _ListContentState extends State<ListContent> {
               {'value': 'Album', 'type': 'text'},
               {'value': 'Gênero', 'type': 'text'},
             ],
+            fieldValues: [
+              item.title,
+              item.artist ?? '',
+              item.album ?? '',
+              item.genre ?? '',
+            ],
             onConfirm: (valores) {
-              editarTags(item.extras?['path'], {
+              Playlists.editarTags(item.extras?['path'], {
                 'title': valores[0],
                 'trackArtist': valores[1],
                 'album': valores[2],
                 'genre': valores[3],
               });
+
+              int index = MyAudioHandler.songsAll.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              if (index != -1) {
+                final antigo = MyAudioHandler.songsAll[index];
+
+                final musicEditada = antigo.copyWith(
+                  title: valores[0],
+                  artist: valores[1],
+                  album: valores[2],
+                  genre: valores[3],
+                  extras: {
+                    ...?antigo.extras,
+                    'lastModified': antigo.extras?['lastModified'],
+                    'path': antigo.extras?['path'],
+                    'hash': antigo.extras?['hash'],
+                  },
+                );
+
+                MyAudioHandler.songsAll[index] = musicEditada;
+
+                setState(() {});
+              } else {
+                log('Item não encontrado na lista para edição.');
+              }
+              Navigator.of(context).pop();
             },
           );
         },
@@ -102,44 +130,6 @@ class _ListContentState extends State<ListContent> {
         },
       },
     ];
-  }
-
-  Future<void> editarTags(String filePath, Map<String, dynamic> newData) async {
-    try {
-      Tag? oldTag = await AudioTags.read(filePath);
-
-      Tag tag = Tag(
-        title: newData['title'] ?? oldTag?.title,
-        trackArtist: newData['trackArtist'] ?? oldTag?.trackArtist,
-        album: newData['album'] ?? oldTag?.album,
-        albumArtist: newData['albumArtist'] ?? oldTag?.albumArtist,
-        genre: newData['genre'] ?? oldTag?.genre,
-        year: newData['year'] ?? oldTag?.year,
-        trackNumber: newData['trackNumber'] ?? oldTag?.trackNumber,
-        trackTotal: newData['trackTotal'] ?? oldTag?.trackTotal,
-        discNumber: newData['discNumber'] ?? oldTag?.discNumber,
-        discTotal: newData['discTotal'] ?? oldTag?.discTotal,
-        pictures: [],
-      );
-
-      AudioTags.write(filePath, tag);
-
-      await atualizarNoMediaStore(filePath);
-    } catch (e) {
-      log("Erro ao editar tags: $e");
-    }
-  }
-
-  final MethodChannel _channel = MethodChannel(
-    'br.com.nathandv.musync_and/scanfile',
-  );
-
-  Future<void> atualizarNoMediaStore(String path) async {
-    try {
-      await _channel.invokeMethod('scanFile', {'path': path});
-    } catch (e) {
-      log('Erro ao escanear: $e');
-    }
   }
 
   void showSpec(MediaItem item) {
@@ -177,8 +167,8 @@ class _ListContentState extends State<ListContent> {
           widget.songsNow.remove(item);
         });
         await widget.audioHandler.recreateQueue(songs: widget.songsNow);
-        //await file.delete(); ---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
-        log('Arquivo deletado: ${item.title}');
+        await file.delete();
+        //---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
       } catch (e) {
         log('Erro ao deletar: $e');
       }
@@ -190,7 +180,7 @@ class _ListContentState extends State<ListContent> {
   @override
   void initState() {
     super.initState();
-    /*_itemPositionsListener.itemPositions.addListener(() {
+    _itemPositionsListener.itemPositions.addListener(() {
       final positions = _itemPositionsListener.itemPositions.value;
       if (positions.isNotEmpty) {
         final lastVisible = positions
@@ -204,7 +194,7 @@ class _ListContentState extends State<ListContent> {
           isScrollable = false;
         }
       }
-    });*/
+    });
   }
 
   int? _lastScrolledIndex;

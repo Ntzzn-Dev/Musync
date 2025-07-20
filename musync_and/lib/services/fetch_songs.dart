@@ -55,6 +55,8 @@ class FetchSongs {
                 id: song.uri!,
                 title: song.title,
                 artist: song.artist,
+                album: song.album,
+                genre: song.genre,
                 duration: Duration(milliseconds: song.duration!),
                 artUri: uint8list == null ? null : Uri.dataFromBytes(bytes!),
                 extras: {
