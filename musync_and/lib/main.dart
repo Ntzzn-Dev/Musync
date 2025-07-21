@@ -80,7 +80,7 @@ class _MusicPageState extends State<MusicPage> {
   int abaSelect = 0;
   int idplAtual = -1;
 
-  var modeAtual = ModeOrderEnum.titleAZ;
+  var modeAtual = ModeOrderEnum.dataZA;
 
   List<MediaItem> songsNow = [];
   List<Playlists> pls = [];
@@ -111,7 +111,9 @@ class _MusicPageState extends State<MusicPage> {
       songsNow = MyAudioHandler.songsAll;
     });
 
-    widget.audioHandler.initSongs(songs: MyAudioHandler.songsAll);
+    reorder(modeAtual);
+
+    widget.audioHandler.initSongs(songs: songsNow);
   }
 
   Future<void> reorder(ModeOrderEnum modeAtual) async {

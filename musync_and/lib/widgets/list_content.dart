@@ -2,6 +2,8 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:crypto/crypto.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +17,6 @@ import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:audiotags/audiotags.dart';
 
 class ListContent extends StatefulWidget {
   final MyAudioHandler audioHandler;
@@ -51,12 +52,7 @@ class _ListContentState extends State<ListContent> {
         'opt': 'Informações',
         'funct': () {
           showSpec(item);
-        },
-      },
-      {
-        'opt': 'slça',
-        'funct': () async {
-          await Playlists.atualizarNoMediaStore(item.extras?['path']);
+          //log(item.extras?['hash']);
         },
       },
       {
@@ -111,7 +107,6 @@ class _ListContentState extends State<ListContent> {
               } else {
                 log('Item não encontrado na lista para edição.');
               }
-              Navigator.of(context).pop();
             },
           );
         },
@@ -119,10 +114,7 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Adicionar a Playlist',
         'funct': () async {
-          DatabaseHelper().addToPlaylist(
-            1,
-            await Playlists.generateHashs(item.extras?['path']),
-          );
+          DatabaseHelper().addToPlaylist(1, item.extras?['hash']);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Adicionado a playlist: ')),

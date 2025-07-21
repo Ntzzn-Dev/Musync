@@ -1,4 +1,5 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:crypto/crypto.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
@@ -9,6 +10,7 @@ import 'dart:io';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'dart:developer';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:path_provider/path_provider.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -21,6 +23,7 @@ class _DownloadPageState extends State<DownloadPage> {
   String url = '';
   ValueNotifier<String> safeTitle = ValueNotifier('Titulo');
   ValueNotifier<String> safeAuthor = ValueNotifier('Artista');
+  ValueNotifier<String> situation = ValueNotifier('Situação: Vazio');
   int? year = 2000;
   String thumb = '';
   bool isLoading = false;
@@ -29,19 +32,34 @@ class _DownloadPageState extends State<DownloadPage> {
   Map<String, dynamic>? tagsDiferenciadas = {};
 
   ValueNotifier<double> progresso = ValueNotifier(0);
-  double etapas = 6;
+  double etapas = 5;
   double progressoAtual = 0;
   late double incremento;
 
-  bool _btnsActv = true;
+  bool _btnDownloadActv = true;
+  bool _btnTagActv = true;
+
+  List<Map<String, dynamic>> videos = [];
 
   @override
   void initState() {
     super.initState();
     incremento = 100 / etapas;
+    procurarPlaylist();
+  }
+
+  void procurarPlaylist() async {
+    List<Video> resultado = await buscarVideos('https');
+
+    videos =
+        resultado.map((video) => {'video': video, 'selected': false}).toList();
+    setState(() {});
   }
 
   void atualizarProgresso(ValueNotifier<double> p) {
+    if (p.value >= 100) {
+      progressoAtual = 0;
+    }
     progressoAtual += incremento;
     p.value = progressoAtual;
   }
@@ -51,6 +69,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   Future<void> buscarVideo(String link) async {
     try {
+      situation.value += 'Situação: Carregando.';
       url = link;
 
       var video = await yt.videos.get(link);
@@ -58,25 +77,151 @@ class _DownloadPageState extends State<DownloadPage> {
       safeTitle.value = video.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       safeAuthor.value = video.author.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
+      final List<String> caminhos =
+          MyAudioHandler.songsAll
+              .map((item) => item.extras?['path'] as String?)
+              .where((path) => path != null)
+              .cast<String>()
+              .toList();
+
+      final jaBaixado = await verificarAudiosIguaisComLista(caminhos, url);
+
+      if (jaBaixado) {
+        situation.value += 'Situação: Música já baixada.';
+        setState(() {
+          _btnDownloadActv = false;
+          _btnTagActv = false;
+        });
+      } else {
+        situation.value += 'Situação: Música pronta para baixar.';
+      }
+
       year = video.uploadDate?.year;
     } catch (e) {
       return;
     }
   }
 
-  Future<void> baixarAudio() async {
-    var video = await yt.videos.get(url);
-    atualizarProgresso(progresso);
+  Future<List<Video>> buscarVideos(String link) async {
+    final playlist = await yt.playlists.get(link);
+    final videosStream = yt.playlists.getVideos(playlist.id);
+    return await videosStream.take(200).toList();
+  }
 
+  Widget carregarVideos() {
+    if (videos == null || videos.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    return ListView.builder(
+      itemCount: videos.length,
+      itemBuilder: (context, index) {
+        final video = videos[index]['video'] as Video;
+        final title = video.title;
+        return ListTile(
+          tileColor:
+              videos[index]['selected']
+                  ? Color.fromARGB(25, 243, 160, 34)
+                  : null,
+          leading: Image.network(
+            'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg',
+            width: 60,
+            height: 60,
+            fit: BoxFit.cover,
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: Theme.of(context).extension<CustomColors>()!.subtextForce,
+            ),
+          ),
+          onTap: () {
+            setState(() {
+              videos[index]['selected'] = !videos[index]['selected'];
+              if (_btnTagActv) {
+                _btnTagActv = false;
+              }
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Future<String> gerarHashStreamYouTube(String url) async {
+    final yt = YoutubeExplode();
+    final video = await yt.videos.get(url);
+    final manifest = await yt.videos.streamsClient.getManifest(video.id);
+    final audioStreamInfo = manifest.audioOnly.withHighestBitrate();
+
+    final tempDir = await getTemporaryDirectory();
+    final streamPath =
+        '${tempDir.path}/temp_stream.${audioStreamInfo.container.name}';
+    final file = File(streamPath);
+    final fileStream = file.openWrite();
+
+    final stream = yt.videos.streamsClient.get(audioStreamInfo);
+    await stream.pipe(fileStream);
+    await fileStream.flush();
+    await fileStream.close();
+
+    final hash = await gerarHashWav(streamPath);
+
+    await file.delete();
+
+    return hash;
+  }
+
+  Future<String> gerarHashWav(String inputPath) async {
+    final tempDir = await getTemporaryDirectory();
+    final wavPath = '${tempDir.path}/temp_audio.wav';
+
+    await FFmpegKit.execute('-i "$inputPath" -f wav "$wavPath"');
+
+    final wavFile = File(wavPath);
+    final bytes = await wavFile.readAsBytes();
+
+    final hash = md5.convert(bytes);
+    return hash.toString();
+  }
+
+  Future<bool> verificarAudiosIguaisComLista(
+    List<String> pathsMp3Local,
+    String urlYoutube,
+  ) async {
+    final hashStream = await gerarHashStreamYouTube(urlYoutube);
+
+    bool encontrouIgual = false;
+
+    for (final pathMp3 in pathsMp3Local) {
+      final hashMp3 = await gerarHashWav(pathMp3);
+
+      if (hashMp3 == hashStream) {
+        print('✅ Arquivo $pathMp3 tem o áudio igual ao do YouTube!');
+        encontrouIgual = true;
+        break;
+      } else {
+        print('❌ Arquivo $pathMp3 é diferente do áudio do YouTube.');
+      }
+    }
+
+    if (!encontrouIgual) {
+      print('Nenhum arquivo local corresponde ao áudio do YouTube.');
+    }
+
+    return encontrouIgual;
+  }
+
+  Future<void> baixarAudio(var video, String title, String artist) async {
     var manifest = await yt.videos.streamsClient.getManifest(video.id);
     atualizarProgresso(progresso);
 
     var audio = manifest.audioOnly.withHighestBitrate();
     var stream = yt.videos.streamsClient.get(audio);
 
-    String webmpath = '$directory${safeTitle.value}.webm';
+    String webmpath = '$directory$title.webm';
 
-    String mp3path = '$directory${safeTitle.value}.mp3';
+    String mp3path = '$directory$title.mp3';
 
     var file = File(webmpath);
     var fileStream = file.openWrite();
@@ -86,18 +231,13 @@ class _DownloadPageState extends State<DownloadPage> {
     await fileStream.close();
     atualizarProgresso(progresso);
 
-    yt.close();
-
     await convertWebmToMp3(webmpath, mp3path);
     atualizarProgresso(progresso);
 
     await Playlists.editarTags(mp3path, {
-      'title': preferidaOuSafe(tagsDiferenciadas?['title'], safeTitle.value),
-      'trackArtist': preferidaOuSafe(
-        tagsDiferenciadas?['trackArtist'],
-        safeAuthor.value,
-      ),
-      'album': preferidaOuSafe(tagsDiferenciadas?['album'], safeAuthor.value),
+      'title': preferidaOuSafe(tagsDiferenciadas?['title'], title),
+      'trackArtist': preferidaOuSafe(tagsDiferenciadas?['trackArtist'], artist),
+      'album': preferidaOuSafe(tagsDiferenciadas?['album'], artist),
       'genre': tagsDiferenciadas?['genre'],
       'year': year,
     });
@@ -149,6 +289,12 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   @override
+  void dispose() {
+    yt.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Musyout Download')),
@@ -187,6 +333,16 @@ class _DownloadPageState extends State<DownloadPage> {
                         );
                       },
                     ),
+                    ValueListenableBuilder<String>(
+                      valueListenable: situation,
+                      builder: (context, stt, _) {
+                        return Text(
+                          stt,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 15),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -215,25 +371,52 @@ class _DownloadPageState extends State<DownloadPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
-                    onPressed: () {
-                      if (_btnsActv == false) return;
-                      baixarAudio();
+                    onPressed: () async {
+                      if (_btnDownloadActv == false) return;
 
                       setState(() {
-                        _btnsActv = false;
+                        _btnDownloadActv = false;
+                        _btnTagActv = false;
                       });
+
+                      List<Video> videosEscolhidos =
+                          videos
+                              .where((v) => v['selected'] == true)
+                              .map<Video>((v) => v['video'] as Video)
+                              .toList();
+
+                      if (videosEscolhidos.isEmpty) {
+                        baixarAudio(
+                          await yt.videos.get(url),
+                          safeTitle.value,
+                          safeAuthor.value,
+                        );
+                      } else {
+                        int qnt = 0;
+                        situation.value =
+                            'Situação: 0/${videosEscolhidos.length} Baixados';
+
+                        for (var video in videosEscolhidos) {
+                          await baixarAudio(video, video.title, video.author);
+                          qnt++;
+                          situation.value =
+                              'Situação: $qnt/${videosEscolhidos.length} Baixados';
+                        }
+                      }
                     },
                     style: ButtonStyle(
-                      elevation: WidgetStateProperty.all(_btnsActv ? 3 : 0),
+                      elevation: WidgetStateProperty.all(
+                        _btnDownloadActv ? 3 : 0,
+                      ),
                       backgroundColor: WidgetStateProperty.all(
-                        _btnsActv
+                        _btnDownloadActv
                             ? null
                             : Theme.of(
                               context,
                             ).extension<CustomColors>()!.disabledBack,
                       ),
                       foregroundColor: WidgetStateProperty.all(
-                        _btnsActv
+                        _btnDownloadActv
                             ? null
                             : Theme.of(
                               context,
@@ -245,7 +428,7 @@ class _DownloadPageState extends State<DownloadPage> {
                   SizedBox(width: 10),
                   ElevatedButton(
                     onPressed: () {
-                      if (_btnsActv == false) return;
+                      if (_btnTagActv == false) return;
 
                       showPopupAdd(
                         context,
@@ -281,16 +464,16 @@ class _DownloadPageState extends State<DownloadPage> {
                       );
                     },
                     style: ButtonStyle(
-                      elevation: WidgetStateProperty.all(_btnsActv ? 3 : 0),
+                      elevation: WidgetStateProperty.all(_btnTagActv ? 3 : 0),
                       backgroundColor: WidgetStateProperty.all(
-                        _btnsActv
+                        _btnTagActv
                             ? null
                             : Theme.of(
                               context,
                             ).extension<CustomColors>()!.disabledBack,
                       ),
                       foregroundColor: WidgetStateProperty.all(
-                        _btnsActv
+                        _btnTagActv
                             ? null
                             : Theme.of(
                               context,
@@ -351,6 +534,7 @@ class _DownloadPageState extends State<DownloadPage> {
                   );
                 },
               ),
+              Expanded(child: carregarVideos()),
             ],
           ),
         ),

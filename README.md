@@ -95,3 +95,14 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Edição das tags antes mesmo de baixar a faixa.  
 - Visualização de porcentagem do método de baixar faixa.  
 - Botões ficam indisponíveis ao fazer o download da faixa atual.  
+
+### version 2.2  
+- Scan todo inicio de app em todas as musicas.  
+- Verificação se música ja foi baixada antes.  
+- Carregamento das musicas da playlist.  
+- Visualização da thumb dos videos na playlist.  
+- Inicio do app com ordem de mais novo para mais velho.  
+- Download de mais de uma faixa por vez atraves de uma playlist escolhida.  
+#### DEFEITOS A SEREM CORRIGIDOS:
+- hashs de playlists não funcionando 100%.  
+- Não usar playlist fixa.  
