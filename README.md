@@ -103,6 +103,14 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Visualização da thumb dos videos na playlist.  
 - Inicio do app com ordem de mais novo para mais velho.  
 - Download de mais de uma faixa por vez atraves de uma playlist escolhida.  
-#### DEFEITOS A SEREM CORRIGIDOS:
+#### DEFEITOS A SEREM CORRIGIDOS:  
 - hashs de playlists não funcionando 100%.  
 - Não usar playlist fixa.  
+
+### version 2.3  
+- Visualização de capa da música.  
+- Download da thumbnail como capa de música.  
+- Playlist padrão definida pelo usuario.  
+- Uso do id do MediaStore para banco de dados.  
+#### DEFEITOS A SEREM CORRIGIDOS:  
+- hashs desativados temporariamente.  

@@ -37,9 +37,17 @@ class DatabaseHelper {
         await db.execute('''
           CREATE TABLE playlists_musics (
             id_playlist INTEGER,
-            hash_music TEXT,
+            id_music TEXT,
             FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
-            PRIMARY KEY (id_playlist, hash_music)
+            PRIMARY KEY (id_playlist, id_music)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE music_hashes (
+            id_music TEXT,
+            hash_music TEXT,
+            PRIMARY KEY (id_music, hash_music)
           )
         ''');
       },
@@ -94,22 +102,22 @@ class DatabaseHelper {
     await db.update('playlists', sql, where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> addToPlaylist(int idplaylist, String hashMusic) async {
+  Future<void> addToPlaylist(int idplaylist, String idMusic) async {
     final db = await database;
 
     await db.insert('playlists_musics', {
       'id_playlist': idplaylist,
-      'hash_music': hashMusic,
+      'id_music': idMusic,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
-  Future<void> removeFromPlaylist(int idplaylist, String hashMusic) async {
+  Future<void> removeFromPlaylist(int idplaylist, String idMusic) async {
     final db = await database;
 
     await db.delete(
       'playlists_musics',
-      where: 'id_playlist = ? AND hash_music = ?',
-      whereArgs: [idplaylist, hashMusic],
+      where: 'id_playlist = ? AND id_music = ?',
+      whereArgs: [idplaylist, idMusic],
     );
   }
 
@@ -133,7 +141,41 @@ class DatabaseHelper {
     );
 
     return List.generate(hashsFromPlaylists.length, (i) {
-      return hashsFromPlaylists[i]['hash_music'];
+      return hashsFromPlaylists[i]['id_music'];
     });
+  }
+
+  Future<void> addHash(String idMusic, String hashMusic) async {
+    final db = await database;
+
+    await db.insert('music_hashes', {
+      'id_music': idMusic,
+      'hash_music': hashMusic,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> removeHash(String idMusic, String hashMusic) async {
+    final db = await database;
+
+    await db.delete(
+      'music_hashes',
+      where: 'id_music = ? AND hash_music = ?',
+      whereArgs: [idMusic, hashMusic],
+    );
+  }
+
+  Future<String?> loadHashes(String idMusic) async {
+    final db = await database;
+    final result = await db.query(
+      'music_hashes',
+      where: 'id_music = ?',
+      whereArgs: [idMusic],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['hash_music'] as String;
+    } else {
+      return '';
+    }
   }
 }

@@ -1,16 +1,22 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:audiotags/audiotags.dart';
 import 'package:crypto/crypto.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
+import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'dart:developer';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -23,7 +29,7 @@ class _DownloadPageState extends State<DownloadPage> {
   String url = '';
   ValueNotifier<String> safeTitle = ValueNotifier('Titulo');
   ValueNotifier<String> safeAuthor = ValueNotifier('Artista');
-  ValueNotifier<String> situation = ValueNotifier('Situação: Vazio');
+  ValueNotifier<String> situation = ValueNotifier('Situação: Em espera.');
   int? year = 2000;
   String thumb = '';
   bool isLoading = false;
@@ -32,28 +38,54 @@ class _DownloadPageState extends State<DownloadPage> {
   Map<String, dynamic>? tagsDiferenciadas = {};
 
   ValueNotifier<double> progresso = ValueNotifier(0);
-  double etapas = 5;
+  double etapas = 6;
   double progressoAtual = 0;
   late double incremento;
 
   bool _btnDownloadActv = true;
-  bool _btnTagActv = true;
+  bool _btnTagActv = false;
 
   List<Map<String, dynamic>> videos = [];
+  final List<String> caminhos =
+      MyAudioHandler.songsAll
+          .map((item) => item.extras?['path'] as String?)
+          .where((path) => path != null)
+          .cast<String>()
+          .toList();
+
+  bool podeSalvarPlaylist = false;
 
   @override
   void initState() {
     super.initState();
-    incremento = 100 / etapas;
-    procurarPlaylist();
+    initAsync();
   }
 
-  void procurarPlaylist() async {
-    List<Video> resultado = await buscarVideos('https');
+  void initAsync() async {
+    incremento = 100 / etapas;
 
-    videos =
-        resultado.map((video) => {'video': video, 'selected': false}).toList();
-    setState(() {});
+    final prefs = await SharedPreferences.getInstance();
+    url = prefs.getString('playlist_principal') ?? '';
+
+    procurarPlaylist(url);
+  }
+
+  void procurarPlaylist(String url) async {
+    try {
+      List<Video> resultado = await buscarVideos(url);
+
+      videos =
+          resultado
+              .map((video) => {'video': video, 'selected': false})
+              .toList();
+      if (textController.text != '') {
+        podeSalvarPlaylist = true;
+        _btnTagActv = true;
+      }
+      setState(() {});
+    } catch (e) {
+      return;
+    }
   }
 
   void atualizarProgresso(ValueNotifier<double> p) {
@@ -69,7 +101,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   Future<void> buscarVideo(String link) async {
     try {
-      situation.value += 'Situação: Carregando.';
+      situation.value = 'Situação: Carregando.';
       url = link;
 
       var video = await yt.videos.get(link);
@@ -77,28 +109,23 @@ class _DownloadPageState extends State<DownloadPage> {
       safeTitle.value = video.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       safeAuthor.value = video.author.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
-      final List<String> caminhos =
-          MyAudioHandler.songsAll
-              .map((item) => item.extras?['path'] as String?)
-              .where((path) => path != null)
-              .cast<String>()
-              .toList();
-
-      final jaBaixado = await verificarAudiosIguaisComLista(caminhos, url);
+      final jaBaixado =
+          false; //await verificarAudiosIguaisComLista(caminhos, url);
 
       if (jaBaixado) {
-        situation.value += 'Situação: Música já baixada.';
+        situation.value = 'Situação: Música já baixada.';
         setState(() {
           _btnDownloadActv = false;
           _btnTagActv = false;
         });
       } else {
-        situation.value += 'Situação: Música pronta para baixar.';
+        situation.value = 'Situação: Música pronta para baixar.';
       }
 
       year = video.uploadDate?.year;
+      _btnTagActv = true;
     } catch (e) {
-      return;
+      procurarPlaylist(link);
     }
   }
 
@@ -108,8 +135,8 @@ class _DownloadPageState extends State<DownloadPage> {
     return await videosStream.take(200).toList();
   }
 
-  Widget carregarVideos() {
-    if (videos == null || videos.isEmpty) {
+  Widget listarVideos() {
+    if (videos.isEmpty) {
       return SizedBox.shrink();
     }
 
@@ -135,81 +162,14 @@ class _DownloadPageState extends State<DownloadPage> {
               color: Theme.of(context).extension<CustomColors>()!.subtextForce,
             ),
           ),
-          onTap: () {
+          onTap: () async {
             setState(() {
               videos[index]['selected'] = !videos[index]['selected'];
-              if (_btnTagActv) {
-                _btnTagActv = false;
-              }
             });
           },
         );
       },
     );
-  }
-
-  Future<String> gerarHashStreamYouTube(String url) async {
-    final yt = YoutubeExplode();
-    final video = await yt.videos.get(url);
-    final manifest = await yt.videos.streamsClient.getManifest(video.id);
-    final audioStreamInfo = manifest.audioOnly.withHighestBitrate();
-
-    final tempDir = await getTemporaryDirectory();
-    final streamPath =
-        '${tempDir.path}/temp_stream.${audioStreamInfo.container.name}';
-    final file = File(streamPath);
-    final fileStream = file.openWrite();
-
-    final stream = yt.videos.streamsClient.get(audioStreamInfo);
-    await stream.pipe(fileStream);
-    await fileStream.flush();
-    await fileStream.close();
-
-    final hash = await gerarHashWav(streamPath);
-
-    await file.delete();
-
-    return hash;
-  }
-
-  Future<String> gerarHashWav(String inputPath) async {
-    final tempDir = await getTemporaryDirectory();
-    final wavPath = '${tempDir.path}/temp_audio.wav';
-
-    await FFmpegKit.execute('-i "$inputPath" -f wav "$wavPath"');
-
-    final wavFile = File(wavPath);
-    final bytes = await wavFile.readAsBytes();
-
-    final hash = md5.convert(bytes);
-    return hash.toString();
-  }
-
-  Future<bool> verificarAudiosIguaisComLista(
-    List<String> pathsMp3Local,
-    String urlYoutube,
-  ) async {
-    final hashStream = await gerarHashStreamYouTube(urlYoutube);
-
-    bool encontrouIgual = false;
-
-    for (final pathMp3 in pathsMp3Local) {
-      final hashMp3 = await gerarHashWav(pathMp3);
-
-      if (hashMp3 == hashStream) {
-        print('✅ Arquivo $pathMp3 tem o áudio igual ao do YouTube!');
-        encontrouIgual = true;
-        break;
-      } else {
-        print('❌ Arquivo $pathMp3 é diferente do áudio do YouTube.');
-      }
-    }
-
-    if (!encontrouIgual) {
-      print('Nenhum arquivo local corresponde ao áudio do YouTube.');
-    }
-
-    return encontrouIgual;
   }
 
   Future<void> baixarAudio(var video, String title, String artist) async {
@@ -234,12 +194,30 @@ class _DownloadPageState extends State<DownloadPage> {
     await convertWebmToMp3(webmpath, mp3path);
     atualizarProgresso(progresso);
 
+    final thumbUrl =
+        'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg';
+    final response = await http.get(Uri.parse(thumbUrl));
+    final thumbBytes = response.bodyBytes;
+
+    List<Picture> img = [];
+    if (response.statusCode == 200) {
+      img = [
+        Picture(
+          bytes: thumbBytes,
+          mimeType: MimeType.jpeg,
+          pictureType: PictureType.coverFront,
+        ),
+      ];
+    }
+    atualizarProgresso(progresso);
+
     await Playlists.editarTags(mp3path, {
       'title': preferidaOuSafe(tagsDiferenciadas?['title'], title),
       'trackArtist': preferidaOuSafe(tagsDiferenciadas?['trackArtist'], artist),
       'album': preferidaOuSafe(tagsDiferenciadas?['album'], artist),
       'genre': tagsDiferenciadas?['genre'],
       'year': year,
+      'pictures': img,
     });
     atualizarProgresso(progresso);
 
@@ -310,14 +288,7 @@ class _DownloadPageState extends State<DownloadPage> {
                     ValueListenableBuilder<String>(
                       valueListenable: safeTitle,
                       builder: (context, title, _) {
-                        return Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        );
+                        return Player.titleText(title, 20);
                       },
                     ),
                     ValueListenableBuilder<String>(
@@ -352,7 +323,7 @@ class _DownloadPageState extends State<DownloadPage> {
                   controller: textController,
                   decoration: InputDecoration(
                     contentPadding: padding,
-                    hintText: 'Colar URL',
+                    hintText: 'Colar URL (vídeo ou playlist)',
                     suffixIcon: IconButton(
                       onPressed: () async {
                         setState(() {
@@ -397,6 +368,8 @@ class _DownloadPageState extends State<DownloadPage> {
                             'Situação: 0/${videosEscolhidos.length} Baixados';
 
                         for (var video in videosEscolhidos) {
+                          safeTitle.value = video.title;
+                          safeAuthor.value = video.author;
                           await baixarAudio(video, video.title, video.author);
                           qnt++;
                           situation.value =
@@ -427,8 +400,20 @@ class _DownloadPageState extends State<DownloadPage> {
                   ),
                   SizedBox(width: 10),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (_btnTagActv == false) return;
+
+                      if (podeSalvarPlaylist) {
+                        final prefs = await SharedPreferences.getInstance();
+                        prefs.setString('playlist_principal', url);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Playlist definida como principal!'),
+                          ),
+                        );
+                        return;
+                      }
 
                       showPopupAdd(
                         context,
@@ -480,61 +465,67 @@ class _DownloadPageState extends State<DownloadPage> {
                             ).extension<CustomColors>()!.disabledText,
                       ),
                     ),
-                    child: Text('Editar tags'),
+                    child: Text(
+                      podeSalvarPlaylist ? 'Definir como' : 'Editar tags',
+                    ),
                   ),
                 ],
               ),
               ValueListenableBuilder<double>(
                 valueListenable: progresso,
                 builder: (context, pgr, _) {
-                  return Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Color.fromARGB(255, 243, 160, 34),
-                          width: 2,
+                  if (pgr == 0) {
+                    return SizedBox.shrink();
+                  } else {
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
+                        margin: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Color.fromARGB(255, 243, 160, 34),
+                            width: 2,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${pgr.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color.fromARGB(255, 243, 160, 34),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
                             ),
-                          ),
-                          if (pgr.toStringAsFixed(0) == '100')
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              'Download Concluído',
+                              '${pgr.toStringAsFixed(1)}%',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontStyle: FontStyle.italic,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                                 color: Color.fromARGB(255, 243, 160, 34),
                               ),
                             ),
-                        ],
+                            if (pgr.toStringAsFixed(0) == '100')
+                              Text(
+                                'Download Concluído',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontStyle: FontStyle.italic,
+                                  color: Color.fromARGB(255, 243, 160, 34),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 },
               ),
-              Expanded(child: carregarVideos()),
+              Expanded(child: listarVideos()),
             ],
           ),
         ),

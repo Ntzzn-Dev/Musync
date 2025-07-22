@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -50,9 +51,22 @@ class _ListContentState extends State<ListContent> {
       },
       {
         'opt': 'Informações',
-        'funct': () {
-          showSpec(item);
-          //log(item.extras?['hash']);
+        'funct': () async {
+          //log(item.id);
+          //showSpec(item);
+          log(item.extras?['hash']);
+          String? hash = await DatabaseHelper().loadHashes(
+            'content://media/external/audio/media/1000200802',
+          );
+          log(hash ?? 'erro');
+          hash = await DatabaseHelper().loadHashes(
+            'content://media/external/audio/media/1000200800',
+          );
+          log(hash ?? 'erro');
+          hash = await DatabaseHelper().loadHashes(
+            'content://media/external/audio/media/1000200783',
+          );
+          log(hash ?? 'erro');
         },
       },
       {
@@ -114,7 +128,7 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Adicionar a Playlist',
         'funct': () async {
-          DatabaseHelper().addToPlaylist(1, item.extras?['hash']);
+          DatabaseHelper().addToPlaylist(1, item.id);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Adicionado a playlist: ')),
@@ -130,8 +144,8 @@ class _ListContentState extends State<ListContent> {
       item.title,
       [
         {'valor1': 'Nome', 'valor2': item.title},
-        {'valor1': 'Album', 'valor2': item.album},
         {'valor1': 'Artista', 'valor2': item.artist},
+        {'valor1': 'Album', 'valor2': item.album},
         {
           'valor1': 'Duração',
           'valor2': Player.formatDuration(item.duration!, true),
@@ -205,6 +219,15 @@ class _ListContentState extends State<ListContent> {
     }
   }
 
+  Uint8List? base64ToBytes(String dataUri) {
+    final regex = RegExp(r'data:.*;base64,(.*)');
+    final match = regex.firstMatch(dataUri);
+    if (match == null) return null;
+    final base64Str = match.group(1);
+    if (base64Str == null) return null;
+    return base64Decode(base64Str);
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaItems = widget.songsNow;
@@ -234,7 +257,44 @@ class _ListContentState extends State<ListContent> {
                       final item = mediaItems[index];
                       final isSelected = currentIndex == index;
 
+                      final artUriStr = item.artUri?.toString();
+
+                      Widget leadingWidget;
+
+                      if (artUriStr != null && artUriStr.startsWith('data:')) {
+                        final bytes = base64ToBytes(artUriStr);
+                        if (bytes != null) {
+                          leadingWidget = Image.memory(
+                            bytes,
+                            width: 45,
+                            height: 45,
+                            fit: BoxFit.cover,
+                          );
+                        } else {
+                          leadingWidget = Icon(Icons.music_note);
+                        }
+                      } else if (artUriStr != null &&
+                          (artUriStr.startsWith('http') ||
+                              artUriStr.startsWith('https'))) {
+                        leadingWidget = Image.network(
+                          artUriStr,
+                          width: 45,
+                          height: 45,
+                          fit: BoxFit.cover,
+                        );
+                      } else {
+                        leadingWidget = SizedBox(
+                          width: 45,
+                          height: 45,
+                          child: Icon(Icons.music_note),
+                        );
+                      }
+
                       return ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: leadingWidget,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                         ),

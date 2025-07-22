@@ -88,7 +88,7 @@ class Playlists {
         discNumber: (newData['discNumber'] ?? oldTag?.discNumber) ?? 0,
         discTotal: (newData['discTotal'] ?? oldTag?.discTotal) ?? 0,
         duration: (newData['duration'] ?? oldTag?.duration) ?? 0,
-        pictures: [],
+        pictures: (newData['pictures'] ?? oldTag?.pictures) ?? [],
       );
 
       log((newData['trackArtist'] ?? oldTag?.trackArtist) ?? '');

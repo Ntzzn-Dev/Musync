@@ -17,15 +17,7 @@ class Player extends StatefulWidget {
     return '${h ? '$hours:' : ''}$minutes:$seconds';
   }
 
-  @override
-  State<Player> createState() => _PlayerState();
-}
-
-class _PlayerState extends State<Player> {
-  ValueNotifier<bool> toRandom = ValueNotifier(false);
-  ValueNotifier<int> toLoop = ValueNotifier(0);
-
-  Widget titleText(String text, double fontsize) {
+  static Widget titleText(String text, double fontsize) {
     return Letreiro(
       key: ValueKey(text),
       texto: text,
@@ -35,6 +27,14 @@ class _PlayerState extends State<Player> {
       fontSize: fontsize,
     );
   }
+
+  @override
+  State<Player> createState() => _PlayerState();
+}
+
+class _PlayerState extends State<Player> {
+  ValueNotifier<bool> toRandom = ValueNotifier(false);
+  ValueNotifier<int> toLoop = ValueNotifier(0);
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +62,8 @@ class _PlayerState extends State<Player> {
                   ),
                   child: Column(
                     children: [
-                      titleText(mediaItem.title, 16),
-                      titleText(mediaItem.artist ?? '', 11),
+                      Player.titleText(mediaItem.title, 16),
+                      Player.titleText(mediaItem.artist ?? '', 11),
                     ],
                   ),
                 );
