@@ -134,14 +134,14 @@ class DatabaseHelper {
 
   Future<List<String>> loadPlaylistMusics(int idplaylist) async {
     final db = await database;
-    final List<Map<String, dynamic>> hashsFromPlaylists = await db.query(
+    final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
       'playlists_musics',
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
     );
 
-    return List.generate(hashsFromPlaylists.length, (i) {
-      return hashsFromPlaylists[i]['id_music'];
+    return List.generate(idsFromPlaylists.length, (i) {
+      return idsFromPlaylists[i]['id_music'];
     });
   }
 

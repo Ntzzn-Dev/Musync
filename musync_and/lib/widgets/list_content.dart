@@ -52,21 +52,7 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Informações',
         'funct': () async {
-          //log(item.id);
-          //showSpec(item);
-          log(item.extras?['hash']);
-          String? hash = await DatabaseHelper().loadHashes(
-            'content://media/external/audio/media/1000200802',
-          );
-          log(hash ?? 'erro');
-          hash = await DatabaseHelper().loadHashes(
-            'content://media/external/audio/media/1000200800',
-          );
-          log(hash ?? 'erro');
-          hash = await DatabaseHelper().loadHashes(
-            'content://media/external/audio/media/1000200783',
-          );
-          log(hash ?? 'erro');
+          showSpec(item);
         },
       },
       {
@@ -231,10 +217,9 @@ class _ListContentState extends State<ListContent> {
   @override
   Widget build(BuildContext context) {
     final mediaItems = widget.songsNow;
-
     return Expanded(
       child: ValueListenableBuilder<int?>(
-        valueListenable: widget.audioHandler.currentIndexNotifier,
+        valueListenable: widget.audioHandler.currentIndex,
         builder: (context, currentIndex, _) {
           if (currentIndex != null &&
               currentIndex >= 0 &&

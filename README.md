@@ -114,3 +114,10 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Uso do id do MediaStore para banco de dados.  
 #### DEFEITOS A SEREM CORRIGIDOS:  
 - hashs desativados temporariamente.  
+
+### version 2.4  
+- Correção do reorder por titulo, agora ignora letras maiusculas.  
+- Adição de um novo modo de shuffle personalizado.  
+- Troca de música mais manual e especifica.  
+- Adição de troca de estado visual no botão da notificação.  
+- Playlists corrigidas.  

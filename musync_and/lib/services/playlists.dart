@@ -56,10 +56,10 @@ class Playlists {
   }
 
   Future<List<MediaItem>?> findMusics(List<MediaItem> listaOriginal) async {
-    List<String> hashsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
+    List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 
     final futuros = listaOriginal.map((mediaItem) async {
-      if (hashsAlvo.contains(mediaItem.extras?['hash'])) return mediaItem;
+      if (idsAlvo.contains(mediaItem.id)) return mediaItem;
 
       return null;
     });

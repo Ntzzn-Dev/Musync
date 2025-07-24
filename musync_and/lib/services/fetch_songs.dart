@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
-import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -51,7 +50,7 @@ class FetchSongs {
               final date = DateTime.fromMillisecondsSinceEpoch(
                 song.dateAdded! * 1000,
               );
-              final hash = await DatabaseHelper().loadHashes(song.uri!);
+              final hash = await Playlists.generateHashs(song.data);
               await Playlists.atualizarNoMediaStore(song.data);
 
               return MediaItem(

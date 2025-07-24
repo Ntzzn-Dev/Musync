@@ -119,15 +119,21 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> reorder(ModeOrderEnum modeAtual) async {
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
-        final ordenadas = [...songsNow]
-          ..sort((a, b) => a.title.trim().compareTo(b.title.trim()));
+        final ordenadas = [...songsNow]..sort(
+          (a, b) => a.title.trim().toLowerCase().compareTo(
+            b.title.trim().toLowerCase(),
+          ),
+        );
         setState(() {
           songsNow = ordenadas;
         });
         break;
       case ModeOrderEnum.titleZA:
-        final ordenadas = [...songsNow]
-          ..sort((a, b) => b.title.trim().compareTo(a.title.trim()));
+        final ordenadas = [...songsNow]..sort(
+          (a, b) => b.title.trim().toLowerCase().compareTo(
+            a.title.trim().toLowerCase(),
+          ),
+        );
         setState(() {
           songsNow = ordenadas;
         });
@@ -236,7 +242,7 @@ class _MusicPageState extends State<MusicPage> {
   void _loadLastUse() async {
     _loadPreferences();
 
-    widget.audioHandler.setShuffleModeEnabled(toRandom.value);
+    //widget.audioHandler.setShuffleModeEnabled();
 
     final intToLoopMode = {0: LoopMode.off, 1: LoopMode.one, 2: LoopMode.all};
 

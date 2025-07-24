@@ -4,36 +4,54 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
+enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
+
+extension ModeEnumExt on ModeShuffleEnum {
+  ModeShuffleEnum next() {
+    final nextIndex = (index + 1) % ModeShuffleEnum.values.length;
+    return ModeShuffleEnum.values[nextIndex];
+  }
+
+  ModeShuffleEnum convert(int i) {
+    return ModeShuffleEnum.values[i - 1];
+  }
+}
+
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
-  final currentIndexNotifier = ValueNotifier<int?>(null);
+  ValueNotifier<int> currentIndex = ValueNotifier(0);
 
   static List<MediaItem> songsAll = [];
+  List<MediaItem> songsAtual = [];
 
-  UriAudioSource _createAudioSource(MediaItem item) {
-    return ProgressiveAudioSource(Uri.parse(item.id));
+  MediaControl get shuffleButton {
+    switch (shuffleMode) {
+      case ModeShuffleEnum.shuffleOff:
+        return MediaControl.custom(
+          androidIcon: 'drawable/ic_random_off',
+          label: 'Aleatorizar Off',
+          name: 'random',
+        );
+      case ModeShuffleEnum.shuffleNormal:
+        return MediaControl.custom(
+          androidIcon: 'drawable/ic_random_on',
+          label: 'Aleatorizar On',
+          name: 'random',
+        );
+      case ModeShuffleEnum.shuffleOptional:
+        return MediaControl.custom(
+          androidIcon: 'drawable/ic_random_opcional',
+          label: 'Aleatorizar Optional',
+          name: 'random',
+        );
+    }
   }
 
-  void _listenForCurrentSongIndexChanges() {
-    audPl.currentIndexStream.listen((index) {
-      currentIndexNotifier.value = index;
-      final playlist = queue.value;
-      if (index == null || playlist.isEmpty) return;
-      mediaItem.add(playlist[index]);
-    });
-  }
-
-  final myCustomButton = MediaControl.custom(
-    androidIcon: 'drawable/ic_random',
-    label: 'Aleatorizar',
-    name: 'random',
-  );
-
-  void _broadcastState(PlaybackEvent event) {
+  void _broadcastState([PlaybackEvent? event]) {
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
-          myCustomButton,
+          shuffleButton,
           MediaControl.skipToPrevious,
           if (audPl.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
@@ -56,7 +74,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         updatePosition: audPl.position,
         bufferedPosition: audPl.bufferedPosition,
         speed: audPl.speed,
-        queueIndex: event.currentIndex,
+        queueIndex: event?.currentIndex ?? audPl.currentIndex,
       ),
     );
   }
@@ -65,29 +83,37 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
     switch (name) {
       case 'random':
-        log('Botão de aleatório pressionado!');
-        shuffled = !shuffled;
+        shuffleMode = shuffleMode.next();
         prepareShuffle();
+        _broadcastState();
         break;
       default:
         log('Ação customizada desconhecida: $name');
     }
   }
 
+  Future<void> setCurrentTrack(int index) async {
+    currentIndex.value = index;
+    final item = songsAtual[index];
+    final src = ProgressiveAudioSource(Uri.parse(item.id));
+    await audPl.setAudioSource(src);
+    mediaItem.add(item);
+  }
+
   Future<void> initSongs({required List<MediaItem> songs}) async {
     audPl.playbackEventStream.listen(_broadcastState);
 
-    final audSrc = songs.map(_createAudioSource).toList();
+    songsAtual = songs;
 
-    await audPl.setAudioSource(ConcatenatingAudioSource(children: audSrc));
+    await setCurrentTrack(0);
 
-    final newQueue = queue.value..addAll(songs);
+    final newQueue = queue.value..addAll(songsAtual);
     queue.add(newQueue);
 
-    _listenForCurrentSongIndexChanges();
-
     audPl.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) skipToNext();
+      if (state == ProcessingState.completed) {
+        skipToNextAuto();
+      }
     });
   }
 
@@ -108,19 +134,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     audPl.playbackEventStream.listen(_broadcastState);
 
-    final audSrc = songs.map(_createAudioSource).toList();
+    songsAtual = songs;
+    currentIndex.value = 0;
 
-    await audPl.setAudioSource(ConcatenatingAudioSource(children: audSrc));
+    await setCurrentTrack(0);
 
     queue.add(songs);
 
-    _listenForCurrentSongIndexChanges();
-
     audPl.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) skipToNext();
+      if (state == ProcessingState.completed) {
+        skipToNextAuto();
+      }
     });
 
-    if (shuffled) {
+    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
       prepareShuffle();
     }
   }
@@ -131,15 +158,15 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Stream<bool> get playingStream => audPl.playingStream;
 
-  int? get currentIndex => audPl.currentIndex;
+  ModeShuffleEnum shuffleMode = ModeShuffleEnum.shuffleOff;
 
-  Future<void> setShuffleModeEnabled(bool enabled) async {
-    shuffled = enabled;
+  Future<void> setShuffleModeEnabled() async {
+    shuffleMode = shuffleMode.next();
     prepareShuffle();
   }
 
-  Future<bool> isShuffleEnabled() async {
-    return shuffled;
+  Future<ModeShuffleEnum> isShuffleEnabled() async {
+    return shuffleMode;
   }
 
   Future<void> setLoopModeEnabled(LoopMode mode) async {
@@ -161,26 +188,88 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> skipToQueueItem(int index) async {
-    await audPl.seek(Duration.zero, index: index);
+    await setCurrentTrack(index);
     play();
   }
 
   @override
-  Future<void> skipToNext() async => shuffled ? playNext() : audPl.seekToNext();
+  Future<void> skipToNext() async {
+    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+      playNextShuffled();
+    } else {
+      playNext();
+    }
+  }
+
+  Future<void> skipToNextAuto() async {
+    if (shuffleMode == ModeShuffleEnum.shuffleNormal) {
+      playNextShuffled();
+    } else {
+      playNext();
+    }
+  }
 
   @override
-  Future<void> skipToPrevious() async =>
-      shuffled ? playPrevious() : audPl.seekToPrevious();
+  Future<void> skipToPrevious() async {
+    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+      playPreviousShuffled();
+    } else {
+      playPrevious();
+    }
+  }
+
+  Future<void> playNext() async {
+    final shouldStop = await repeatNormal();
+    if (shouldStop) return;
+
+    if (currentIndex.value + 1 < songsAtual.length) {
+      currentIndex.value++;
+      await setCurrentTrack(currentIndex.value);
+      play();
+    }
+
+    if (shuffleMode == ModeShuffleEnum.shuffleOptional) {
+      unplayed.removeWhere((i) => i == currentIndex.value);
+      played.add(currentIndex.value);
+    }
+  }
+
+  Future<void> playPrevious() async {
+    final shouldStop = await repeatNormal();
+    if (shouldStop) return;
+
+    if (currentIndex.value - 1 > 0) {
+      currentIndex.value--;
+      await setCurrentTrack(currentIndex.value);
+      play();
+    }
+  }
+
+  Future<bool> repeatNormal() async {
+    final modo = await isLoopEnabled();
+
+    if (modo == LoopMode.one) {
+      await audPl.seek(Duration.zero);
+      play();
+      return true;
+    } else if (modo == LoopMode.all) {
+      if (currentIndex.value + 1 == songsAtual.length) {
+        currentIndex.value = -1;
+      }
+      return false;
+    } else {
+      return false;
+    }
+  }
 
   /* SHUFFLE PERSONALIZED */
-  bool shuffled = false;
   List<int> played = [];
   List<int> unplayed = [];
 
   void prepareShuffle() {
     played.clear();
     reshuffle();
-    played.add(audPl.currentIndex ?? 0);
+    played.add(currentIndex.value);
   }
 
   void reshuffle() {
@@ -188,37 +277,38 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     unplayed = List.generate(countSongs, (i) => i)..shuffle();
   }
 
-  Future<void> playNext() async {
-    final shouldStop = await repeat();
+  Future<void> playNextShuffled() async {
+    final shouldStop = await repeatShuffled();
     if (shouldStop) return;
 
     int nextIndex = unplayed.removeAt(0);
 
     played.add(nextIndex);
-    await audPl.seek(Duration.zero, index: nextIndex);
-    await audPl.play();
+
+    await setCurrentTrack(nextIndex);
+    play();
   }
 
-  Future<void> playPrevious() async {
+  Future<void> playPreviousShuffled() async {
     if (played.length <= 1) return;
 
-    final shouldStop = await repeat();
+    final shouldStop = await repeatShuffled();
     if (shouldStop) return;
 
     unplayed.add(played.last);
     played.removeLast();
 
     int prevIndex = played.last;
-    await audPl.seek(Duration.zero, index: prevIndex);
-    await audPl.play();
+    await setCurrentTrack(prevIndex);
+    play();
   }
 
-  Future<bool> repeat() async {
+  Future<bool> repeatShuffled() async {
     final modo = await isLoopEnabled();
 
     if (modo == LoopMode.one) {
       await audPl.seek(Duration.zero);
-      await audPl.play();
+      play();
       return true;
     } else if (modo == LoopMode.all) {
       if (unplayed.isEmpty) {

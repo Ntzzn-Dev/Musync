@@ -1,7 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:crypto/crypto.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
@@ -59,6 +58,7 @@ class _DownloadPageState extends State<DownloadPage> {
   void initState() {
     super.initState();
     initAsync();
+    //gerarHashes();
   }
 
   void initAsync() async {

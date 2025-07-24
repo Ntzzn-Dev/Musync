@@ -33,7 +33,9 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  ValueNotifier<bool> toRandom = ValueNotifier(false);
+  ValueNotifier<ModeShuffleEnum> toRandom = ValueNotifier(
+    ModeShuffleEnum.shuffleOff,
+  );
   ValueNotifier<int> toLoop = ValueNotifier(0);
 
   @override
@@ -122,7 +124,7 @@ class _PlayerState extends State<Player> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ValueListenableBuilder<bool>(
+                ValueListenableBuilder<ModeShuffleEnum>(
                   valueListenable: toRandom,
                   builder: (context, value, child) {
                     return ElevatedButton(
@@ -133,15 +135,22 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        final newValue = !value;
-                        await widget.audioHandler.setShuffleModeEnabled(
-                          newValue,
-                        );
-                        toRandom.value = newValue;
+                        await widget.audioHandler.setShuffleModeEnabled();
+                        toRandom.value = value.next();
                       },
-                      child: Icon(
-                        value ? Icons.shuffle : Icons.arrow_right_alt_rounded,
-                      ),
+                      child:
+                          value != ModeShuffleEnum.shuffleOptional
+                              ? Icon(
+                                value == ModeShuffleEnum.shuffleNormal
+                                    ? Icons.shuffle
+                                    : Icons.arrow_right_alt_rounded,
+                              )
+                              : Image.asset(
+                                'assets/dice.png',
+                                color: Color.fromARGB(255, 243, 160, 34),
+                                colorBlendMode: BlendMode.srcIn,
+                                width: 18,
+                              ),
                     );
                   },
                 ),
@@ -184,17 +193,30 @@ class _PlayerState extends State<Player> {
                   },
                 ),
                 const SizedBox(width: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size.zero,
-                    padding: EdgeInsets.all(15),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: const CircleBorder(),
-                  ),
-                  onPressed: () async {
-                    await widget.audioHandler.skipToNext();
+                ValueListenableBuilder<ModeShuffleEnum>(
+                  valueListenable: toRandom,
+                  builder: (context, value, child) {
+                    return ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: EdgeInsets.all(15),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: const CircleBorder(),
+                      ),
+                      onPressed: () async {
+                        await widget.audioHandler.skipToNext();
+                      },
+                      child:
+                          value != ModeShuffleEnum.shuffleOptional
+                              ? Icon(Icons.keyboard_double_arrow_right_sharp)
+                              : Image.asset(
+                                'assets/dice.png',
+                                color: Color.fromARGB(255, 243, 160, 34),
+                                colorBlendMode: BlendMode.srcIn,
+                                width: 18,
+                              ),
+                    );
                   },
-                  child: Icon(Icons.keyboard_double_arrow_right_sharp),
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<int>(
