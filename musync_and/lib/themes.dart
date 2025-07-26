@@ -126,6 +126,7 @@ ThemeData lighttheme() {
         subtextForce: Color.fromARGB(255, 104, 104, 104),
         disabledText: Color.fromARGB(255, 179, 151, 109),
         disabledBack: Color.fromARGB(255, 214, 214, 214),
+        backgroundForce: Color.fromARGB(255, 242, 242, 242),
       ),
     ],
   );
@@ -269,6 +270,7 @@ ThemeData darktheme() {
         subtextForce: Color.fromARGB(255, 160, 160, 160),
         disabledText: Color.fromARGB(255, 179, 151, 109),
         disabledBack: Color.fromARGB(255, 83, 83, 83),
+        backgroundForce: Color.fromARGB(255, 48, 48, 48),
       ),
     ],
   );
@@ -280,12 +282,14 @@ class CustomColors extends ThemeExtension<CustomColors> {
   final Color subtextForce;
   final Color disabledText;
   final Color disabledBack;
+  final Color backgroundForce;
 
   const CustomColors({
     required this.textForce,
     required this.subtextForce,
     required this.disabledText,
     required this.disabledBack,
+    required this.backgroundForce,
   });
 
   @override
@@ -294,12 +298,14 @@ class CustomColors extends ThemeExtension<CustomColors> {
     Color? subtextForce,
     Color? disabledText,
     Color? disabledBack,
+    Color? backgroundForce,
   }) {
     return CustomColors(
       textForce: textForce ?? this.textForce,
       subtextForce: subtextForce ?? this.subtextForce,
       disabledText: disabledText ?? this.disabledText,
       disabledBack: disabledBack ?? this.disabledBack,
+      backgroundForce: backgroundForce ?? this.backgroundForce,
     );
   }
 
@@ -311,6 +317,7 @@ class CustomColors extends ThemeExtension<CustomColors> {
       subtextForce: Color.lerp(subtextForce, other.subtextForce, t)!,
       disabledText: Color.lerp(disabledText, other.disabledText, t)!,
       disabledBack: Color.lerp(disabledBack, other.disabledBack, t)!,
+      backgroundForce: Color.lerp(backgroundForce, other.backgroundForce, t)!,
     );
   }
 }

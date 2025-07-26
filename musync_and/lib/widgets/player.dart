@@ -134,8 +134,8 @@ class _PlayerState extends State<Player> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: const CircleBorder(),
                       ),
-                      onPressed: () async {
-                        await widget.audioHandler.setShuffleModeEnabled();
+                      onPressed: () {
+                        widget.audioHandler.setShuffleModeEnabled();
                         toRandom.value = value.next();
                       },
                       child:

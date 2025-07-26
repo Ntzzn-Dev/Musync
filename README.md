@@ -121,3 +121,11 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Troca de música mais manual e especifica.  
 - Adição de troca de estado visual no botão da notificação.  
 - Playlists corrigidas.  
+
+### version 2.5  
+- Adição de pesquisa por nome.  
+- Troca de formato de lista.  
+- Adição de Categorias de acordo com o reorder.  
+- Barra de pesquisa oculta.  
+- Ao baixar uma música sem reiniciar o app, a imagem é adicionada no mediaItem temporário.  
+- Playlists corrigidas para aceitar as novas mudanças.  

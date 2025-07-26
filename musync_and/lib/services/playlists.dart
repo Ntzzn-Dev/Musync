@@ -5,6 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
+import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 
 class Playlists {
@@ -55,10 +56,10 @@ class Playlists {
     }
   }
 
-  Future<List<MediaItem>?> findMusics(List<MediaItem> listaOriginal) async {
+  Future<List<MediaItem>?> findMusics() async {
     List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 
-    final futuros = listaOriginal.map((mediaItem) async {
+    final futuros = MyAudioHandler.songsAll.map((mediaItem) async {
       if (idsAlvo.contains(mediaItem.id)) return mediaItem;
 
       return null;

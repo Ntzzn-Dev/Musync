@@ -18,19 +18,6 @@ import 'services/audio_player_base.dart';
 
 MyAudioHandler _audioHandler = MyAudioHandler();
 
-enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA }
-
-extension ModeEnumExt on ModeOrderEnum {
-  ModeOrderEnum next() {
-    final nextIndex = (index + 1) % ModeOrderEnum.values.length;
-    return ModeOrderEnum.values[nextIndex];
-  }
-
-  ModeOrderEnum convert(int i) {
-    return ModeOrderEnum.values[i - 1];
-  }
-}
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -73,22 +60,27 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> {
   final TextEditingController _ipController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   String pcIp = '';
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
-  double bottomPosition = 0;
+  ValueNotifier<double> bottomPosition = ValueNotifier(0);
+  ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
   int idplAtual = -1;
 
   var modeAtual = ModeOrderEnum.dataZA;
 
   List<MediaItem> songsNow = [];
+  List<MediaItem> songsPlaylist = [];
   List<Playlists> pls = [];
 
   void _toggleBottom() {
-    setState(() {
-      bottomPosition = bottomPosition == 0 ? -100 : 0;
-    });
+    bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
+  }
+
+  void _toggleTop() {
+    topPosition.value = topPosition.value == 0 ? -68 : 0;
   }
 
   @override
@@ -108,81 +100,14 @@ class _MusicPageState extends State<MusicPage> {
 
     setState(() {
       MyAudioHandler.songsAll = fetchedSongs;
+      MyAudioHandler.songsAll = MyAudioHandler.reorder(
+        modeAtual,
+        MyAudioHandler.songsAll,
+      );
       songsNow = MyAudioHandler.songsAll;
     });
 
-    reorder(modeAtual);
-
     widget.audioHandler.initSongs(songs: songsNow);
-  }
-
-  Future<void> reorder(ModeOrderEnum modeAtual) async {
-    switch (modeAtual) {
-      case ModeOrderEnum.titleAZ:
-        final ordenadas = [...songsNow]..sort(
-          (a, b) => a.title.trim().toLowerCase().compareTo(
-            b.title.trim().toLowerCase(),
-          ),
-        );
-        setState(() {
-          songsNow = ordenadas;
-        });
-        break;
-      case ModeOrderEnum.titleZA:
-        final ordenadas = [...songsNow]..sort(
-          (a, b) => b.title.trim().toLowerCase().compareTo(
-            a.title.trim().toLowerCase(),
-          ),
-        );
-        setState(() {
-          songsNow = ordenadas;
-        });
-        break;
-      case ModeOrderEnum.dataAZ:
-        setState(() {
-          songsNow.sort((a, b) {
-            try {
-              final rawA = a.extras?['lastModified'];
-              final rawB = b.extras?['lastModified'];
-
-              final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
-              final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
-
-              if (dateA == null || dateB == null) {
-                return 0;
-              }
-              return dateA.compareTo(dateB);
-            } catch (e) {
-              log('Erro durante sort por data: $e');
-              return 0;
-            }
-          });
-        });
-
-        break;
-      case ModeOrderEnum.dataZA:
-        setState(() {
-          songsNow.sort((a, b) {
-            try {
-              final rawA = a.extras?['lastModified'];
-              final rawB = b.extras?['lastModified'];
-
-              final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
-              final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
-
-              if (dateA == null || dateB == null) {
-                return 0;
-              }
-              return dateB.compareTo(dateA);
-            } catch (e) {
-              log('Erro durante sort por data: $e');
-              return 0;
-            }
-          });
-        });
-
-        break;
-    }
   }
 
   Future<void> _sendFileToPC(File file) async {
@@ -239,7 +164,7 @@ class _MusicPageState extends State<MusicPage> {
     toLoop.value = prefs.getInt('loop_act') ?? 0;
   }
 
-  void _loadLastUse() async {
+  void _loadLastUse() {
     _loadPreferences();
 
     //widget.audioHandler.setShuffleModeEnabled();
@@ -266,9 +191,9 @@ class _MusicPageState extends State<MusicPage> {
   Widget pageSelect(int pageIndex) {
     switch (pageIndex) {
       case 0:
-        return Column(
-          children: [
-            Padding(
+        songsPlaylist = MyAudioHandler.songsAll;
+        return
+        /*Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 children: [
@@ -296,10 +221,20 @@ class _MusicPageState extends State<MusicPage> {
                   ),
                 ],
               ),
-            ),
-            const Divider(),
-            ListContent(audioHandler: widget.audioHandler, songsNow: songsNow),
-          ],
+            ),*/
+        ListContent(
+          audioHandler: widget.audioHandler,
+          songsNow: songsNow,
+          modeReorder: modeAtual,
+          aposClique: (item) async {
+            if (_searchController.text == '') {
+              await widget.audioHandler.recreateQueue(songs: songsNow);
+            }
+            int indiceCerto = MyAudioHandler.songsAll.indexWhere(
+              (t) => t == item,
+            );
+            await widget.audioHandler.skipToQueueItem(indiceCerto);
+          },
         );
       case 1:
         return Column(
@@ -457,17 +392,22 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onTap: () async {
+                      //Carregamento da playlist
                       abaSelect = 2;
                       modeAtual = modeAtual.convert(item.orderMode);
-                      final newsongs = await item.findMusics(
-                        MyAudioHandler.songsAll,
-                      );
+                      final newsongs = await item.findMusics();
                       if (newsongs != null) {
                         setState(() {
-                          songsNow = newsongs;
+                          songsPlaylist = newsongs;
                         });
                       }
-                      reorder(modeAtual);
+                      setState(() {
+                        songsPlaylist = MyAudioHandler.reorder(
+                          modeAtual,
+                          songsPlaylist,
+                        );
+                        songsNow = songsPlaylist;
+                      });
                       idplAtual = item.id;
                     },
                   );
@@ -477,10 +417,17 @@ class _MusicPageState extends State<MusicPage> {
           ],
         );
       case 2:
-        return Column(
-          children: [
-            ListContent(audioHandler: widget.audioHandler, songsNow: songsNow),
-          ],
+        return ListContent(
+          audioHandler: widget.audioHandler,
+          songsNow: songsNow,
+          modeReorder: modeAtual,
+          aposClique: (item) async {
+            if (_searchController.text == '') {
+              await widget.audioHandler.recreateQueue(songs: songsNow);
+            }
+            int indiceCerto = songsPlaylist.indexWhere((t) => t == item);
+            await widget.audioHandler.skipToQueueItem(indiceCerto);
+          },
         );
       default:
         return SizedBox.shrink();
@@ -494,7 +441,7 @@ class _MusicPageState extends State<MusicPage> {
         title: const Text('Musync'),
         actions: [
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -507,9 +454,15 @@ class _MusicPageState extends State<MusicPage> {
           ),
           SizedBox(width: 9),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               modeAtual = modeAtual.next();
-              await reorder(modeAtual);
+              setState(() {
+                MyAudioHandler.songsAll = MyAudioHandler.reorder(
+                  modeAtual,
+                  MyAudioHandler.songsAll,
+                );
+                songsNow = MyAudioHandler.songsAll;
+              });
               log('$abaSelect $idplAtual');
               if (abaSelect == 2 && idplAtual != -1) {
                 //saveOrder();
@@ -518,7 +471,7 @@ class _MusicPageState extends State<MusicPage> {
             child: Icon(Icons.reorder_outlined),
           ),
           SizedBox(width: 9),
-          ElevatedButton(onPressed: () async {}, child: Icon(Icons.settings)),
+          ElevatedButton(onPressed: () {}, child: Icon(Icons.settings)),
         ],
       ),
       body: Stack(
@@ -593,21 +546,94 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                   ),
+                  IconButton(
+                    onPressed: _toggleTop,
+                    icon: Icon(Icons.search),
+                    color: Color.fromARGB(255, 243, 160, 34),
+                  ),
                 ],
               ),
               Expanded(child: pageSelect(abaSelect)),
             ],
           ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-            bottom: bottomPosition,
-            left: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: _toggleBottom,
-              child: Player(audioHandler: widget.audioHandler),
-            ),
+          ValueListenableBuilder(
+            valueListenable: bottomPosition,
+            builder: (context, value, child) {
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+                bottom: value,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _toggleBottom,
+                  child: Player(audioHandler: widget.audioHandler),
+                ),
+              );
+            },
+          ),
+          ValueListenableBuilder(
+            valueListenable: topPosition,
+            builder: (context, value, child) {
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+                top: value,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color:
+                      Theme.of(
+                        context,
+                      ).extension<CustomColors>()!.backgroundForce,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8.0,
+                      vertical: 4.0,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: const InputDecoration(
+                              labelText: 'Pesquisa',
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                songsNow =
+                                    songsPlaylist
+                                        .where(
+                                          (item) => item.title
+                                              .toLowerCase()
+                                              .contains(value.toLowerCase()),
+                                        )
+                                        .toList();
+                              });
+                            },
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _toggleTop,
+                          child: SizedBox(
+                            width: 30,
+                            child: Icon(
+                              Icons.close,
+                              color: Color.fromARGB(255, 243, 160, 34),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

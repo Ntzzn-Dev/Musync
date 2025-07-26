@@ -237,6 +237,7 @@ class _DownloadPageState extends State<DownloadPage> {
       album: preferidaOuSafe(tagsDiferenciadas?['album'], safeAuthor.value),
       genre: tagsDiferenciadas?['genre'],
       extras: {'lastModified': lastModified, 'path': mp3path, 'hash': hash},
+      artUri: Uri.parse(thumbUrl),
     );
 
     MyAudioHandler.songsAll.add(musicBaixada);

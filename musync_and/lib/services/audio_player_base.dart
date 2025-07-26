@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'package:collection/collection.dart';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,9 @@ import 'package:just_audio/just_audio.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
-extension ModeEnumExt on ModeShuffleEnum {
+enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA }
+
+extension ModeShuffleEnumExt on ModeShuffleEnum {
   ModeShuffleEnum next() {
     final nextIndex = (index + 1) % ModeShuffleEnum.values.length;
     return ModeShuffleEnum.values[nextIndex];
@@ -17,9 +20,21 @@ extension ModeEnumExt on ModeShuffleEnum {
   }
 }
 
+extension ModeOrderEnumExt on ModeOrderEnum {
+  ModeOrderEnum next() {
+    final nextIndex = (index + 1) % ModeOrderEnum.values.length;
+    return ModeOrderEnum.values[nextIndex];
+  }
+
+  ModeOrderEnum convert(int i) {
+    return ModeOrderEnum.values[i - 1];
+  }
+}
+
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
   ValueNotifier<int> currentIndex = ValueNotifier(0);
+  final _equality = const DeepCollectionEquality();
 
   static List<MediaItem> songsAll = [];
   List<MediaItem> songsAtual = [];
@@ -107,8 +122,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     await setCurrentTrack(0);
 
-    final newQueue = queue.value..addAll(songsAtual);
-    queue.add(newQueue);
+    queue.add(List.from(songsAtual));
 
     audPl.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
@@ -120,19 +134,13 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
 
-    final isEqual =
-        currentQueue.length == songs.length &&
-        List.generate(
-          songs.length,
-          (i) => songs[i].id == currentQueue[i].id,
-        ).every((e) => e);
-
-    if (isEqual) {
+    if (_equality.equals(
+      songs.map((e) => e.id).toList(),
+      currentQueue.map((e) => e.id).toList(),
+    )) {
       log('Fila já está atualizada, não será recriada.');
       return;
     }
-
-    audPl.playbackEventStream.listen(_broadcastState);
 
     songsAtual = songs;
     currentIndex.value = 0;
@@ -140,12 +148,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await setCurrentTrack(0);
 
     queue.add(songs);
-
-    audPl.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        skipToNextAuto();
-      }
-    });
 
     if (shuffleMode != ModeShuffleEnum.shuffleOff) {
       prepareShuffle();
@@ -160,12 +162,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   ModeShuffleEnum shuffleMode = ModeShuffleEnum.shuffleOff;
 
-  Future<void> setShuffleModeEnabled() async {
+  void setShuffleModeEnabled() {
     shuffleMode = shuffleMode.next();
     prepareShuffle();
   }
 
-  Future<ModeShuffleEnum> isShuffleEnabled() async {
+  ModeShuffleEnum isShuffleEnabled() {
     return shuffleMode;
   }
 
@@ -173,12 +175,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await audPl.setLoopMode(mode);
   }
 
-  Future<LoopMode> isLoopEnabled() async {
+  LoopMode isLoopEnabled() {
     return audPl.loopMode;
   }
 
   @override
-  Future<void> play() async => audPl.play();
+  Future<void> play() async {
+    if (!audPl.playing) await audPl.play();
+  }
 
   @override
   Future<void> pause() async => audPl.pause();
@@ -201,7 +205,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  Future<void> skipToNextAuto() async {
+  void skipToNextAuto() {
     if (shuffleMode == ModeShuffleEnum.shuffleNormal) {
       playNextShuffled();
     } else {
@@ -223,8 +227,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     if (shouldStop) return;
 
     if (currentIndex.value + 1 < songsAtual.length) {
-      currentIndex.value++;
-      await setCurrentTrack(currentIndex.value);
+      await setCurrentTrack(currentIndex.value + 1);
       play();
     }
 
@@ -238,7 +241,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final shouldStop = await repeatNormal();
     if (shouldStop) return;
 
-    if (currentIndex.value - 1 > 0) {
+    if (currentIndex.value > 0) {
       currentIndex.value--;
       await setCurrentTrack(currentIndex.value);
       play();
@@ -252,10 +255,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       await audPl.seek(Duration.zero);
       play();
       return true;
-    } else if (modo == LoopMode.all) {
-      if (currentIndex.value + 1 == songsAtual.length) {
-        currentIndex.value = -1;
-      }
+    } else if (modo == LoopMode.all &&
+        currentIndex.value + 1 == songsAtual.length) {
+      currentIndex.value = -1;
       return false;
     } else {
       return false;
@@ -319,5 +321,69 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (unplayed.isEmpty) return true;
       return false;
     }
+  }
+
+  /* REORDER */
+
+  static List<MediaItem> reorder(
+    ModeOrderEnum modeAtual,
+    List<MediaItem> songs,
+  ) {
+    List<MediaItem> ordenadas = [];
+    switch (modeAtual) {
+      case ModeOrderEnum.titleAZ:
+        ordenadas = [...songs]..sort(
+          (a, b) => a.title.trim().toLowerCase().compareTo(
+            b.title.trim().toLowerCase(),
+          ),
+        );
+        break;
+      case ModeOrderEnum.titleZA:
+        ordenadas = [...songs]..sort(
+          (a, b) => b.title.trim().toLowerCase().compareTo(
+            a.title.trim().toLowerCase(),
+          ),
+        );
+        break;
+      case ModeOrderEnum.dataAZ:
+        ordenadas = [...songs]..sort((a, b) {
+          try {
+            final rawA = a.extras?['lastModified'];
+            final rawB = b.extras?['lastModified'];
+
+            final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
+            final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
+
+            if (dateA == null || dateB == null) {
+              return 0;
+            }
+            return dateA.compareTo(dateB);
+          } catch (e) {
+            log('Erro durante sort por data: $e');
+            return 0;
+          }
+        });
+        break;
+      case ModeOrderEnum.dataZA:
+        ordenadas = [...songs]..sort((a, b) {
+          try {
+            final rawA = a.extras?['lastModified'];
+            final rawB = b.extras?['lastModified'];
+
+            final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
+            final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
+
+            if (dateA == null || dateB == null) {
+              return 0;
+            }
+            return dateB.compareTo(dateA);
+          } catch (e) {
+            log('Erro durante sort por data: $e');
+            return 0;
+          }
+        });
+        break;
+    }
+    return ordenadas;
   }
 }

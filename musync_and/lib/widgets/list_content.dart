@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-
 import 'package:audio_service/audio_service.dart';
-import 'package:crypto/crypto.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:musync_and/pages/download_page.dart';
+import 'package:musync_and/main.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -22,11 +19,15 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 class ListContent extends StatefulWidget {
   final MyAudioHandler audioHandler;
   final List<MediaItem> songsNow;
+  final ModeOrderEnum modeReorder;
+  final void Function(MediaItem)? aposClique;
 
   const ListContent({
     super.key,
     required this.audioHandler,
     required this.songsNow,
+    required this.modeReorder,
+    this.aposClique,
   });
 
   @override
@@ -34,11 +35,12 @@ class ListContent extends StatefulWidget {
 }
 
 class _ListContentState extends State<ListContent> {
-  final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener =
-      ItemPositionsListener.create();
-
-  bool isScrollable = true;
+  late final ScrollController _scrollController;
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
@@ -172,37 +174,7 @@ class _ListContentState extends State<ListContent> {
   @override
   void initState() {
     super.initState();
-    _itemPositionsListener.itemPositions.addListener(() {
-      final positions = _itemPositionsListener.itemPositions.value;
-      if (positions.isNotEmpty) {
-        final lastVisible = positions
-            .where((pos) => pos.itemTrailingEdge <= 1.0)
-            .map((pos) => pos.index)
-            .reduce((a, b) => a > b ? a : b);
-
-        if (lastVisible == widget.songsNow.length - 1) {
-          isScrollable = true;
-        } else {
-          isScrollable = false;
-        }
-      }
-    });
-  }
-
-  int? _lastScrolledIndex;
-
-  void _scrollToCenter(int index) {
-    if (_lastScrolledIndex == index || isScrollable) return;
-    _lastScrolledIndex = index;
-
-    if (_itemScrollController.isAttached) {
-      _itemScrollController.scrollTo(
-        index: index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: 0.25,
-      );
-    }
+    _scrollController = ScrollController();
   }
 
   Uint8List? base64ToBytes(String dataUri) {
@@ -214,133 +186,229 @@ class _ListContentState extends State<ListContent> {
     return base64Decode(base64Str);
   }
 
+  String getDateCategory(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final inputDate = DateTime(date.year, date.month, date.day);
+
+    if (inputDate == today) {
+      return 'Hoje';
+    }
+
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+    if (inputDate.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+        inputDate.isBefore(endOfWeek.add(const Duration(days: 1)))) {
+      return 'Esta semana';
+    }
+
+    final lastMonth = DateTime(now.year, now.month - 1, now.day);
+    if (inputDate.isAfter(lastMonth)) {
+      return 'Último mês';
+    }
+
+    if (inputDate.year == now.year) {
+      return 'Este ano';
+    }
+
+    return DateFormat('dd/MM/yyyy').format(date);
+  }
+
+  void scrollToIndex(int index) {
+    final double position = index * 78;
+    _scrollController.animateTo(
+      position,
+      duration: Duration(seconds: 1),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaItems = widget.songsNow;
-    return Expanded(
-      child: ValueListenableBuilder<int?>(
-        valueListenable: widget.audioHandler.currentIndex,
-        builder: (context, currentIndex, _) {
-          if (currentIndex != null &&
-              currentIndex >= 0 &&
-              currentIndex < mediaItems.length) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToCenter(currentIndex);
-            });
+    List<Widget> imgs =
+        widget.songsNow.map((item) {
+          final artUriStr = item.artUri?.toString();
+
+          if (artUriStr != null && artUriStr.startsWith('data:')) {
+            final bytes = base64ToBytes(artUriStr);
+            if (bytes != null) {
+              return Image.memory(
+                bytes,
+                width: 45,
+                height: 45,
+                fit: BoxFit.cover,
+              );
+            }
+          } else if (artUriStr != null &&
+              (artUriStr.startsWith('http') || artUriStr.startsWith('https'))) {
+            return Image.network(
+              artUriStr,
+              width: 45,
+              height: 45,
+              fit: BoxFit.cover,
+            );
           }
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox.expand(
-                  child: ScrollablePositionedList.builder(
-                    itemCount: mediaItems.length,
-                    itemScrollController: _itemScrollController,
-                    itemPositionsListener: _itemPositionsListener,
-                    itemBuilder: (context, index) {
-                      final item = mediaItems[index];
-                      final isSelected = currentIndex == index;
+          return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
+        }).toList();
 
-                      final artUriStr = item.artUri?.toString();
+    return Expanded(
+      child: ValueListenableBuilder<int>(
+        valueListenable: widget.audioHandler.currentIndex,
+        builder: (context, value, child) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              scrollToIndex(value);
+            }
+          });
 
-                      Widget leadingWidget;
+          return ListView.builder(
+            controller: _scrollController,
+            itemCount: mediaItems.length,
+            itemBuilder: (context, index) {
+              MediaItem item = mediaItems[index];
 
-                      if (artUriStr != null && artUriStr.startsWith('data:')) {
-                        final bytes = base64ToBytes(artUriStr);
-                        if (bytes != null) {
-                          leadingWidget = Image.memory(
-                            bytes,
-                            width: 45,
-                            height: 45,
-                            fit: BoxFit.cover,
-                          );
-                        } else {
-                          leadingWidget = Icon(Icons.music_note);
-                        }
-                      } else if (artUriStr != null &&
-                          (artUriStr.startsWith('http') ||
-                              artUriStr.startsWith('https'))) {
-                        leadingWidget = Image.network(
-                          artUriStr,
-                          width: 45,
-                          height: 45,
-                          fit: BoxFit.cover,
-                        );
-                      } else {
-                        leadingWidget = SizedBox(
-                          width: 45,
-                          height: 45,
-                          child: Icon(Icons.music_note),
-                        );
+              String currentSlice = '';
+              String previousSlice = '';
+
+              if (widget.modeReorder == ModeOrderEnum.dataZA ||
+                  widget.modeReorder == ModeOrderEnum.dataAZ) {
+                final lastModified = DateTime.parse(
+                  item.extras?['lastModified'],
+                );
+                currentSlice = getDateCategory(lastModified);
+                previousSlice =
+                    index > 0
+                        ? getDateCategory(
+                          DateTime.parse(
+                            mediaItems[index - 1].extras?['lastModified'],
+                          ),
+                        )
+                        : '';
+              } else {
+                currentSlice = item.title[0].toUpperCase();
+                previousSlice =
+                    index > 0
+                        ? mediaItems[index - 1].title[0].toUpperCase()
+                        : '';
+              }
+
+              final showSliceHeader =
+                  index == 0 || currentSlice != previousSlice;
+
+              List<Widget> children = [];
+
+              if (showSliceHeader) {
+                children.add(
+                  Container(
+                    height: 30,
+                    width: double.infinity,
+                    color: const Color.fromARGB(255, 54, 54, 54),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      currentSlice,
+                      style: const TextStyle(
+                        color: Color.fromARGB(255, 243, 160, 34),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                );
+              }
+
+              children.add(
+                Container(
+                  color:
+                      index == value ? Color.fromARGB(96, 243, 159, 34) : null,
+                  height: 78,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () async {
+                      try {
+                        widget.aposClique?.call(mediaItems[index]);
+                      } catch (e) {
+                        log('Erro ao tocar música: $e');
                       }
-
-                      return ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: leadingWidget,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        title: Text(
-                          item.title,
-                          style: TextStyle(
-                            color:
-                                Theme.of(
-                                  context,
-                                ).extension<CustomColors>()!.textForce,
-                          ),
-                        ),
-                        subtitle: Text(
-                          item.artist ?? "Artista desconhecido",
-                          style: TextStyle(
-                            color:
-                                Theme.of(
-                                  context,
-                                ).extension<CustomColors>()!.subtextForce,
-                          ),
-                        ),
-                        trailing: SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.more_vert_rounded,
-                              color:
-                                  Theme.of(
-                                    context,
-                                  ).extension<CustomColors>()!.textForce,
-                            ),
-                            iconSize: 24,
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              showPopup(
-                                context,
-                                item.title,
-                                moreOptions(context, item),
-                              );
-                            },
-                          ),
-                        ),
-                        tileColor:
-                            isSelected
-                                ? const Color.fromARGB(51, 243, 160, 34)
-                                : null,
-                        onTap: () async {
-                          try {
-                            await widget.audioHandler.recreateQueue(
-                              songs: widget.songsNow,
-                            );
-                            await widget.audioHandler.skipToQueueItem(index);
-                          } catch (e) {
-                            log('Erro ao tocar música: $e');
-                          }
-                        },
-                      );
                     },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: imgs[index],
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item.artist ?? "Artista desconhecido",
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 3,
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.more_vert_rounded,
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).extension<CustomColors>()!.textForce,
+                              ),
+                              iconSize: 24,
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                showPopup(
+                                  context,
+                                  item.title,
+                                  moreOptions(context, item),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
               );
             },
           );
