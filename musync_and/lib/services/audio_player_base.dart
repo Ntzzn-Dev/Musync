@@ -9,6 +9,8 @@ enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
 enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA }
 
+enum ModeLoopEnum { off, all, one }
+
 extension ModeShuffleEnumExt on ModeShuffleEnum {
   ModeShuffleEnum next() {
     final nextIndex = (index + 1) % ModeShuffleEnum.values.length;
@@ -28,6 +30,17 @@ extension ModeOrderEnumExt on ModeOrderEnum {
 
   ModeOrderEnum convert(int i) {
     return ModeOrderEnum.values[i - 1];
+  }
+}
+
+extension ModeLoopEnumExt on ModeLoopEnum {
+  ModeLoopEnum next() {
+    final nextIndex = (index + 1) % ModeLoopEnum.values.length;
+    return ModeLoopEnum.values[nextIndex];
+  }
+
+  ModeLoopEnum convert(int i) {
+    return ModeLoopEnum.values[i - 1];
   }
 }
 
@@ -126,6 +139,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     audPl.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
+        log('aaa');
         skipToNextAuto();
       }
     });
@@ -162,6 +176,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   ModeShuffleEnum shuffleMode = ModeShuffleEnum.shuffleOff;
 
+  ModeLoopEnum loopMode = ModeLoopEnum.off;
+
   void setShuffleModeEnabled() {
     shuffleMode = shuffleMode.next();
     prepareShuffle();
@@ -171,12 +187,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     return shuffleMode;
   }
 
-  Future<void> setLoopModeEnabled(LoopMode mode) async {
-    await audPl.setLoopMode(mode);
+  void setLoopModeEnabled() {
+    loopMode = loopMode.next();
   }
 
-  LoopMode isLoopEnabled() {
-    return audPl.loopMode;
+  ModeLoopEnum isLoopEnabled() {
+    return loopMode;
   }
 
   @override
@@ -192,6 +208,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> skipToQueueItem(int index) async {
+    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+      prepareShuffle();
+    }
     await setCurrentTrack(index);
     play();
   }
@@ -249,14 +268,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<bool> repeatNormal() async {
-    final modo = await isLoopEnabled();
-
-    if (modo == LoopMode.one) {
+    if (loopMode == ModeLoopEnum.one) {
       await audPl.seek(Duration.zero);
       play();
       return true;
-    } else if (modo == LoopMode.all &&
-        currentIndex.value + 1 == songsAtual.length) {
+    } else if (loopMode == ModeLoopEnum.all &&
+        currentIndex.value + 1 >= songsAtual.length) {
       currentIndex.value = -1;
       return false;
     } else {
@@ -306,13 +323,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<bool> repeatShuffled() async {
-    final modo = await isLoopEnabled();
-
-    if (modo == LoopMode.one) {
+    if (loopMode == ModeLoopEnum.one) {
       await audPl.seek(Duration.zero);
       play();
       return true;
-    } else if (modo == LoopMode.all) {
+    } else if (loopMode == ModeLoopEnum.all) {
       if (unplayed.isEmpty) {
         reshuffle();
       }

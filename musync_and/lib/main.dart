@@ -6,10 +6,9 @@ import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:http/http.dart' as http;
-import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/list_content.dart';
+import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
-import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
@@ -59,9 +58,7 @@ class MusicPage extends StatefulWidget {
 }
 
 class _MusicPageState extends State<MusicPage> {
-  final TextEditingController _ipController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-  String pcIp = '';
   ValueNotifier<bool> toRandom = ValueNotifier(false);
   ValueNotifier<int> toLoop = ValueNotifier(0);
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
@@ -73,7 +70,6 @@ class _MusicPageState extends State<MusicPage> {
 
   List<MediaItem> songsNow = [];
   List<MediaItem> songsPlaylist = [];
-  List<Playlists> pls = [];
 
   void _toggleBottom() {
     bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
@@ -89,7 +85,6 @@ class _MusicPageState extends State<MusicPage> {
     _savePreferences();
     _initFetchSongs();
     _loadLastUse();
-    _loadIp();
   }
 
   Future<void> _initFetchSongs() async {
@@ -108,45 +103,6 @@ class _MusicPageState extends State<MusicPage> {
     });
 
     widget.audioHandler.initSongs(songs: songsNow);
-  }
-
-  Future<void> _sendFileToPC(File file) async {
-    if (pcIp.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Defina o IP do PC primeiro.')),
-      );
-      return;
-    }
-
-    final url = Uri.parse('http://$pcIp:8080/upload');
-
-    try {
-      var request = http.MultipartRequest('POST', url);
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-      var response = await request.send();
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Arquivo enviado!')));
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Erro ao enviar arquivo')));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
-    }
-  }
-
-  Future<void> _loadIp() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      pcIp = prefs.getString('pc_ip') ?? '';
-      _ipController.text = pcIp;
-    });
   }
 
   Future<void> _savePreferences() async {
@@ -169,60 +125,14 @@ class _MusicPageState extends State<MusicPage> {
 
     //widget.audioHandler.setShuffleModeEnabled();
 
-    final intToLoopMode = {0: LoopMode.off, 1: LoopMode.one, 2: LoopMode.all};
-
-    LoopMode selectedMode = intToLoopMode[toLoop.value] ?? LoopMode.off;
-
-    widget.audioHandler.setLoopModeEnabled(selectedMode);
-  }
-
-  dynamic convertReorder(dynamic value) {
-    int? reorderFromString(String str) =>
-        {'Titulo A-Z': 1, 'Titulo Z-A': 2, 'Data A-Z': 3, 'Data Z-A': 4}[str];
-
-    String? reorderFromInt(int val) =>
-        {1: 'Titulo A-Z', 2: 'Titulo Z-A', 3: 'Data A-Z', 4: 'Data Z-A'}[val];
-
-    if (value is int) return reorderFromInt(value);
-    if (value is String) return reorderFromString(value);
-    return null;
+    //widget.audioHandler.setLoopModeEnabled();
   }
 
   Widget pageSelect(int pageIndex) {
     switch (pageIndex) {
       case 0:
         songsPlaylist = MyAudioHandler.songsAll;
-        return
-        /*Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _ipController,
-                      decoration: const InputDecoration(
-                        labelText: 'IP do PC',
-                        hintText: 'ex: 192.xxx.x.x',
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.save),
-                    onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setString('pc_ip', _ipController.text.trim());
-                      setState(() {
-                        pcIp = _ipController.text.trim();
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('IP salvo!')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),*/
-        ListContent(
+        return ListContent(
           audioHandler: widget.audioHandler,
           songsNow: songsNow,
           modeReorder: modeAtual,
@@ -237,185 +147,37 @@ class _MusicPageState extends State<MusicPage> {
           },
         );
       case 1:
-        return Column(
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                showPopupAdd(
-                  context,
-                  'Adicionar Playlist',
-                  [
-                    {'value': 'Título', 'type': 'necessary'},
-                    {'value': 'Subtitulo', 'type': 'text'},
-                    {
-                      'value': 'Modo de organização',
-                      'type': 'dropdown',
-                      'opts': [
-                        'Titulo A-Z',
-                        'Titulo Z-A',
-                        'Data A-Z',
-                        'Data Z-A',
-                      ],
-                    },
-                  ],
-                  onConfirm: (valores) async {
-                    DatabaseHelper().insertPlaylist(
-                      valores[0],
-                      valores[1],
-                      1,
-                      convertReorder(valores[2]),
-                    );
-
-                    final plss = await DatabaseHelper().loadPlaylists();
-
-                    setState(() {
-                      pls = plss;
-                    });
-                  },
+        return ListPlaylist(
+          escolhaDePlaylist: (pl) async {
+            abaSelect = 2;
+            modeAtual = modeAtual.convert(pl.orderMode);
+            final newsongs = await pl.findMusics();
+            if (newsongs != null) {
+              setState(() {
+                songsPlaylist = newsongs;
+                songsPlaylist = MyAudioHandler.reorder(
+                  modeAtual,
+                  songsPlaylist,
                 );
-              },
-              child: Text('+'),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: pls.length,
-                itemBuilder: (context, index) {
-                  final item = pls[index];
-                  // ADD BUTTON DE RETOMADA, SALVANDO MUSICA E PLAYSLIST LAST
-                  return ListTile(
-                    contentPadding: EdgeInsets.only(left: 16, right: 8),
-                    title: Text(
-                      item.title,
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                    subtitle: Text(
-                      item.subtitle,
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.subtextForce,
-                      ),
-                    ),
-                    trailing: SizedBox(
-                      width: 52,
-                      height: 52,
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.more_vert_rounded,
-                          color:
-                              Theme.of(
-                                context,
-                              ).extension<CustomColors>()!.textForce,
-                        ),
-                        iconSize: 24,
-                        padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          await showPopup(context, item.title, [
-                            {
-                              'opt': 'Apagar Playlist',
-                              'funct': () async {
-                                if (await showPopupAdd(
-                                  context,
-                                  'Deletar playlist?',
-                                  [],
-                                )) {
-                                  await DatabaseHelper().removePlaylist(
-                                    item.id,
-                                  );
-
-                                  pls = await DatabaseHelper().loadPlaylists();
-
-                                  setState(() {});
-
-                                  Navigator.of(context).pop();
-                                }
-                              },
-                            },
-                            {
-                              'opt': 'Editar Playlist',
-                              'funct': () async {
-                                await showPopupAdd(
-                                  context,
-                                  'Editar Playlist',
-                                  [
-                                    {'value': 'Título', 'type': 'necessary'},
-                                    {'value': 'Subtitulo', 'type': 'text'},
-                                    {
-                                      'value': 'Modo de organização',
-                                      'type': 'dropdown',
-                                      'opts': [
-                                        'Titulo A-Z',
-                                        'Titulo Z-A',
-                                        'Data A-Z',
-                                        'Data Z-A',
-                                      ],
-                                    },
-                                  ],
-                                  fieldValues: [
-                                    item.title,
-                                    item.subtitle,
-                                    convertReorder(item.orderMode),
-                                  ],
-                                  onConfirm: (valores) async {
-                                    await DatabaseHelper().updatePlaylist(
-                                      item.id,
-                                      title: valores[0],
-                                      subtitle: valores[1],
-                                      orderMode: convertReorder(valores[2]),
-                                    );
-
-                                    pls =
-                                        await DatabaseHelper().loadPlaylists();
-
-                                    setState(() {});
-
-                                    await ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Playlist Atualizada'),
-                                      ),
-                                    );
-                                  },
-                                );
-                                Navigator.of(context).pop();
-                              },
-                            },
-                          ]);
-                        },
-                      ),
-                    ),
-                    onTap: () async {
-                      //Carregamento da playlist
-                      abaSelect = 2;
-                      modeAtual = modeAtual.convert(item.orderMode);
-                      final newsongs = await item.findMusics();
-                      if (newsongs != null) {
-                        setState(() {
-                          songsPlaylist = newsongs;
-                        });
-                      }
-                      setState(() {
-                        songsPlaylist = MyAudioHandler.reorder(
-                          modeAtual,
-                          songsPlaylist,
-                        );
-                        songsNow = songsPlaylist;
-                      });
-                      idplAtual = item.id;
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+                songsNow = songsPlaylist;
+              });
+            }
+          },
+          escolhaDeArtista: (art) {
+            log(art);
+            abaSelect = 2;
+            final newsongs =
+                MyAudioHandler.songsAll
+                    .where((item) => item.artist == art)
+                    .toList();
+            setState(() {
+              songsPlaylist = newsongs;
+              songsPlaylist = MyAudioHandler.reorder(modeAtual, songsPlaylist);
+              songsNow = songsPlaylist;
+            });
+          },
         );
+
       case 2:
         return ListContent(
           audioHandler: widget.audioHandler,
@@ -516,7 +278,6 @@ class _MusicPageState extends State<MusicPage> {
                   Expanded(
                     child: InkWell(
                       onTap: () async {
-                        pls = await DatabaseHelper().loadPlaylists();
                         setState(() {
                           abaSelect = 1;
                         });
@@ -619,7 +380,10 @@ class _MusicPageState extends State<MusicPage> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: _toggleTop,
+                          onTap: () {
+                            _searchController.text = '';
+                            _toggleTop();
+                          },
                           child: SizedBox(
                             width: 30,
                             child: Icon(

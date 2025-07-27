@@ -129,3 +129,9 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Barra de pesquisa oculta.  
 - Ao baixar uma música sem reiniciar o app, a imagem é adicionada no mediaItem temporário.  
 - Playlists corrigidas para aceitar as novas mudanças.  
+
+### version 2.6  
+- Correção e alteração do repeat.  
+- Ao clicar no 'X' da pesquisa, apagar qualquer termo pesquisado.  
+- Ao trocar de música setando o índice e o shuffle estiver ligado, a lista será reiniciada.  
+- Adição de playlists de artistas.  

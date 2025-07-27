@@ -36,7 +36,7 @@ class _PlayerState extends State<Player> {
   ValueNotifier<ModeShuffleEnum> toRandom = ValueNotifier(
     ModeShuffleEnum.shuffleOff,
   );
-  ValueNotifier<int> toLoop = ValueNotifier(0);
+  ValueNotifier<ModeLoopEnum> toLoop = ValueNotifier(ModeLoopEnum.off);
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +219,7 @@ class _PlayerState extends State<Player> {
                   },
                 ),
                 const SizedBox(width: 16),
-                ValueListenableBuilder<int>(
+                ValueListenableBuilder<ModeLoopEnum>(
                   valueListenable: toLoop,
                   builder: (context, value, child) {
                     return ElevatedButton(
@@ -230,26 +230,13 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        LoopMode newloop = LoopMode.off;
-                        final newValue = value == 2 ? 0 : value + 1;
-                        switch (value) {
-                          case 0:
-                            newloop = LoopMode.all;
-                            break;
-                          case 1:
-                            newloop = LoopMode.one;
-                            break;
-                          case 2:
-                            newloop = LoopMode.off;
-                            break;
-                        }
-                        await widget.audioHandler.setLoopModeEnabled(newloop);
-                        toLoop.value = newValue;
+                        widget.audioHandler.setLoopModeEnabled();
+                        toLoop.value = value.next();
                       },
                       child: Icon(
-                        value == 0
+                        value == ModeLoopEnum.off
                             ? Icons.arrow_right_alt_rounded
-                            : value == 1
+                            : value == ModeLoopEnum.all
                             ? Icons.repeat_rounded
                             : Icons.repeat_one_rounded,
                       ),

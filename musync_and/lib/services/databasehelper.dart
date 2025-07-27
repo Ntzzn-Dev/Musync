@@ -125,6 +125,7 @@ class DatabaseHelper {
     final db = await database;
     final List<Map<String, dynamic>> playlistsFromDB = await db.query(
       'playlists',
+      orderBy: 'ordem ASC',
     );
 
     return List.generate(playlistsFromDB.length, (i) {
