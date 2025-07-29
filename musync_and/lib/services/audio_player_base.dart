@@ -17,8 +17,12 @@ extension ModeShuffleEnumExt on ModeShuffleEnum {
     return ModeShuffleEnum.values[nextIndex];
   }
 
-  ModeShuffleEnum convert(int i) {
+  static ModeShuffleEnum convert(int i) {
     return ModeShuffleEnum.values[i - 1];
+  }
+
+  int disconvert() {
+    return index + 1;
   }
 }
 
@@ -28,8 +32,12 @@ extension ModeOrderEnumExt on ModeOrderEnum {
     return ModeOrderEnum.values[nextIndex];
   }
 
-  ModeOrderEnum convert(int i) {
+  static ModeOrderEnum convert(int i) {
     return ModeOrderEnum.values[i - 1];
+  }
+
+  int disconvert() {
+    return index + 1;
   }
 }
 
@@ -39,8 +47,12 @@ extension ModeLoopEnumExt on ModeLoopEnum {
     return ModeLoopEnum.values[nextIndex];
   }
 
-  ModeLoopEnum convert(int i) {
+  static ModeLoopEnum convert(int i) {
     return ModeLoopEnum.values[i - 1];
+  }
+
+  int disconvert() {
+    return index + 1;
   }
 }
 

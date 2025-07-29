@@ -61,19 +61,14 @@ class DatabaseHelper {
     log('Banco de dados deletado com sucesso.');
   }
 
-  Future<int> insertPlaylist(
-    String title,
-    String subtitle,
-    int ordem,
-    int orderMode,
-  ) async {
+  Future<int> insertPlaylist(String title, String subtitle, int ordem) async {
     final db = await database;
 
     final id = await db.insert('playlists', {
       'title': title,
       'subtitle': subtitle,
       'ordem': ordem,
-      'order_mode': orderMode,
+      'order_mode': 4,
     });
     return id;
   }
@@ -109,6 +104,8 @@ class DatabaseHelper {
       'id_playlist': idplaylist,
       'id_music': idMusic,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+    playlistUpdateNotifier.notifyPlaylistChanged();
   }
 
   Future<void> removeFromPlaylist(int idplaylist, String idMusic) async {
@@ -119,18 +116,45 @@ class DatabaseHelper {
       where: 'id_playlist = ? AND id_music = ?',
       whereArgs: [idplaylist, idMusic],
     );
+
+    playlistUpdateNotifier.notifyPlaylistChanged();
   }
 
-  Future<List<Playlists>> loadPlaylists() async {
+  Future<List<Playlists>> loadPlaylists({String? idMusic}) async {
     final db = await database;
     final List<Map<String, dynamic>> playlistsFromDB = await db.query(
       'playlists',
       orderBy: 'ordem ASC',
     );
 
-    return List.generate(playlistsFromDB.length, (i) {
-      return Playlists.fromMap(playlistsFromDB[i]);
-    });
+    if (idMusic == null) {
+      return List.generate(playlistsFromDB.length, (i) {
+        return Playlists.fromMap(playlistsFromDB[i]);
+      });
+    }
+
+    return Future.wait(
+      playlistsFromDB.map((playlist) async {
+        final idPlaylist = playlist['id'] as int;
+
+        final result = await db.query(
+          'playlists_musics',
+          where: 'id_playlist = ? AND id_music = ?',
+          whereArgs: [idPlaylist, idMusic],
+        );
+
+        final hasMusic = result.isNotEmpty;
+
+        return Playlists(
+          id: idPlaylist,
+          title: playlist['title'],
+          subtitle: playlist['subtitle'],
+          ordem: playlist['ordem'],
+          orderMode: playlist['order_mode'],
+          haveMusic: hasMusic,
+        );
+      }).toList(),
+    );
   }
 
   Future<List<String>> loadPlaylistMusics(int idplaylist) async {

@@ -1,15 +1,12 @@
 import 'dart:developer';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/pages/download_page.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/services/fetch_songs.dart';
-import 'package:http/http.dart' as http;
+import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
-import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'themes.dart';
@@ -59,17 +56,13 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> {
   final TextEditingController _searchController = TextEditingController();
-  ValueNotifier<bool> toRandom = ValueNotifier(false);
-  ValueNotifier<int> toLoop = ValueNotifier(0);
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
-  int idplAtual = -1;
 
   var modeAtual = ModeOrderEnum.dataZA;
 
   List<MediaItem> songsNow = [];
-  List<MediaItem> songsPlaylist = [];
 
   void _toggleBottom() {
     bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
@@ -82,9 +75,7 @@ class _MusicPageState extends State<MusicPage> {
   @override
   void initState() {
     super.initState();
-    _savePreferences();
     _initFetchSongs();
-    _loadLastUse();
   }
 
   Future<void> _initFetchSongs() async {
@@ -105,7 +96,7 @@ class _MusicPageState extends State<MusicPage> {
     widget.audioHandler.initSongs(songs: songsNow);
   }
 
-  Future<void> _savePreferences() async {
+  /*Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('random_act', toRandom.value);
     prefs.setInt('loop_act', toLoop.value);
@@ -126,20 +117,19 @@ class _MusicPageState extends State<MusicPage> {
     //widget.audioHandler.setShuffleModeEnabled();
 
     //widget.audioHandler.setLoopModeEnabled();
-  }
+  }*/
 
   Widget pageSelect(int pageIndex) {
     switch (pageIndex) {
       case 0:
-        songsPlaylist = MyAudioHandler.songsAll;
         return ListContent(
           audioHandler: widget.audioHandler,
           songsNow: songsNow,
           modeReorder: modeAtual,
           aposClique: (item) async {
-            if (_searchController.text == '') {
-              await widget.audioHandler.recreateQueue(songs: songsNow);
-            }
+            await widget.audioHandler.recreateQueue(
+              songs: MyAudioHandler.songsAll,
+            );
             int indiceCerto = MyAudioHandler.songsAll.indexWhere(
               (t) => t == item,
             );
@@ -149,51 +139,49 @@ class _MusicPageState extends State<MusicPage> {
       case 1:
         return ListPlaylist(
           escolhaDePlaylist: (pl) async {
-            abaSelect = 2;
-            modeAtual = modeAtual.convert(pl.orderMode);
+            modeAtual = ModeOrderEnumExt.convert(pl.orderMode);
             final newsongs = await pl.findMusics();
             if (newsongs != null) {
-              setState(() {
-                songsPlaylist = newsongs;
-                songsPlaylist = MyAudioHandler.reorder(
-                  modeAtual,
-                  songsPlaylist,
-                );
-                songsNow = songsPlaylist;
-              });
+              _abrirPlaylist(title: pl.title, songs: newsongs, pl: pl);
             }
           },
           escolhaDeArtista: (art) {
-            log(art);
-            abaSelect = 2;
             final newsongs =
                 MyAudioHandler.songsAll
-                    .where((item) => item.artist == art)
+                    .where((item) => item.artist?.trim() == art.trim())
                     .toList();
-            setState(() {
-              songsPlaylist = newsongs;
-              songsPlaylist = MyAudioHandler.reorder(modeAtual, songsPlaylist);
-              songsNow = songsPlaylist;
-            });
-          },
-        );
 
-      case 2:
-        return ListContent(
-          audioHandler: widget.audioHandler,
-          songsNow: songsNow,
-          modeReorder: modeAtual,
-          aposClique: (item) async {
-            if (_searchController.text == '') {
-              await widget.audioHandler.recreateQueue(songs: songsNow);
-            }
-            int indiceCerto = songsPlaylist.indexWhere((t) => t == item);
-            await widget.audioHandler.skipToQueueItem(indiceCerto);
+            _abrirPlaylist(title: art, songs: newsongs);
           },
         );
       default:
         return SizedBox.shrink();
     }
+  }
+
+  void _abrirPlaylist({
+    required String title,
+    required List<MediaItem> songs,
+    Playlists? pl,
+  }) {
+    final reordered = MyAudioHandler.reorder(modeAtual, songs);
+    setState(() {
+      songsNow = reordered;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => PlaylistPage(
+              plTitle: title,
+              audioHandler: widget.audioHandler,
+              songsPL: reordered,
+              pl: pl,
+            ),
+        settings: const RouteSettings(name: 'playlistOpened'),
+      ),
+    );
   }
 
   @override
@@ -225,10 +213,6 @@ class _MusicPageState extends State<MusicPage> {
                 );
                 songsNow = MyAudioHandler.songsAll;
               });
-              log('$abaSelect $idplAtual');
-              if (abaSelect == 2 && idplAtual != -1) {
-                //saveOrder();
-              }
             },
             child: Icon(Icons.reorder_outlined),
           ),
@@ -368,7 +352,7 @@ class _MusicPageState extends State<MusicPage> {
                             onChanged: (value) {
                               setState(() {
                                 songsNow =
-                                    songsPlaylist
+                                    MyAudioHandler.songsAll
                                         .where(
                                           (item) => item.title
                                               .toLowerCase()
@@ -382,6 +366,10 @@ class _MusicPageState extends State<MusicPage> {
                         GestureDetector(
                           onTap: () {
                             _searchController.text = '';
+
+                            setState(() {
+                              songsNow = MyAudioHandler.songsAll;
+                            });
                             _toggleTop();
                           },
                           child: SizedBox(

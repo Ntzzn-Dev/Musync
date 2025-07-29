@@ -135,3 +135,13 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Ao clicar no 'X' da pesquisa, apagar qualquer termo pesquisado.  
 - Ao trocar de música setando o índice e o shuffle estiver ligado, a lista será reiniciada.  
 - Adição de playlists de artistas.  
+
+### version 2.7  
+- Correção na exibição da lista de playlists.  
+- Adicionada opção de escolha ao salvar uma playlist.  
+- Corrigido problema na busca de playlists pelo nome do artista.  
+- Página principal agora separada para exibir uma playlist.  
+- Correção na pesquisa de músicas pelo nome.  
+- Atualizada opção de remover ou adicionar músicas da playlist.  
+- Ordem da playlist não definida inicialmente.  
+- Salvamento automático ao alterar a ordem dentro da página da playlist.  

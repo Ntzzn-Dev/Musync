@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
@@ -14,6 +15,7 @@ class Playlists {
   String subtitle;
   int ordem;
   int orderMode;
+  bool? haveMusic;
 
   Playlists({
     required this.id,
@@ -21,7 +23,26 @@ class Playlists {
     required this.subtitle,
     required this.ordem,
     required this.orderMode,
+    this.haveMusic,
   });
+
+  Playlists copyWith({
+    int? id,
+    String? title,
+    String? subtitle,
+    int? ordem,
+    int? orderMode,
+    bool? haveMusic,
+  }) {
+    return Playlists(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      ordem: ordem ?? this.ordem,
+      orderMode: orderMode ?? this.orderMode,
+      haveMusic: haveMusic ?? this.haveMusic,
+    );
+  }
 
   factory Playlists.fromMap(Map<String, dynamic> map) {
     return Playlists(
@@ -115,3 +136,11 @@ class Playlists {
     }
   }
 }
+
+class PlaylistUpdateNotifier extends ChangeNotifier {
+  void notifyPlaylistChanged() {
+    notifyListeners();
+  }
+}
+
+final playlistUpdateNotifier = PlaylistUpdateNotifier();

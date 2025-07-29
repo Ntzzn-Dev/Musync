@@ -114,10 +114,135 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Adicionar a Playlist',
         'funct': () async {
-          DatabaseHelper().addToPlaylist(1, item.id);
+          List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+            idMusic: item.id,
+          );
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Adicionado a playlist: ')),
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) {
+              return StatefulBuilder(
+                builder: (context, setModalState) {
+                  return FractionallySizedBox(
+                    heightFactor: 0.45,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: ListView.builder(
+                        itemCount: playlists.length,
+                        itemBuilder: (context, index) {
+                          final playlist = playlists[index];
+                          return Container(
+                            color:
+                                playlist.haveMusic ?? false ? Colors.red : null,
+                            child: /* ListTile(
+                              title: Text(playlist.title),
+                              subtitle: Text(playlist.subtitle),
+                              onTap: () async {
+                                if (playlist.haveMusic ?? false) {
+                                  await DatabaseHelper().removeFromPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                } else {
+                                  await DatabaseHelper().addToPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                }
+
+                                setModalState(() {
+                                  playlists[index] = playlist.copyWith(
+                                    haveMusic: !(playlist.haveMusic ?? false),
+                                  );
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),*/ InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () async {
+                                if (playlist.haveMusic ?? false) {
+                                  await DatabaseHelper().removeFromPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                } else {
+                                  await DatabaseHelper().addToPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                }
+
+                                setModalState(() {
+                                  playlists[index] = playlist.copyWith(
+                                    haveMusic: !(playlist.haveMusic ?? false),
+                                  );
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.artist ?? "Artista desconhecido",
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           );
         },
       },
@@ -251,167 +376,159 @@ class _ListContentState extends State<ListContent> {
           return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
         }).toList();
 
-    return Expanded(
-      child: ValueListenableBuilder<int>(
-        valueListenable: widget.audioHandler.currentIndex,
-        builder: (context, value, child) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients) {
-              scrollToIndex(value);
+    return ValueListenableBuilder<int>(
+      valueListenable: widget.audioHandler.currentIndex,
+      builder: (context, value, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            scrollToIndex(value);
+          }
+        });
+
+        return ListView.builder(
+          controller: _scrollController,
+          itemCount: mediaItems.length,
+          itemBuilder: (context, index) {
+            MediaItem item = mediaItems[index];
+
+            String currentSlice = '';
+            String previousSlice = '';
+
+            if (widget.modeReorder == ModeOrderEnum.dataZA ||
+                widget.modeReorder == ModeOrderEnum.dataAZ) {
+              final lastModified = DateTime.parse(item.extras?['lastModified']);
+              currentSlice = getDateCategory(lastModified);
+              previousSlice =
+                  index > 0
+                      ? getDateCategory(
+                        DateTime.parse(
+                          mediaItems[index - 1].extras?['lastModified'],
+                        ),
+                      )
+                      : '';
+            } else {
+              currentSlice = item.title[0].toUpperCase();
+              previousSlice =
+                  index > 0 ? mediaItems[index - 1].title[0].toUpperCase() : '';
             }
-          });
 
-          return ListView.builder(
-            controller: _scrollController,
-            itemCount: mediaItems.length,
-            itemBuilder: (context, index) {
-              MediaItem item = mediaItems[index];
+            final showSliceHeader = index == 0 || currentSlice != previousSlice;
 
-              String currentSlice = '';
-              String previousSlice = '';
+            List<Widget> children = [];
 
-              if (widget.modeReorder == ModeOrderEnum.dataZA ||
-                  widget.modeReorder == ModeOrderEnum.dataAZ) {
-                final lastModified = DateTime.parse(
-                  item.extras?['lastModified'],
-                );
-                currentSlice = getDateCategory(lastModified);
-                previousSlice =
-                    index > 0
-                        ? getDateCategory(
-                          DateTime.parse(
-                            mediaItems[index - 1].extras?['lastModified'],
-                          ),
-                        )
-                        : '';
-              } else {
-                currentSlice = item.title[0].toUpperCase();
-                previousSlice =
-                    index > 0
-                        ? mediaItems[index - 1].title[0].toUpperCase()
-                        : '';
-              }
-
-              final showSliceHeader =
-                  index == 0 || currentSlice != previousSlice;
-
-              List<Widget> children = [];
-
-              if (showSliceHeader) {
-                children.add(
-                  Container(
-                    height: 30,
-                    width: double.infinity,
-                    color: const Color.fromARGB(255, 54, 54, 54),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      currentSlice,
-                      style: const TextStyle(
-                        color: Color.fromARGB(255, 243, 160, 34),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                );
-              }
-
+            if (showSliceHeader) {
               children.add(
                 Container(
-                  color:
-                      index == value ? Color.fromARGB(96, 243, 159, 34) : null,
-                  height: 78,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () async {
-                      try {
-                        widget.aposClique?.call(mediaItems[index]);
-                      } catch (e) {
-                        log('Erro ao tocar música: $e');
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: imgs[index],
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  softWrap: true,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  item.artist ?? "Artista desconhecido",
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                  ),
-                                  softWrap: true,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 3,
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.more_vert_rounded,
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).extension<CustomColors>()!.textForce,
-                              ),
-                              iconSize: 24,
-                              padding: EdgeInsets.zero,
-                              onPressed: () {
-                                showPopup(
-                                  context,
-                                  item.title,
-                                  moreOptions(context, item),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                  height: 30,
+                  width: double.infinity,
+                  color: const Color.fromARGB(255, 54, 54, 54),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    currentSlice,
+                    style: const TextStyle(
+                      color: Color.fromARGB(255, 243, 160, 34),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               );
+            }
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: children,
-              );
-            },
-          );
-        },
-      ),
+            children.add(
+              Container(
+                color: index == value ? Color.fromARGB(96, 243, 159, 34) : null,
+                height: 78,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () async {
+                    try {
+                      widget.aposClique?.call(mediaItems[index]);
+                    } catch (e) {
+                      log('Erro ao tocar música: $e');
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: imgs[index],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                item.title,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.artist ?? "Artista desconhecido",
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 3,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.more_vert_rounded,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).extension<CustomColors>()!.textForce,
+                            ),
+                            iconSize: 24,
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              showPopup(
+                                context,
+                                item.title,
+                                moreOptions(context, item),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            );
+          },
+        );
+      },
     );
   }
 }
