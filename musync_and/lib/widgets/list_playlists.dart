@@ -37,12 +37,16 @@ class _ListPlaylistState extends State<ListPlaylist> {
       pls = listas;
       arts =
           MyAudioHandler.songsAll
-              .map((item) => (item.artist?.trim() ?? '').trim())
-              .where((artist) => artist.trim().isNotEmpty)
+              .expand(
+                (item) => (item.artist ?? '')
+                    .split(',')
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty),
+              )
               .toSet()
-              .toList();
+              .toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     });
-    log(arts.length.toString());
   }
 
   @override

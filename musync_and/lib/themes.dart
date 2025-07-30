@@ -19,6 +19,14 @@ ThemeData lighttheme() {
       color: Color.fromARGB(255, 255, 255, 255),
       surfaceTintColor: Colors.transparent,
     ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: Color.fromARGB(255, 242, 242, 242),
+      textStyle: TextStyle(
+        color: Color.fromARGB(255, 243, 160, 34),
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
     sliderTheme: SliderThemeData(
       activeTrackColor: Color.fromARGB(255, 243, 160, 34),
       inactiveTrackColor: Color.fromARGB(77, 243, 160, 34),
@@ -150,6 +158,14 @@ ThemeData darktheme() {
     cardTheme: CardTheme(
       color: Color.fromARGB(255, 36, 36, 36),
       surfaceTintColor: Colors.transparent,
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: Color.fromARGB(255, 37, 37, 37),
+      textStyle: TextStyle(
+        color: Color.fromARGB(255, 243, 160, 34),
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     sliderTheme: SliderThemeData(
       activeTrackColor: Color.fromARGB(255, 243, 160, 34),

@@ -154,6 +154,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,
                     );
+                    widget.audioHandler.savePl(
+                      (widget.pl?.id ?? widget.plTitle).toString(),
+                    );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,
                     );
@@ -161,6 +164,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   },
                 ),
               ),
+              Padding(padding: EdgeInsets.fromLTRB(0, 0, 0, 70)),
             ],
           ),
 

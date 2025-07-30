@@ -157,6 +157,21 @@ class DatabaseHelper {
     );
   }
 
+  Future<Playlists?> loadPlaylist(int idPl) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'playlists',
+      where: 'id = ?',
+      whereArgs: [idPl],
+    );
+
+    if (result.isNotEmpty) {
+      return Playlists.fromMap(result.first);
+    } else {
+      return null;
+    }
+  }
+
   Future<List<String>> loadPlaylistMusics(int idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(

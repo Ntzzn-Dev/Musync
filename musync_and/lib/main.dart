@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/playlist_page.dart';
+import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/widgets/list_content.dart';
@@ -64,18 +65,24 @@ class _MusicPageState extends State<MusicPage> {
 
   List<MediaItem> songsNow = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _initFetchSongs();
+  }
+
+  @override
+  void dispose() {
+    widget.audioHandler.stop();
+    super.dispose();
+  }
+
   void _toggleBottom() {
     bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
   }
 
   void _toggleTop() {
     topPosition.value = topPosition.value == 0 ? -68 : 0;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initFetchSongs();
   }
 
   Future<void> _initFetchSongs() async {
@@ -98,8 +105,8 @@ class _MusicPageState extends State<MusicPage> {
 
   /*Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('random_act', toRandom.value);
-    prefs.setInt('loop_act', toLoop.value);
+    /*prefs.setBool('random_act', toRandom.value);
+    prefs.setInt('loop_act', toLoop.value);*/
     prefs.setStringList('directorys', [
       '/storage/emulated/0/snaptube/download/SnapTube Audio',
     ]);
@@ -107,17 +114,43 @@ class _MusicPageState extends State<MusicPage> {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    toRandom.value = prefs.getBool('random_act') ?? false;
-    toLoop.value = prefs.getInt('loop_act') ?? 0;
-  }
+    //log((prefs.getBool('random_act') ?? false).toString());
+    //log((prefs.getBool('loop_act') ?? 0).toString());
 
-  void _loadLastUse() {
-    _loadPreferences();
-
-    //widget.audioHandler.setShuffleModeEnabled();
-
-    //widget.audioHandler.setLoopModeEnabled();
+    //Recarrega ultima playlist
   }*/
+
+  Future<void> _loadLastPlaylist() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ultimaPlaylist = prefs.getString('pl_last');
+    final ultimaMusica = prefs.getInt('msc_last');
+
+    log(ultimaPlaylist ?? 'vv');
+
+    if (ultimaPlaylist == null) return;
+
+    List<MediaItem> newsongs = [];
+
+    final id = int.tryParse(ultimaPlaylist);
+
+    if (id != null) {
+      final pl = await DatabaseHelper().loadPlaylist(id);
+      newsongs = await pl?.findMusics() ?? [];
+    } else if (ultimaPlaylist == 'Todas') {
+      newsongs = MyAudioHandler.songsAll;
+    } else {
+      newsongs =
+          MyAudioHandler.songsAll
+              .where(
+                (item) =>
+                    (item.artist ?? '').trim().contains(ultimaPlaylist.trim()),
+              )
+              .toList();
+    }
+
+    widget.audioHandler.recreateQueue(songs: newsongs);
+    widget.audioHandler.skipToQueueItem(ultimaMusica ?? 0);
+  }
 
   Widget pageSelect(int pageIndex) {
     switch (pageIndex) {
@@ -130,6 +163,7 @@ class _MusicPageState extends State<MusicPage> {
             await widget.audioHandler.recreateQueue(
               songs: MyAudioHandler.songsAll,
             );
+            widget.audioHandler.savePl('Todas');
             int indiceCerto = MyAudioHandler.songsAll.indexWhere(
               (t) => t == item,
             );
@@ -139,7 +173,6 @@ class _MusicPageState extends State<MusicPage> {
       case 1:
         return ListPlaylist(
           escolhaDePlaylist: (pl) async {
-            modeAtual = ModeOrderEnumExt.convert(pl.orderMode);
             final newsongs = await pl.findMusics();
             if (newsongs != null) {
               _abrirPlaylist(title: pl.title, songs: newsongs, pl: pl);
@@ -148,7 +181,9 @@ class _MusicPageState extends State<MusicPage> {
           escolhaDeArtista: (art) {
             final newsongs =
                 MyAudioHandler.songsAll
-                    .where((item) => item.artist?.trim() == art.trim())
+                    .where(
+                      (item) => (item.artist ?? '').trim().contains(art.trim()),
+                    )
                     .toList();
 
             _abrirPlaylist(title: art, songs: newsongs);
@@ -192,32 +227,64 @@ class _MusicPageState extends State<MusicPage> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DownloadPage(),
-                  settings: RouteSettings(name: 'donwload'),
-                ),
-              );
+              _loadLastPlaylist();
             },
-            child: Icon(Icons.download),
+            child: Icon(Icons.play_arrow_rounded),
           ),
           SizedBox(width: 9),
-          ElevatedButton(
-            onPressed: () {
-              modeAtual = modeAtual.next();
-              setState(() {
-                MyAudioHandler.songsAll = MyAudioHandler.reorder(
-                  modeAtual,
-                  MyAudioHandler.songsAll,
-                );
-                songsNow = MyAudioHandler.songsAll;
-              });
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_horiz),
+            onSelected: (value) {
+              switch (value) {
+                case 'reord':
+                  modeAtual = modeAtual.next();
+                  setState(() {
+                    MyAudioHandler.songsAll = MyAudioHandler.reorder(
+                      modeAtual,
+                      MyAudioHandler.songsAll,
+                    );
+                    songsNow = MyAudioHandler.songsAll;
+                  });
+                  break;
+                case 'downl':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DownloadPage(),
+                      settings: RouteSettings(name: 'donwload'),
+                    ),
+                  );
+                  break;
+                case 'config':
+                  log('configurações');
+                  break;
+              }
             },
-            child: Icon(Icons.reorder_outlined),
+            itemBuilder:
+                (context) => [
+                  PopupMenuItem(
+                    value: 'reord',
+                    child: Text(
+                      'Reordenar',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'downl',
+                    child: Text(
+                      'Downloads',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'config',
+                    child: Text(
+                      'Configurações',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
           ),
-          SizedBox(width: 9),
-          ElevatedButton(onPressed: () {}, child: Icon(Icons.settings)),
         ],
       ),
       body: Stack(
@@ -390,11 +457,5 @@ class _MusicPageState extends State<MusicPage> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    widget.audioHandler.stop();
-    super.dispose();
   }
 }

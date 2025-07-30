@@ -145,3 +145,11 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Atualizada opção de remover ou adicionar músicas da playlist.  
 - Ordem da playlist não definida inicialmente.  
 - Salvamento automático ao alterar a ordem dentro da página da playlist.  
+
+### version 2.8  
+- Correção da cor e do titulo ao escolher uma playlist para salvar.  
+- Alteração no comportamento da separação de separação de playlist por artista.  
+- Adicionada verificação de playlist em uso antes de marcar uma música como 'tocando' na lista.  
+- Correção no delete de uma música.  
+- Alteração da barra superior do aplicativo.  
+- Adição da opção retomar ultima fila.  

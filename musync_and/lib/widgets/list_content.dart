@@ -13,6 +13,7 @@ import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
+import 'package:collection/collection.dart';
 
 class ListContent extends StatefulWidget {
   final MyAudioHandler audioHandler;
@@ -34,6 +35,18 @@ class ListContent extends StatefulWidget {
 
 class _ListContentState extends State<ListContent> {
   late final ScrollController _scrollController;
+  late bool listaEmUso;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    listaEmUso = const ListEquality().equals(
+      widget.songsNow,
+      widget.audioHandler.songsAtual,
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -81,12 +94,16 @@ class _ListContentState extends State<ListContent> {
                 'genre': valores[3],
               });
 
-              int index = MyAudioHandler.songsAll.indexWhere(
+              int indexSongAll = MyAudioHandler.songsAll.indexWhere(
                 (e) => e.id == item.id,
               );
 
-              if (index != -1) {
-                final antigo = MyAudioHandler.songsAll[index];
+              int indexSongNow = widget.songsNow.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              if (indexSongAll != -1) {
+                final antigo = MyAudioHandler.songsAll[indexSongAll];
 
                 final musicEditada = antigo.copyWith(
                   title: valores[0],
@@ -101,9 +118,12 @@ class _ListContentState extends State<ListContent> {
                   },
                 );
 
-                MyAudioHandler.songsAll[index] = musicEditada;
+                MyAudioHandler.songsAll[indexSongAll] = musicEditada;
+                widget.songsNow[indexSongNow] = musicEditada;
 
                 setState(() {});
+
+                Navigator.of(context).pop();
               } else {
                 log('Item não encontrado na lista para edição.');
               }
@@ -141,38 +161,10 @@ class _ListContentState extends State<ListContent> {
                           final playlist = playlists[index];
                           return Container(
                             color:
-                                playlist.haveMusic ?? false ? Colors.red : null,
-                            child: /* ListTile(
-                              title: Text(playlist.title),
-                              subtitle: Text(playlist.subtitle),
-                              onTap: () async {
-                                if (playlist.haveMusic ?? false) {
-                                  await DatabaseHelper().removeFromPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                } else {
-                                  await DatabaseHelper().addToPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                }
-
-                                setModalState(() {
-                                  playlists[index] = playlist.copyWith(
-                                    haveMusic: !(playlist.haveMusic ?? false),
-                                  );
-                                });
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),*/ InkWell(
+                                playlist.haveMusic ?? false
+                                    ? Color.fromARGB(255, 243, 160, 34)
+                                    : null,
+                            child: InkWell(
                               borderRadius: BorderRadius.circular(8),
                               onTap: () async {
                                 if (playlist.haveMusic ?? false) {
@@ -211,7 +203,7 @@ class _ListContentState extends State<ListContent> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      item.title,
+                                      playlist.title,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -222,7 +214,7 @@ class _ListContentState extends State<ListContent> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      item.artist ?? "Artista desconhecido",
+                                      playlist.subtitle,
                                       style: const TextStyle(
                                         fontSize: 10,
                                         color: Colors.grey,
@@ -282,22 +274,16 @@ class _ListContentState extends State<ListContent> {
       try {
         setState(() {
           widget.songsNow.remove(item);
+          MyAudioHandler.songsAll.remove(item);
         });
         await widget.audioHandler.recreateQueue(songs: widget.songsNow);
         await file.delete();
-        //---------------------------------------------------------------------------------------------------> DEIXAR PARA RETIRAR QUANDO CONFIGURAÇÕES ESTIVER PRONTO
       } catch (e) {
         log('Erro ao deletar: $e');
       }
     } else {
       log('Arquivo não encontrado');
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
   }
 
   Uint8List? base64ToBytes(String dataUri) {
@@ -380,7 +366,7 @@ class _ListContentState extends State<ListContent> {
       valueListenable: widget.audioHandler.currentIndex,
       builder: (context, value, child) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
+          if (_scrollController.hasClients && listaEmUso) {
             scrollToIndex(value);
           }
         });
@@ -440,12 +426,22 @@ class _ListContentState extends State<ListContent> {
 
             children.add(
               Container(
-                color: index == value ? Color.fromARGB(96, 243, 159, 34) : null,
+                color:
+                    mediaItems[index] ==
+                                widget.audioHandler.songsAtual[value] &&
+                            listaEmUso
+                        ? Color.fromARGB(96, 243, 159, 34)
+                        : null,
                 height: 78,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () async {
                     try {
+                      if (!listaEmUso) {
+                        setState(() {
+                          listaEmUso = true;
+                        });
+                      }
                       widget.aposClique?.call(mediaItems[index]);
                     } catch (e) {
                       log('Erro ao tocar música: $e');

@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
@@ -132,8 +133,19 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
+  void savePl(String plDynamic) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('pl_last', plDynamic.toString());
+  }
+
+  void saveInd(int mscInd) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setInt('msc_last', mscInd);
+  }
+
   Future<void> setCurrentTrack(int index) async {
     currentIndex.value = index;
+    saveInd(index);
     final item = songsAtual[index];
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
