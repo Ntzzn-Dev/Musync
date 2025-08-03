@@ -1,11 +1,10 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/widgets/letreiro.dart';
 
 class Player extends StatefulWidget {
-  final MyAudioHandler audioHandler;
+  final MusyncAudioHandler audioHandler;
 
   const Player({super.key, required this.audioHandler});
 

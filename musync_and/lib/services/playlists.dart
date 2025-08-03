@@ -1,9 +1,6 @@
 import 'dart:developer';
-import 'dart:io';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player_base.dart';
@@ -54,7 +51,7 @@ class Playlists {
     );
   }
 
-  static Future<String> generateHashs(String filePath) async {
+  /*static Future<String> generateHashs(String filePath) async {
     final file = File(filePath);
     final fileLength = await file.length();
     final raf = file.openSync();
@@ -75,12 +72,12 @@ class Playlists {
     } finally {
       raf.closeSync();
     }
-  }
+  }*/
 
   Future<List<MediaItem>?> findMusics() async {
     List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 
-    final futuros = MyAudioHandler.songsAll.map((mediaItem) async {
+    final futuros = MusyncAudioHandler.songsAll.map((mediaItem) async {
       if (idsAlvo.contains(mediaItem.id)) return mediaItem;
 
       return null;

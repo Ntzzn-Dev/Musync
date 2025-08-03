@@ -43,7 +43,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   List<Map<String, dynamic>> videos = [];
   final List<String> caminhos =
-      MyAudioHandler.songsAll
+      MusyncAudioHandler.songsAll
           .map((item) => item.extras?['path'] as String?)
           .where((path) => path != null)
           .cast<String>()
@@ -55,7 +55,6 @@ class _DownloadPageState extends State<DownloadPage> {
   void initState() {
     super.initState();
     initAsync();
-    //gerarHashes();
   }
 
   void initAsync() async {
@@ -106,18 +105,7 @@ class _DownloadPageState extends State<DownloadPage> {
       safeTitle.value = video.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       safeAuthor.value = video.author.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
-      final jaBaixado =
-          false; //await verificarAudiosIguaisComLista(caminhos, url);
-
-      if (jaBaixado) {
-        situation.value = 'Situação: Música já baixada.';
-        setState(() {
-          _btnDownloadActv = false;
-          _btnTagActv = false;
-        });
-      } else {
-        situation.value = 'Situação: Música pronta para baixar.';
-      }
+      situation.value = 'Situação: Música pronta para baixar.';
 
       year = video.uploadDate?.year;
       _btnTagActv = true;
@@ -142,28 +130,68 @@ class _DownloadPageState extends State<DownloadPage> {
       itemBuilder: (context, index) {
         final video = videos[index]['video'] as Video;
         final title = video.title;
-        return ListTile(
-          tileColor:
+        final canal = video.author;
+        return Container(
+          color:
               videos[index]['selected']
                   ? Color.fromARGB(25, 243, 160, 34)
                   : null,
-          leading: Image.network(
-            'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg',
-            width: 60,
-            height: 60,
-            fit: BoxFit.cover,
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: Theme.of(context).extension<CustomColors>()!.subtextForce,
+          height: 78,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              setState(() {
+                videos[index]['selected'] = !videos[index]['selected'];
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: Image.network(
+                      'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg',
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          softWrap: true,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          canal,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                          softWrap: true,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 3,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          onTap: () async {
-            setState(() {
-              videos[index]['selected'] = !videos[index]['selected'];
-            });
-          },
         );
       },
     );
@@ -218,7 +246,6 @@ class _DownloadPageState extends State<DownloadPage> {
     });
     atualizarProgresso(progresso);
 
-    final hash = await Playlists.generateHashs(mp3path);
     final fileStat = await File(mp3path).stat();
     final lastModified = fileStat.modified.toIso8601String();
     final uri = Uri.file(mp3path).toString();
@@ -233,11 +260,11 @@ class _DownloadPageState extends State<DownloadPage> {
       duration: video.duration ?? Duration.zero,
       album: preferidaOuSafe(tagsDiferenciadas?['album'], safeAuthor.value),
       genre: tagsDiferenciadas?['genre'],
-      extras: {'lastModified': lastModified, 'path': mp3path, 'hash': hash},
+      extras: {'lastModified': lastModified, 'path': mp3path},
       artUri: Uri.parse(thumbUrl),
     );
 
-    MyAudioHandler.songsAll.add(musicBaixada);
+    MusyncAudioHandler.songsAll.add(musicBaixada);
 
     await Playlists.atualizarNoMediaStore(mp3path);
     atualizarProgresso(progresso);

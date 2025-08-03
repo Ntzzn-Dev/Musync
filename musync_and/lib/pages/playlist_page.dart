@@ -9,7 +9,7 @@ import 'package:musync_and/widgets/player.dart';
 
 class PlaylistPage extends StatefulWidget {
   final String plTitle;
-  final MyAudioHandler audioHandler;
+  final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsPL;
   final Playlists? pl;
   const PlaylistPage({
@@ -69,7 +69,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
             onPressed: () {
               modeAtual = modeAtual.next();
               setState(() {
-                songsPlaylist = MyAudioHandler.reorder(
+                songsPlaylist = MusyncAudioHandler.reorder(
                   modeAtual,
                   songsNowTranslated,
                 );

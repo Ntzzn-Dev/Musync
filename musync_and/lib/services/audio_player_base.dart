@@ -57,7 +57,8 @@ extension ModeLoopEnumExt on ModeLoopEnum {
   }
 }
 
-class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+class MusyncAudioHandler extends BaseAudioHandler
+    with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
   ValueNotifier<int> currentIndex = ValueNotifier(0);
   final _equality = const DeepCollectionEquality();
@@ -143,10 +144,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     prefs.setInt('msc_last', mscInd);
   }
 
-  Future<void> setCurrentTrack(int index) async {
-    currentIndex.value = index;
-    saveInd(index);
-    final item = songsAtual[index];
+  Future<void> setCurrentTrack({int? index}) async {
+    if (index != null) {
+      saveInd(index);
+    }
+    currentIndex.value = index ?? 0;
+    final item = songsAtual[index ?? 0];
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
     mediaItem.add(item);
@@ -157,7 +160,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     songsAtual = songs;
 
-    await setCurrentTrack(0);
+    await setCurrentTrack();
 
     queue.add(List.from(songsAtual));
 
@@ -183,7 +186,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     songsAtual = songs;
     currentIndex.value = 0;
 
-    await setCurrentTrack(0);
+    await setCurrentTrack(index: 0);
 
     queue.add(songs);
 
@@ -205,6 +208,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   void setShuffleModeEnabled() {
     shuffleMode = shuffleMode.next();
     prepareShuffle();
+    _broadcastState();
   }
 
   ModeShuffleEnum isShuffleEnabled() {
@@ -232,10 +236,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> skipToQueueItem(int index) async {
+    await setCurrentTrack(index: index);
     if (shuffleMode != ModeShuffleEnum.shuffleOff) {
       prepareShuffle();
     }
-    await setCurrentTrack(index);
     play();
   }
 
@@ -270,7 +274,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     if (shouldStop) return;
 
     if (currentIndex.value + 1 < songsAtual.length) {
-      await setCurrentTrack(currentIndex.value + 1);
+      await setCurrentTrack(index: currentIndex.value + 1);
       play();
     }
 
@@ -286,7 +290,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     if (currentIndex.value > 0) {
       currentIndex.value--;
-      await setCurrentTrack(currentIndex.value);
+      await setCurrentTrack(index: currentIndex.value);
       play();
     }
   }
@@ -328,7 +332,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     played.add(nextIndex);
 
-    await setCurrentTrack(nextIndex);
+    await setCurrentTrack(index: nextIndex);
     play();
   }
 
@@ -342,7 +346,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     played.removeLast();
 
     int prevIndex = played.last;
-    await setCurrentTrack(prevIndex);
+    await setCurrentTrack(index: prevIndex);
     play();
   }
 

@@ -153,3 +153,8 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Correção no delete de uma música.  
 - Alteração da barra superior do aplicativo.  
 - Adição da opção retomar ultima fila.  
+
+### version 2.9  
+- Sincronização do shuffle do player interno e da notificação.  
+- Correção do reshuffle ao clicar em um item da lista.  
+- Correção do salvamento de ultima música.  

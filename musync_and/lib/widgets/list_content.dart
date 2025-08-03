@@ -16,7 +16,7 @@ import 'package:musync_and/widgets/popup_list.dart';
 import 'package:collection/collection.dart';
 
 class ListContent extends StatefulWidget {
-  final MyAudioHandler audioHandler;
+  final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
   final void Function(MediaItem)? aposClique;
@@ -65,7 +65,8 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Informações',
         'funct': () async {
-          showSpec(item);
+          log(item.extras?['path']);
+          //showSpec(item);
         },
       },
       {
@@ -94,7 +95,7 @@ class _ListContentState extends State<ListContent> {
                 'genre': valores[3],
               });
 
-              int indexSongAll = MyAudioHandler.songsAll.indexWhere(
+              int indexSongAll = MusyncAudioHandler.songsAll.indexWhere(
                 (e) => e.id == item.id,
               );
 
@@ -103,7 +104,7 @@ class _ListContentState extends State<ListContent> {
               );
 
               if (indexSongAll != -1) {
-                final antigo = MyAudioHandler.songsAll[indexSongAll];
+                final antigo = MusyncAudioHandler.songsAll[indexSongAll];
 
                 final musicEditada = antigo.copyWith(
                   title: valores[0],
@@ -114,11 +115,10 @@ class _ListContentState extends State<ListContent> {
                     ...?antigo.extras,
                     'lastModified': antigo.extras?['lastModified'],
                     'path': antigo.extras?['path'],
-                    'hash': antigo.extras?['hash'],
                   },
                 );
 
-                MyAudioHandler.songsAll[indexSongAll] = musicEditada;
+                MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
                 widget.songsNow[indexSongNow] = musicEditada;
 
                 setState(() {});
@@ -274,7 +274,7 @@ class _ListContentState extends State<ListContent> {
       try {
         setState(() {
           widget.songsNow.remove(item);
-          MyAudioHandler.songsAll.remove(item);
+          MusyncAudioHandler.songsAll.remove(item);
         });
         await widget.audioHandler.recreateQueue(songs: widget.songsNow);
         await file.delete();
