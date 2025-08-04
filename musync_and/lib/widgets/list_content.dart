@@ -65,8 +65,7 @@ class _ListContentState extends State<ListContent> {
       {
         'opt': 'Informações',
         'funct': () async {
-          log(item.extras?['path']);
-          //showSpec(item);
+          showSpec(item);
         },
       },
       {

@@ -51,29 +51,6 @@ class Playlists {
     );
   }
 
-  /*static Future<String> generateHashs(String filePath) async {
-    final file = File(filePath);
-    final fileLength = await file.length();
-    final raf = file.openSync();
-
-    try {
-      final startBytes = raf.readSync(64 * 1024);
-
-      List<int> endBytes = [];
-      if (fileLength > 128 * 1024) {
-        raf.setPositionSync(fileLength - (64 * 1024));
-        endBytes = raf.readSync(64 * 1024);
-      }
-
-      final combined = [...startBytes, ...endBytes];
-
-      final digest = sha256.convert(combined);
-      return digest.toString();
-    } finally {
-      raf.closeSync();
-    }
-  }*/
-
   Future<List<MediaItem>?> findMusics() async {
     List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 

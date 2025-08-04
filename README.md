@@ -158,3 +158,13 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Sincronização do shuffle do player interno e da notificação.  
 - Correção do reshuffle ao clicar em um item da lista.  
 - Correção do salvamento de ultima música.  
+
+### version 3.0  
+- Adição da aba Configurações.  
+- Adição de mudança de diretório de busca.  
+- Adição da mudança de playlist predefinida para download.  
+- Adição da pesquisa de artistas e playlists.  
+- Correção de cores do tema.  
+- Correção na sincronização do shuffle da notificação para o player interno.  
+- Alteração no funcionamento do download, possibilidade de mudar tags antes de baixar foi retirada.  
+- Alteração no funcionamento do download, não é possivel definir playlist padrão diretamente por essa pagina.  

@@ -63,7 +63,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.plTitle),
+        title: Text(
+          widget.plTitle,
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
         actions: [
           ElevatedButton(
             onPressed: () {

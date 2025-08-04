@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/playlist_page.dart';
+import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/fetch_songs.dart';
@@ -124,6 +125,7 @@ class _MusicPageState extends State<MusicPage> {
         );
       case 1:
         return ListPlaylist(
+          searchController: _searchController,
           escolhaDePlaylist: (pl) async {
             final newsongs = await pl.findMusics();
             if (newsongs != null) {
@@ -175,7 +177,10 @@ class _MusicPageState extends State<MusicPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Musync'),
+        title: const Text(
+          'MUSYNC',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
         actions: [
           ElevatedButton(
             onPressed: () {
@@ -205,10 +210,18 @@ class _MusicPageState extends State<MusicPage> {
                       builder: (context) => DownloadPage(),
                       settings: RouteSettings(name: 'donwload'),
                     ),
-                  );
+                  ).then((_) {
+                    setState(() {});
+                  });
                   break;
                 case 'config':
-                  log('configurações');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SettingsPage(),
+                      settings: RouteSettings(name: 'settings'),
+                    ),
+                  );
                   break;
               }
             },
@@ -218,21 +231,36 @@ class _MusicPageState extends State<MusicPage> {
                     value: 'reord',
                     child: Text(
                       'Reordenar',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
                     ),
                   ),
                   PopupMenuItem(
                     value: 'downl',
                     child: Text(
                       'Downloads',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
                     ),
                   ),
                   PopupMenuItem(
                     value: 'config',
                     child: Text(
                       'Configurações',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
                     ),
                   ),
                 ],
@@ -360,7 +388,13 @@ class _MusicPageState extends State<MusicPage> {
                         Expanded(
                           child: TextField(
                             controller: _searchController,
-                            style: const TextStyle(fontSize: 13),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).extension<CustomColors>()!.textForce,
+                            ),
                             decoration: const InputDecoration(
                               labelText: 'Pesquisa',
                               contentPadding: EdgeInsets.symmetric(

@@ -9,31 +9,68 @@ import 'package:musync_and/widgets/popup_add.dart';
 class ListPlaylist extends StatefulWidget {
   final void Function(Playlists)? escolhaDePlaylist;
   final void Function(String)? escolhaDeArtista;
+  final TextEditingController? searchController;
 
   const ListPlaylist({
     super.key,
     this.escolhaDePlaylist,
     this.escolhaDeArtista,
+    this.searchController,
   });
   @override
   State<ListPlaylist> createState() => _ListPlaylistState();
 }
 
 class _ListPlaylistState extends State<ListPlaylist> {
+  List<Playlists> plsBase = [];
+  List<String> artsBase = [];
+
   List<Playlists> pls = [];
   List<String> arts = [];
 
   @override
   void initState() {
     super.initState();
+    widget.searchController?.addListener(_onSearchChanged);
     carregarPlaylists();
+  }
+
+  void _onSearchChanged() {
+    final valueSearch = widget.searchController?.text.toLowerCase().trim();
+    setState(() {
+      if (valueSearch != '') {
+        pls =
+            plsBase
+                .where(
+                  (pl) =>
+                      pl.title.toLowerCase().trim().contains(valueSearch ?? ''),
+                )
+                .toList();
+        arts =
+            artsBase
+                .where(
+                  (art) => art.toLowerCase().trim().contains(valueSearch ?? ''),
+                )
+                .toList();
+      } else {
+        pls = plsBase;
+        arts = artsBase;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.searchController?.removeListener(_onSearchChanged);
+    super.dispose();
   }
 
   void carregarPlaylists() async {
     final listas = await DatabaseHelper().loadPlaylists();
     setState(() {
-      pls = listas;
-      arts =
+      plsBase = listas;
+      pls = plsBase;
+      artsBase =
           MusyncAudioHandler.songsAll
               .expand(
                 (item) => (item.artist ?? '')
@@ -44,6 +81,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               .toSet()
               .toList()
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      arts = artsBase;
     });
   }
 
@@ -145,7 +183,9 @@ class _ListPlaylistState extends State<ListPlaylist> {
                                     subtitle: valores[1],
                                   );
 
-                                  pls = await DatabaseHelper().loadPlaylists();
+                                  plsBase =
+                                      await DatabaseHelper().loadPlaylists();
+                                  pls = plsBase;
 
                                   setState(() {});
 

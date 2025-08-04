@@ -32,9 +32,6 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  ValueNotifier<ModeShuffleEnum> toRandom = ValueNotifier(
-    ModeShuffleEnum.shuffleOff,
-  );
   ValueNotifier<ModeLoopEnum> toLoop = ValueNotifier(ModeLoopEnum.off);
 
   @override
@@ -124,7 +121,7 @@ class _PlayerState extends State<Player> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: toRandom,
+                  valueListenable: widget.audioHandler.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -135,7 +132,6 @@ class _PlayerState extends State<Player> {
                       ),
                       onPressed: () {
                         widget.audioHandler.setShuffleModeEnabled();
-                        toRandom.value = value.next();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional
@@ -193,7 +189,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: toRandom,
+                  valueListenable: widget.audioHandler.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(

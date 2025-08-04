@@ -29,9 +29,8 @@ class _DownloadPageState extends State<DownloadPage> {
   int? year = 2000;
   String thumb = '';
   bool isLoading = false;
-  String directory = '/storage/emulated/0/snaptube/download/SnapTube Audio/';
+  String directory = '';
   var yt = YoutubeExplode();
-  Map<String, dynamic>? tagsDiferenciadas = {};
 
   ValueNotifier<double> progresso = ValueNotifier(0);
   double etapas = 6;
@@ -39,7 +38,6 @@ class _DownloadPageState extends State<DownloadPage> {
   late double incremento;
 
   bool _btnDownloadActv = true;
-  bool _btnTagActv = false;
 
   List<Map<String, dynamic>> videos = [];
   final List<String> caminhos =
@@ -49,12 +47,16 @@ class _DownloadPageState extends State<DownloadPage> {
           .cast<String>()
           .toList();
 
-  bool podeSalvarPlaylist = false;
-
   @override
   void initState() {
     super.initState();
     initAsync();
+  }
+
+  @override
+  void dispose() {
+    yt.close();
+    super.dispose();
   }
 
   void initAsync() async {
@@ -62,6 +64,15 @@ class _DownloadPageState extends State<DownloadPage> {
 
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('playlist_principal') ?? '';
+    directory = prefs.getString('dir_download') ?? '';
+
+    if (directory == '') {
+      showPopupAdd(
+        context,
+        'Adicione um diretorio nas configurações para evitar problemas',
+        [],
+      );
+    }
 
     procurarPlaylist(url);
   }
@@ -74,10 +85,6 @@ class _DownloadPageState extends State<DownloadPage> {
           resultado
               .map((video) => {'video': video, 'selected': false})
               .toList();
-      if (textController.text != '') {
-        podeSalvarPlaylist = true;
-        _btnTagActv = true;
-      }
       setState(() {});
     } catch (e) {
       return;
@@ -108,7 +115,6 @@ class _DownloadPageState extends State<DownloadPage> {
       situation.value = 'Situação: Música pronta para baixar.';
 
       year = video.uploadDate?.year;
-      _btnTagActv = true;
     } catch (e) {
       procurarPlaylist(link);
     }
@@ -145,7 +151,7 @@ class _DownloadPageState extends State<DownloadPage> {
               });
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -198,6 +204,7 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   Future<void> baixarAudio(var video, String title, String artist) async {
+    progresso.value = 0.1;
     var manifest = await yt.videos.streamsClient.getManifest(video.id);
     atualizarProgresso(progresso);
 
@@ -237,10 +244,8 @@ class _DownloadPageState extends State<DownloadPage> {
     atualizarProgresso(progresso);
 
     await Playlists.editarTags(mp3path, {
-      'title': preferidaOuSafe(tagsDiferenciadas?['title'], title),
-      'trackArtist': preferidaOuSafe(tagsDiferenciadas?['trackArtist'], artist),
-      'album': preferidaOuSafe(tagsDiferenciadas?['album'], artist),
-      'genre': tagsDiferenciadas?['genre'],
+      'title': title,
+      'trackArtist': artist,
       'year': year,
       'pictures': img,
     });
@@ -252,14 +257,9 @@ class _DownloadPageState extends State<DownloadPage> {
 
     MediaItem musicBaixada = MediaItem(
       id: uri,
-      title: preferidaOuSafe(tagsDiferenciadas?['title'], safeTitle.value),
-      artist: preferidaOuSafe(
-        tagsDiferenciadas?['trackArtist'],
-        safeAuthor.value,
-      ),
+      title: title,
+      artist: artist,
       duration: video.duration ?? Duration.zero,
-      album: preferidaOuSafe(tagsDiferenciadas?['album'], safeAuthor.value),
-      genre: tagsDiferenciadas?['genre'],
       extras: {'lastModified': lastModified, 'path': mp3path},
       artUri: Uri.parse(thumbUrl),
     );
@@ -292,268 +292,209 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   @override
-  void dispose() {
-    yt.close();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Musyout Download')),
-      body: Center(
-        child: Padding(
-          padding: padding,
-          child: Column(
-            children: [
-              Padding(
-                padding: padding,
-                child: Column(
-                  children: [
-                    ValueListenableBuilder<String>(
-                      valueListenable: safeTitle,
-                      builder: (context, title, _) {
-                        return Player.titleText(title, 20);
-                      },
-                    ),
-                    ValueListenableBuilder<String>(
-                      valueListenable: safeAuthor,
-                      builder: (context, artist, _) {
-                        return Text(
-                          artist,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        );
-                      },
-                    ),
-                    ValueListenableBuilder<String>(
-                      valueListenable: situation,
-                      builder: (context, stt, _) {
-                        return Text(
-                          stt,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: padding,
-                child: TextField(
-                  controller: textController,
-                  decoration: InputDecoration(
-                    contentPadding: padding,
-                    hintText: 'Colar URL (vídeo ou playlist)',
-                    suffixIcon: IconButton(
-                      onPressed: () async {
-                        setState(() {
-                          url = textController.text;
-                          isLoading = true;
-                        });
-                        buscarVideo(url);
-                      },
-                      icon: Icon(Icons.search),
-                    ),
-                  ),
-                  onChanged: (url) => buscarVideo(url),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+      appBar: AppBar(
+        title: Text(
+          'MUSYNC DOWNLOAD',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: Padding(
+              padding: padding,
+              child: Column(
                 children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (_btnDownloadActv == false) return;
-
-                      setState(() {
-                        _btnDownloadActv = false;
-                        _btnTagActv = false;
-                      });
-
-                      List<Video> videosEscolhidos =
-                          videos
-                              .where((v) => v['selected'] == true)
-                              .map<Video>((v) => v['video'] as Video)
-                              .toList();
-
-                      if (videosEscolhidos.isEmpty) {
-                        baixarAudio(
-                          await yt.videos.get(url),
-                          safeTitle.value,
-                          safeAuthor.value,
-                        );
-                      } else {
-                        int qnt = 0;
-                        situation.value =
-                            'Situação: 0/${videosEscolhidos.length} Baixados';
-
-                        for (var video in videosEscolhidos) {
-                          safeTitle.value = video.title;
-                          safeAuthor.value = video.author;
-                          await baixarAudio(video, video.title, video.author);
-                          qnt++;
-                          situation.value =
-                              'Situação: $qnt/${videosEscolhidos.length} Baixados';
-                        }
-                      }
-                    },
-                    style: ButtonStyle(
-                      elevation: WidgetStateProperty.all(
-                        _btnDownloadActv ? 3 : 0,
-                      ),
-                      backgroundColor: WidgetStateProperty.all(
-                        _btnDownloadActv
-                            ? null
-                            : Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.disabledBack,
-                      ),
-                      foregroundColor: WidgetStateProperty.all(
-                        _btnDownloadActv
-                            ? null
-                            : Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.disabledText,
-                      ),
+                  Padding(
+                    padding: padding,
+                    child: Column(
+                      children: [
+                        ValueListenableBuilder<String>(
+                          valueListenable: safeTitle,
+                          builder: (context, title, _) {
+                            return Player.titleText(title, 20);
+                          },
+                        ),
+                        ValueListenableBuilder<String>(
+                          valueListenable: safeAuthor,
+                          builder: (context, artist, _) {
+                            return Text(
+                              artist,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          },
+                        ),
+                        ValueListenableBuilder<String>(
+                          valueListenable: situation,
+                          builder: (context, stt, _) {
+                            return Text(
+                              stt,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 15),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    child: Text('Baixar .mp3'),
                   ),
-                  SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (_btnTagActv == false) return;
-
-                      if (podeSalvarPlaylist) {
-                        final prefs = await SharedPreferences.getInstance();
-                        prefs.setString('playlist_principal', url);
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Playlist definida como principal!'),
+                  Padding(
+                    padding: padding,
+                    child: TextField(
+                      controller: textController,
+                      decoration: InputDecoration(
+                        contentPadding: padding,
+                        hintText: 'Colar URL (vídeo ou playlist)',
+                        suffixIcon: IconButton(
+                          onPressed: () async {
+                            setState(() {
+                              url = textController.text;
+                              isLoading = true;
+                            });
+                            buscarVideo(url);
+                          },
+                          icon: Icon(Icons.search),
+                        ),
+                      ),
+                      onChanged: (url) => buscarVideo(url),
+                    ),
+                  ),
+                  ValueListenableBuilder<double>(
+                    valueListenable: progresso,
+                    builder: (context, pgr, _) {
+                      if (pgr == 0.0) {
+                        return SizedBox.shrink();
+                      } else {
+                        return Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Color.fromARGB(255, 243, 160, 34),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${pgr.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromARGB(255, 243, 160, 34),
+                                  ),
+                                ),
+                                if (pgr.toStringAsFixed(0) == '100')
+                                  Text(
+                                    'Download Concluído',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontStyle: FontStyle.italic,
+                                      color: Color.fromARGB(255, 243, 160, 34),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         );
-                        return;
                       }
-
-                      showPopupAdd(
-                        context,
-                        safeTitle.value,
-                        [
-                          {'value': 'Título', 'type': 'text'},
-                          {'value': 'Artista', 'type': 'text'},
-                          {'value': 'Album', 'type': 'text'},
-                          {'value': 'Gênero', 'type': 'text'},
-                        ],
-                        fieldValues: [
-                          safeTitle.value,
-                          safeAuthor.value,
-                          safeAuthor.value,
-                          '',
-                        ],
-                        onConfirm: (valores) {
-                          if (valores[0] != '') {
-                            tagsDiferenciadas?['title'] = valores[0];
-                            safeTitle.value = valores[0];
-                          }
-                          if (valores[1] != '') {
-                            tagsDiferenciadas?['trackArtist'] = valores[1];
-                            safeAuthor.value = valores[1];
-                          }
-                          if (valores[2] != '') {
-                            tagsDiferenciadas?['album'] = valores[2];
-                          }
-                          if (valores[3] != '') {
-                            tagsDiferenciadas?['genre'] = valores[3];
-                          }
-                        },
-                      );
                     },
-                    style: ButtonStyle(
-                      elevation: WidgetStateProperty.all(_btnTagActv ? 3 : 0),
-                      backgroundColor: WidgetStateProperty.all(
-                        _btnTagActv
-                            ? null
-                            : Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.disabledBack,
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.only(top: 10, bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(10),
+                        ),
                       ),
-                      foregroundColor: WidgetStateProperty.all(
-                        _btnTagActv
-                            ? null
-                            : Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.disabledText,
-                      ),
-                    ),
-                    child: Text(
-                      podeSalvarPlaylist ? 'Definir como' : 'Editar tags',
+                      child: listarVideos(),
                     ),
                   ),
                 ],
               ),
-              ValueListenableBuilder<double>(
-                valueListenable: progresso,
-                builder: (context, pgr, _) {
-                  if (pgr == 0) {
-                    return SizedBox.shrink();
-                  } else {
-                    return Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        margin: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Color.fromARGB(255, 243, 160, 34),
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${pgr.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromARGB(255, 243, 160, 34),
-                              ),
-                            ),
-                            if (pgr.toStringAsFixed(0) == '100')
-                              Text(
-                                'Download Concluído',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontStyle: FontStyle.italic,
-                                  color: Color.fromARGB(255, 243, 160, 34),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-              Expanded(child: listarVideos()),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: ElevatedButton(
+              onPressed: () async {
+                if (_btnDownloadActv == false) return;
+
+                setState(() {
+                  _btnDownloadActv = false;
+                });
+
+                List<Video> videosEscolhidos =
+                    videos
+                        .where((v) => v['selected'] == true)
+                        .map<Video>((v) => v['video'] as Video)
+                        .toList();
+
+                if (videosEscolhidos.isEmpty) {
+                  baixarAudio(
+                    await yt.videos.get(url),
+                    safeTitle.value,
+                    safeAuthor.value,
+                  );
+                } else {
+                  int qnt = 0;
+                  situation.value =
+                      'Situação: 0/${videosEscolhidos.length} Baixados';
+
+                  for (var video in videosEscolhidos) {
+                    safeTitle.value = video.title;
+                    safeAuthor.value = video.author;
+                    await baixarAudio(video, video.title, video.author);
+                    qnt++;
+                    situation.value =
+                        'Situação: $qnt/${videosEscolhidos.length} Baixados';
+                  }
+                }
+              },
+              style: ButtonStyle(
+                shape: WidgetStateProperty.all(const CircleBorder()),
+                padding: WidgetStateProperty.all(const EdgeInsets.all(20)),
+                backgroundColor: WidgetStateProperty.all(
+                  _btnDownloadActv
+                      ? Theme.of(context).appBarTheme.foregroundColor
+                      : Theme.of(
+                        context,
+                      ).extension<CustomColors>()!.disabledBack,
+                ),
+                foregroundColor: WidgetStateProperty.all(
+                  _btnDownloadActv
+                      ? Theme.of(context).cardTheme.color
+                      : Theme.of(
+                        context,
+                      ).extension<CustomColors>()!.disabledText,
+                ),
+                elevation: WidgetStateProperty.all(_btnDownloadActv ? 3 : 0),
+              ),
+              child: Icon(Icons.download),
+            ),
+          ),
+        ],
       ),
     );
   }

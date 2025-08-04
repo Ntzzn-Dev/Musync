@@ -67,7 +67,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   List<MediaItem> songsAtual = [];
 
   MediaControl get shuffleButton {
-    switch (shuffleMode) {
+    switch (shuffleMode.value) {
       case ModeShuffleEnum.shuffleOff:
         return MediaControl.custom(
           androidIcon: 'drawable/ic_random_off',
@@ -125,7 +125,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
     switch (name) {
       case 'random':
-        shuffleMode = shuffleMode.next();
+        shuffleMode.value = shuffleMode.value.next();
         prepareShuffle();
         _broadcastState();
         break;
@@ -201,18 +201,20 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   Stream<bool> get playingStream => audPl.playingStream;
 
-  ModeShuffleEnum shuffleMode = ModeShuffleEnum.shuffleOff;
+  ValueNotifier<ModeShuffleEnum> shuffleMode = ValueNotifier<ModeShuffleEnum>(
+    ModeShuffleEnum.shuffleOff,
+  );
 
   ModeLoopEnum loopMode = ModeLoopEnum.off;
 
   void setShuffleModeEnabled() {
-    shuffleMode = shuffleMode.next();
+    shuffleMode.value = shuffleMode.value.next();
     prepareShuffle();
     _broadcastState();
   }
 
   ModeShuffleEnum isShuffleEnabled() {
-    return shuffleMode;
+    return shuffleMode.value;
   }
 
   void setLoopModeEnabled() {
@@ -237,7 +239,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   @override
   Future<void> skipToQueueItem(int index) async {
     await setCurrentTrack(index: index);
-    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       prepareShuffle();
     }
     play();
@@ -245,7 +247,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToNext() async {
-    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       playNextShuffled();
     } else {
       playNext();
@@ -253,7 +255,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void skipToNextAuto() {
-    if (shuffleMode == ModeShuffleEnum.shuffleNormal) {
+    if (shuffleMode.value == ModeShuffleEnum.shuffleNormal) {
       playNextShuffled();
     } else {
       playNext();
@@ -262,7 +264,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToPrevious() async {
-    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       playPreviousShuffled();
     } else {
       playPrevious();
@@ -278,7 +280,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       play();
     }
 
-    if (shuffleMode == ModeShuffleEnum.shuffleOptional) {
+    if (shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
       unplayed.removeWhere((i) => i == currentIndex.value);
       played.add(currentIndex.value);
     }
