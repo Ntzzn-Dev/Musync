@@ -13,6 +13,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'dart:developer';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -137,83 +138,125 @@ class _DownloadPageState extends State<DownloadPage> {
         final video = videos[index]['video'] as Video;
         final title = video.title;
         final canal = video.author;
-        return Container(
-          color:
-              videos[index]['selected']
-                  ? Color.fromARGB(25, 243, 160, 34)
-                  : null,
-          height: 78,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () {
-              setState(() {
-                videos[index]['selected'] = !videos[index]['selected'];
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: Image.network(
-                      'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg',
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
+
+        List<Widget> children = [];
+
+        if (index % 10 == 0) {
+          children.add(
+            Container(
+              height: 30,
+              width: double.infinity,
+              color: const Color.fromARGB(255, 54, 54, 54),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 243, 160, 34),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          );
+        }
+        children.add(
+          Container(
+            color:
+                videos[index]['selected']
+                    ? Color.fromARGB(25, 243, 160, 34)
+                    : null,
+            height: 78,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () {
+                setState(() {
+                  videos[index]['selected'] = !videos[index]['selected'];
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: Image.network(
+                        'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            softWrap: true,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                           ),
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          canal,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
+                          const SizedBox(height: 2),
+                          Text(
+                            canal,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
+                            softWrap: true,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
                           ),
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 3,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
         );
       },
     );
   }
 
+  Future<void> pedirPermissaoStorage() async {
+    var status = await Permission.storage.request();
+    if (!status.isGranted) {
+      throw Exception('Permissão de armazenamento não concedida');
+    }
+  }
+
   Future<void> baixarAudio(var video, String title, String artist) async {
-    progresso.value = 0.1;
+    //progresso.value = 0.1;
     var manifest = await yt.videos.streamsClient.getManifest(video.id);
     atualizarProgresso(progresso);
 
     var audio = manifest.audioOnly.withHighestBitrate();
     var stream = yt.videos.streamsClient.get(audio);
 
-    String webmpath = '$directory$title.webm';
+    String webmpath =
+        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.webm';
 
-    String mp3path = '$directory$title.mp3';
+    String mp3path =
+        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.mp3';
 
     var file = File(webmpath);
     var fileStream = file.openWrite();

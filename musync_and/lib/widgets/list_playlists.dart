@@ -75,8 +75,8 @@ class _ListPlaylistState extends State<ListPlaylist> {
               .expand(
                 (item) => (item.artist ?? '')
                     .split(',')
-                    .map((e) => e.trim())
-                    .where((e) => e.isNotEmpty),
+                    .map((e) => e.toLowerCase().trim())
+                    .where((e) => e.toLowerCase().trim().isNotEmpty),
               )
               .toSet()
               .toList()

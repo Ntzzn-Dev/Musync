@@ -264,7 +264,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToPrevious() async {
-    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+    if (audPl.position > Duration(seconds: 5)) {
+      await audPl.seek(Duration.zero);
+    } else if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       playPreviousShuffled();
     } else {
       playPrevious();

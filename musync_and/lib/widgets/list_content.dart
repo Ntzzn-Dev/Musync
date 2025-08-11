@@ -14,6 +14,7 @@ import 'package:musync_and/widgets/popup.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 import 'package:collection/collection.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ListContent extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -128,6 +129,24 @@ class _ListContentState extends State<ListContent> {
               }
             },
           );
+        },
+      },
+      {
+        'opt': 'Compartilhar',
+        'funct': () async {
+          final file = File(item.extras?['path']);
+
+          if (await file.exists()) {
+            await SharePlus.instance.share(
+              ShareParams(
+                text: item.title,
+                title: item.title,
+                files: [XFile(file.path)],
+              ),
+            );
+          } else {
+            log('Arquivo não encontrado!');
+          }
         },
       },
       {
