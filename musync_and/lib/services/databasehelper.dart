@@ -48,36 +48,6 @@ class DatabaseHelper {
     );
   }
 
-  Future<void> migratePlaylistsMusicsTable() async {
-    final db = await database;
-    // 1. Renomeia a tabela antiga
-    await db.execute('''
-    ALTER TABLE playlists_musics RENAME TO playlists_musics_old;
-  ''');
-
-    // 2. Cria a nova tabela com a coluna ordem
-    await db.execute('''
-    CREATE TABLE playlists_musics (
-      id_playlist INTEGER,
-      id_music TEXT,
-      ordem INTEGER,
-      FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
-      PRIMARY KEY (id_playlist, id_music)
-    );
-  ''');
-
-    // 3. Copia os dados antigos para a nova tabela (ordem pode começar como NULL ou 0)
-    await db.execute('''
-    INSERT INTO playlists_musics (id_playlist, id_music, ordem)
-    SELECT id_playlist, id_music, NULL FROM playlists_musics_old;
-  ''');
-
-    // 4. Remove a tabela antiga
-    await db.execute('''
-    DROP TABLE playlists_musics_old;
-  ''');
-  }
-
   Future<void> deleteDatabaseFile() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'musyncand.db');

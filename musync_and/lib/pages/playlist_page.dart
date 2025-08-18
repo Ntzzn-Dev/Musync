@@ -26,7 +26,6 @@ class PlaylistPage extends StatefulWidget {
   State<PlaylistPage> createState() => _PlaylistPageState();
 }
 
-// TRY TO OTIMIZE -------------------------------------------------------------------------------------------
 class _PlaylistPageState extends State<PlaylistPage> {
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
   final TextEditingController _searchController = TextEditingController();
