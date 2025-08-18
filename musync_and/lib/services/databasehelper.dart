@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -38,12 +39,43 @@ class DatabaseHelper {
           CREATE TABLE playlists_musics (
             id_playlist INTEGER,
             id_music TEXT,
+            ordem INTEGER,
             FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
             PRIMARY KEY (id_playlist, id_music)
           )
         ''');
       },
     );
+  }
+
+  Future<void> migratePlaylistsMusicsTable() async {
+    final db = await database;
+    // 1. Renomeia a tabela antiga
+    await db.execute('''
+    ALTER TABLE playlists_musics RENAME TO playlists_musics_old;
+  ''');
+
+    // 2. Cria a nova tabela com a coluna ordem
+    await db.execute('''
+    CREATE TABLE playlists_musics (
+      id_playlist INTEGER,
+      id_music TEXT,
+      ordem INTEGER,
+      FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
+      PRIMARY KEY (id_playlist, id_music)
+    );
+  ''');
+
+    // 3. Copia os dados antigos para a nova tabela (ordem pode começar como NULL ou 0)
+    await db.execute('''
+    INSERT INTO playlists_musics (id_playlist, id_music, ordem)
+    SELECT id_playlist, id_music, NULL FROM playlists_musics_old;
+  ''');
+
+    // 4. Remove a tabela antiga
+    await db.execute('''
+    DROP TABLE playlists_musics_old;
+  ''');
   }
 
   Future<void> deleteDatabaseFile() async {
@@ -112,17 +144,44 @@ class DatabaseHelper {
     playlistUpdateNotifier.notifyPlaylistChanged();
   }
 
-  Future<List<Playlists>> loadPlaylists({String? idMusic}) async {
+  Future<List<Playlists>> loadPlaylists({
+    String? idMusic,
+    List<String>? idsMusic,
+  }) async {
     final db = await database;
     final List<Map<String, dynamic>> playlistsFromDB = await db.query(
       'playlists',
       orderBy: 'ordem ASC',
     );
 
-    if (idMusic == null) {
-      return List.generate(playlistsFromDB.length, (i) {
-        return Playlists.fromMap(playlistsFromDB[i]);
-      });
+    if (idMusic == null && idsMusic == null) {
+      return playlistsFromDB.map((e) => Playlists.fromMap(e)).toList();
+    }
+
+    if (idsMusic != null) {
+      return Future.wait(
+        playlistsFromDB.map((playlist) async {
+          final idPlaylist = playlist['id'] as int;
+
+          final result = await db.query(
+            'playlists_musics',
+            where:
+                'id_playlist = ? AND id_music IN (${List.filled(idsMusic.length, '?').join(',')})',
+            whereArgs: [idPlaylist, ...idsMusic],
+          );
+
+          final hasMusic = result.isNotEmpty;
+
+          return Playlists(
+            id: idPlaylist,
+            title: playlist['title'],
+            subtitle: playlist['subtitle'],
+            ordem: playlist['ordem'],
+            orderMode: playlist['order_mode'],
+            haveMusic: hasMusic,
+          );
+        }),
+      );
     }
 
     return Future.wait(
@@ -145,7 +204,7 @@ class DatabaseHelper {
           orderMode: playlist['order_mode'],
           haveMusic: hasMusic,
         );
-      }).toList(),
+      }),
     );
   }
 
@@ -170,10 +229,31 @@ class DatabaseHelper {
       'playlists_musics',
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
+      orderBy: 'ordem ASC',
     );
 
     return List.generate(idsFromPlaylists.length, (i) {
       return idsFromPlaylists[i]['id_music'];
     });
+  }
+
+  Future<void> updateOrderMusics(List<MediaItem> songs, int idPlaylist) async {
+    final db = await database;
+    final batch = db.batch();
+
+    log(songs.map((msc) => msc.title).toList().toString());
+
+    int cont = 0;
+    for (MediaItem song in songs) {
+      cont++;
+      batch.update(
+        'playlists_musics',
+        {'ordem': cont},
+        where: 'id_playlist = ? AND id_music = ?',
+        whereArgs: [idPlaylist, song.id],
+      );
+    }
+
+    await batch.commit(noResult: true);
   }
 }

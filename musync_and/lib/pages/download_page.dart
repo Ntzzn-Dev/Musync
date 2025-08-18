@@ -505,7 +505,7 @@ class _DownloadPageState extends State<DownloadPage> {
                   situation.value =
                       'Situação: 0/${videosEscolhidos.length} Baixados';
 
-                  for (var video in videosEscolhidos) {
+                  for (var video in videosEscolhidos.reversed) {
                     safeTitle.value = video.title;
                     safeAuthor.value = video.author;
                     await baixarAudio(video, video.title, video.author);

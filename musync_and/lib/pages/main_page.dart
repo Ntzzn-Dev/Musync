@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:musync_and/pages/download_page.dart';
@@ -29,6 +30,7 @@ class _MusicPageState extends State<MusicPage> {
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
+  ValueNotifier<List<Widget>> funcSuperiores = ValueNotifier([]);
 
   var modeAtual = ModeOrderEnum.dataZA;
 
@@ -38,6 +40,14 @@ class _MusicPageState extends State<MusicPage> {
   void initState() {
     super.initState();
     _initFetchSongs();
+    funcSuperiores.value = [
+      ElevatedButton(
+        onPressed: () {
+          _loadLastPlaylist();
+        },
+        child: Icon(Icons.play_arrow_rounded),
+      ),
+    ];
   }
 
   @override
@@ -101,8 +111,8 @@ class _MusicPageState extends State<MusicPage> {
               .toList();
     }
 
-    widget.audioHandler.recreateQueue(songs: newsongs);
-    widget.audioHandler.skipToQueueItem(ultimaMusica ?? 0);
+    await widget.audioHandler.recreateQueue(songs: newsongs);
+    await widget.audioHandler.skipToQueueItem(ultimaMusica ?? 0);
   }
 
   Widget pageSelect(int pageIndex) {
@@ -122,23 +132,43 @@ class _MusicPageState extends State<MusicPage> {
             );
             await widget.audioHandler.skipToQueueItem(indiceCerto);
           },
+          selecaoDeMusicas: (indexMsc) {
+            moreOptionsSelected(indexMsc);
+          },
         );
       case 1:
+        funcSuperiores.value = [
+          ElevatedButton(
+            onPressed: () {
+              _loadLastPlaylist();
+            },
+            child: Icon(Icons.play_arrow_rounded),
+          ),
+        ];
         return ListPlaylist(
           searchController: _searchController,
           escolhaDePlaylist: (pl) async {
             final newsongs = await pl.findMusics();
             if (newsongs != null) {
-              _abrirPlaylist(title: pl.title, songs: newsongs, pl: pl);
+              _abrirPlaylist(title: pl.title, songs: newsongs, idPl: pl.id);
             }
           },
           escolhaDeArtista: (art) {
+            final artistList =
+                art.split(',').map((a) => a.trim().toLowerCase()).toList();
+
             final newsongs =
-                MusyncAudioHandler.songsAll
-                    .where(
-                      (item) => (item.artist ?? '').trim().contains(art.trim()),
-                    )
-                    .toList();
+                MusyncAudioHandler.songsAll.where((item) {
+                  final songArtists =
+                      (item.artist ?? '')
+                          .split(',')
+                          .map((a) => a.trim().toLowerCase())
+                          .toList();
+
+                  return artistList.every(
+                    (artist) => songArtists.contains(artist),
+                  );
+                }).toList();
 
             _abrirPlaylist(title: art, songs: newsongs);
           },
@@ -148,15 +178,41 @@ class _MusicPageState extends State<MusicPage> {
     }
   }
 
+  void deletarMusicas(List<MediaItem> itens) async {
+    for (MediaItem item in itens) {
+      final file = File(item.extras?['path']);
+      if (await file.exists()) {
+        try {
+          setState(() {
+            songsNow.remove(item);
+            MusyncAudioHandler.songsAll.remove(item);
+          });
+          await widget.audioHandler.recreateQueue(songs: songsNow);
+          await file.delete();
+        } catch (e) {
+          log('Erro ao deletar: $e');
+        }
+      } else {
+        log('Arquivo não encontrado');
+      }
+    }
+  }
+
   void _abrirPlaylist({
     required String title,
     required List<MediaItem> songs,
-    Playlists? pl,
-  }) {
-    final reordered = MusyncAudioHandler.reorder(modeAtual, songs);
-    setState(() {
-      songsNow = reordered;
-    });
+    int? idPl,
+  }) async {
+    List<MediaItem> songsPl = [...songs];
+    Playlists? pl;
+    if (idPl != null) {
+      pl = await DatabaseHelper().loadPlaylist(idPl);
+
+      songsPl = MusyncAudioHandler.reorder(
+        ModeOrderEnumExt.convert(pl!.orderMode),
+        songs,
+      );
+    }
 
     Navigator.push(
       context,
@@ -165,12 +221,173 @@ class _MusicPageState extends State<MusicPage> {
             (context) => PlaylistPage(
               plTitle: title,
               audioHandler: widget.audioHandler,
-              songsPL: reordered,
+              songsPL: songsPl,
               pl: pl,
             ),
         settings: const RouteSettings(name: 'playlistOpened'),
       ),
     );
+  }
+
+  void moreOptionsSelected(List<int> indexMsc) async {
+    if (indexMsc.isNotEmpty) {
+      List<String> idsMscs = indexMsc.map((i) => songsNow[i].id).toList();
+      List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+        idsMusic: idsMscs,
+      );
+      funcSuperiores.value = [
+        PopupMenuButton<String>(
+          icon: Icon(Icons.queue_music_rounded),
+          onSelected: (value) {
+            switch (value) {
+              case 'addtoplaylist':
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) {
+                    return StatefulBuilder(
+                      builder: (context, setModalState) {
+                        return FractionallySizedBox(
+                          heightFactor: 0.45,
+                          child: Container(
+                            padding: const EdgeInsets.only(top: 20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                            ),
+                            child: ListView.builder(
+                              itemCount: playlists.length,
+                              itemBuilder: (context, index) {
+                                final playlist = playlists[index];
+                                return SizedBox(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                      for (String id in idsMscs) {
+                                        if (playlist.haveMusic ?? false) {
+                                          await DatabaseHelper()
+                                              .removeFromPlaylist(
+                                                playlist.id,
+                                                id,
+                                              );
+                                        } else {
+                                          await DatabaseHelper().addToPlaylist(
+                                            playlist.id,
+                                            id,
+                                          );
+                                        }
+                                      }
+
+                                      setModalState(() {
+                                        playlists[index] = playlist.copyWith(
+                                          haveMusic:
+                                              !(playlist.haveMusic ?? false),
+                                        );
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            playlist.title,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            playlist.subtitle,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 3,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+                break;
+              case 'delete':
+                deletarMusicas(indexMsc.map((i) => songsNow[i]).toList());
+                break;
+            }
+          },
+          itemBuilder:
+              (context) => [
+                PopupMenuItem(
+                  value: 'addtoplaylist',
+                  child: Text(
+                    'Adicionar à Playlist',
+                    style: TextStyle(
+                      color:
+                          Theme.of(
+                            context,
+                          ).extension<CustomColors>()!.textForce,
+                    ),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(
+                    'Apagar',
+                    style: TextStyle(
+                      color:
+                          Theme.of(
+                            context,
+                          ).extension<CustomColors>()!.textForce,
+                    ),
+                  ),
+                ),
+              ],
+        ),
+      ];
+    } else {
+      funcSuperiores.value = [
+        ElevatedButton(
+          onPressed: () {
+            _loadLastPlaylist();
+          },
+          child: Icon(Icons.play_arrow_rounded),
+        ),
+      ];
+    }
   }
 
   @override
@@ -182,11 +399,11 @@ class _MusicPageState extends State<MusicPage> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              _loadLastPlaylist();
+          ValueListenableBuilder<List<Widget>>(
+            valueListenable: funcSuperiores,
+            builder: (context, value, child) {
+              return Row(mainAxisSize: MainAxisSize.min, children: value);
             },
-            child: Icon(Icons.play_arrow_rounded),
           ),
           SizedBox(width: 9),
           PopupMenuButton<String>(
@@ -211,7 +428,13 @@ class _MusicPageState extends State<MusicPage> {
                       settings: RouteSettings(name: 'donwload'),
                     ),
                   ).then((_) {
-                    setState(() {});
+                    setState(() {
+                      MusyncAudioHandler.songsAll = MusyncAudioHandler.reorder(
+                        modeAtual,
+                        MusyncAudioHandler.songsAll,
+                      );
+                      songsNow = MusyncAudioHandler.songsAll;
+                    });
                   });
                   break;
                 case 'config':

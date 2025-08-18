@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
@@ -20,14 +19,20 @@ class ListContent extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
+  final int? idPlaylist;
+  final bool? withReorder;
   final void Function(MediaItem)? aposClique;
+  final void Function(List<int>)? selecaoDeMusicas;
 
   const ListContent({
     super.key,
     required this.audioHandler,
     required this.songsNow,
     required this.modeReorder,
+    this.idPlaylist,
+    this.withReorder,
     this.aposClique,
+    this.selecaoDeMusicas,
   });
 
   @override
@@ -37,6 +42,10 @@ class ListContent extends StatefulWidget {
 class _ListContentState extends State<ListContent> {
   late final ScrollController _scrollController;
   late bool listaEmUso;
+  late List<int> idsSelecoes;
+
+  late List<MediaItem> mutableSongs;
+  late ModeOrderEnum mode;
 
   @override
   void initState() {
@@ -46,6 +55,19 @@ class _ListContentState extends State<ListContent> {
       widget.songsNow,
       widget.audioHandler.songsAtual,
     );
+    idsSelecoes = [];
+    mutableSongs = List.from(widget.songsNow);
+    mode = widget.modeReorder;
+  }
+
+  @override
+  void didUpdateWidget(covariant ListContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.songsNow != widget.songsNow) {
+      mutableSongs = List.from(widget.songsNow);
+      mode = widget.modeReorder;
+    }
   }
 
   @override
@@ -58,9 +80,11 @@ class _ListContentState extends State<ListContent> {
     return [
       {
         'opt': 'Apagar Audio',
-        'funct': () {
-          deletarMusica(item);
-          Navigator.of(context).pop();
+        'funct': () async {
+          if (await showPopupAdd(context, "Deletar Mídia?", [])) {
+            deletarMusica(item);
+            Navigator.of(context).pop();
+          }
         },
       },
       {
@@ -99,7 +123,7 @@ class _ListContentState extends State<ListContent> {
                 (e) => e.id == item.id,
               );
 
-              int indexSongNow = widget.songsNow.indexWhere(
+              int indexSongNow = mutableSongs.indexWhere(
                 (e) => e.id == item.id,
               );
 
@@ -119,7 +143,7 @@ class _ListContentState extends State<ListContent> {
                 );
 
                 MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
-                widget.songsNow[indexSongNow] = musicEditada;
+                mutableSongs[indexSongNow] = musicEditada;
 
                 setState(() {});
 
@@ -291,10 +315,10 @@ class _ListContentState extends State<ListContent> {
     if (await file.exists()) {
       try {
         setState(() {
-          widget.songsNow.remove(item);
+          mutableSongs.remove(item);
           MusyncAudioHandler.songsAll.remove(item);
         });
-        await widget.audioHandler.recreateQueue(songs: widget.songsNow);
+        await widget.audioHandler.recreateQueue(songs: mutableSongs);
         await file.delete();
       } catch (e) {
         log('Erro ao deletar: $e');
@@ -302,15 +326,6 @@ class _ListContentState extends State<ListContent> {
     } else {
       log('Arquivo não encontrado');
     }
-  }
-
-  Uint8List? base64ToBytes(String dataUri) {
-    final regex = RegExp(r'data:.*;base64,(.*)');
-    final match = regex.firstMatch(dataUri);
-    if (match == null) return null;
-    final base64Str = match.group(1);
-    if (base64Str == null) return null;
-    return base64Decode(base64Str);
   }
 
   String getDateCategory(DateTime date) {
@@ -350,31 +365,63 @@ class _ListContentState extends State<ListContent> {
     );
   }
 
+  void toggleSelecao(ValueNotifier<List<bool>> musicasSelecionadas, int index) {
+    final novaLista = List<bool>.from(musicasSelecionadas.value);
+    novaLista[index] = !novaLista[index];
+    musicasSelecionadas.value = novaLista;
+
+    if (novaLista[index]) {
+      idsSelecoes.add(index);
+    } else {
+      idsSelecoes.remove(index);
+    }
+
+    widget.selecaoDeMusicas?.call(idsSelecoes);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mediaItems = widget.songsNow;
-    List<Widget> imgs =
-        widget.songsNow.map((item) {
-          final artUriStr = item.artUri?.toString();
+    final musicasSelecionadas = ValueNotifier(
+      List.filled(mutableSongs.length, false),
+    );
+    bool selecionando = false;
 
-          if (artUriStr != null && artUriStr.startsWith('data:')) {
-            final bytes = base64ToBytes(artUriStr);
-            if (bytes != null) {
-              return Image.memory(
-                bytes,
+    void onReorder(int oldIndex, int newIndex) async {
+      setState(() {
+        if (mode != ModeOrderEnum.manual) {
+          mode = ModeOrderEnum.manual;
+        }
+        if (newIndex > oldIndex) newIndex -= 1;
+        final item = mutableSongs.removeAt(oldIndex);
+        mutableSongs.insert(newIndex, item);
+      });
+
+      await DatabaseHelper().updatePlaylist(
+        widget.idPlaylist!,
+        orderMode: mode.disconvert(),
+      );
+
+      await DatabaseHelper().updateOrderMusics(
+        mutableSongs,
+        widget.idPlaylist ?? 0,
+      );
+
+      widget.audioHandler.reorganizeQueue(songs: mutableSongs);
+    }
+
+    List<Widget> imgs =
+        mutableSongs.map((item) {
+          final artUri = item.artUri;
+
+          if (artUri != null) {
+            if (artUri.scheme == 'file') {
+              return Image.file(
+                File(artUri.toFilePath()),
                 width: 45,
                 height: 45,
                 fit: BoxFit.cover,
               );
             }
-          } else if (artUriStr != null &&
-              (artUriStr.startsWith('http') || artUriStr.startsWith('https'))) {
-            return Image.network(
-              artUriStr,
-              width: 45,
-              height: 45,
-              fit: BoxFit.cover,
-            );
           }
 
           return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
@@ -389,156 +436,218 @@ class _ListContentState extends State<ListContent> {
           }
         });
 
-        return ListView.builder(
-          controller: _scrollController,
-          itemCount: mediaItems.length,
-          itemBuilder: (context, index) {
-            MediaItem item = mediaItems[index];
-
-            String currentSlice = '';
-            String previousSlice = '';
-
-            if (widget.modeReorder == ModeOrderEnum.dataZA ||
-                widget.modeReorder == ModeOrderEnum.dataAZ) {
-              final lastModified = DateTime.parse(item.extras?['lastModified']);
-              currentSlice = getDateCategory(lastModified);
-              previousSlice =
-                  index > 0
-                      ? getDateCategory(
-                        DateTime.parse(
-                          mediaItems[index - 1].extras?['lastModified'],
-                        ),
-                      )
-                      : '';
-            } else {
-              currentSlice = item.title[0].toUpperCase();
-              previousSlice =
-                  index > 0 ? mediaItems[index - 1].title[0].toUpperCase() : '';
-            }
-
-            final showSliceHeader = index == 0 || currentSlice != previousSlice;
-
-            List<Widget> children = [];
-
-            if (showSliceHeader) {
-              children.add(
-                Container(
-                  height: 30,
-                  width: double.infinity,
-                  color: const Color.fromARGB(255, 54, 54, 54),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    currentSlice,
-                    style: const TextStyle(
-                      color: Color.fromARGB(255, 243, 160, 34),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              );
-            }
-
-            children.add(
-              Container(
-                color:
-                    mediaItems[index] ==
+        return ValueListenableBuilder<List<bool>>(
+          valueListenable: musicasSelecionadas,
+          builder: (context, selecionada, child) {
+            return ReorderableListView.builder(
+              onReorder: onReorder,
+              scrollController: _scrollController,
+              itemCount: mutableSongs.length,
+              itemBuilder: (context, index) {
+                MediaItem item = mutableSongs[index];
+                final corFundo =
+                    selecionada[index]
+                        ? Color.fromARGB(95, 243, 34, 34)
+                        : value != -1 &&
+                            mutableSongs[index] ==
                                 widget.audioHandler.songsAtual[value] &&
                             listaEmUso
                         ? Color.fromARGB(96, 243, 159, 34)
-                        : null,
-                height: 78,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () async {
-                    try {
-                      if (!listaEmUso) {
-                        setState(() {
-                          listaEmUso = true;
-                        });
-                      }
-                      widget.aposClique?.call(mediaItems[index]);
-                    } catch (e) {
-                      log('Erro ao tocar música: $e');
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: imgs[index],
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                item.title,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                softWrap: true,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.artist ?? "Artista desconhecido",
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey,
-                                ),
-                                softWrap: true,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 3,
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.more_vert_rounded,
-                              color:
-                                  Theme.of(
-                                    context,
-                                  ).extension<CustomColors>()!.textForce,
-                            ),
-                            iconSize: 24,
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              showPopup(
-                                context,
-                                item.title,
-                                moreOptions(context, item),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
+                        : null;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+                String currentSlice = '';
+                String previousSlice = '';
+
+                if (mode == ModeOrderEnum.dataZA ||
+                    mode == ModeOrderEnum.dataAZ) {
+                  final lastModified = DateTime.parse(
+                    item.extras?['lastModified'],
+                  );
+                  currentSlice = getDateCategory(lastModified);
+                  previousSlice =
+                      index > 0
+                          ? getDateCategory(
+                            DateTime.parse(
+                              mutableSongs[index - 1].extras?['lastModified'],
+                            ),
+                          )
+                          : '';
+                } else if (mode == ModeOrderEnum.titleZA ||
+                    mode == ModeOrderEnum.titleAZ) {
+                  currentSlice = item.title[0].toUpperCase();
+                  previousSlice =
+                      index > 0
+                          ? mutableSongs[index - 1].title[0].toUpperCase()
+                          : '';
+                } else {
+                  currentSlice = '';
+                  previousSlice = '';
+                }
+
+                bool showSliceHeader =
+                    index == 0 || currentSlice != previousSlice;
+
+                if (mode == ModeOrderEnum.manual) {
+                  showSliceHeader = false;
+                }
+
+                List<Widget> children = [];
+
+                if (showSliceHeader) {
+                  children.add(
+                    Container(
+                      height: 30,
+                      width: double.infinity,
+                      color: const Color.fromARGB(255, 54, 54, 54),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        currentSlice,
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 243, 160, 34),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                }
+
+                children.add(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          color: corFundo,
+                          height: 78,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () async {
+                              if (selecionando) {
+                                toggleSelecao(musicasSelecionadas, index);
+                                if (!musicasSelecionadas.value.contains(true)) {
+                                  selecionando = false;
+                                }
+                              } else {
+                                try {
+                                  if (!listaEmUso) {
+                                    setState(() {
+                                      listaEmUso = true;
+                                    });
+                                  }
+                                  widget.aposClique?.call(mutableSongs[index]);
+                                } catch (e) {
+                                  log('Erro ao tocar música: $e');
+                                }
+                              }
+                            },
+                            onLongPress: () {
+                              toggleSelecao(musicasSelecionadas, index);
+                              if (selecionando &&
+                                  !musicasSelecionadas.value.contains(true)) {
+                                selecionando = false;
+                              } else {
+                                selecionando = true;
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: imgs[index],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.artist ?? "Artista desconhecido",
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 3,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 44,
+                                    height: 78,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.more_vert_rounded,
+                                        color:
+                                            Theme.of(context)
+                                                .extension<CustomColors>()!
+                                                .textForce,
+                                      ),
+                                      onPressed: () {
+                                        showPopup(
+                                          context,
+                                          item.title,
+                                          moreOptions(context, item),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      widget.withReorder ?? false
+                          ? ReorderableDragStartListener(
+                            index: index,
+                            child: Container(
+                              color: corFundo,
+                              width: 44,
+                              height: 78,
+                              child: Icon(
+                                Icons.drag_handle,
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).extension<CustomColors>()!.textForce,
+                              ),
+                            ),
+                          )
+                          : SizedBox.shrink(),
+                    ],
+                  ),
+                );
+
+                return Column(
+                  key: ValueKey(item.id),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: children,
+                );
+              },
             );
           },
         );

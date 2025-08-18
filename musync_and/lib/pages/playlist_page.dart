@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
@@ -24,6 +26,7 @@ class PlaylistPage extends StatefulWidget {
   State<PlaylistPage> createState() => _PlaylistPageState();
 }
 
+// TRY TO OTIMIZE -------------------------------------------------------------------------------------------
 class _PlaylistPageState extends State<PlaylistPage> {
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
   final TextEditingController _searchController = TextEditingController();
@@ -35,8 +38,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
   @override
   void initState() {
     super.initState();
-    songsNowTranslated = widget.songsPL;
-    songsPlaylist = songsNowTranslated;
+    songsNowTranslated = [...widget.songsPL];
+    songsPlaylist = [...songsNowTranslated];
     modeAtual = ModeOrderEnumExt.convert(widget.pl?.orderMode ?? 4);
 
     playlistUpdateNotifier.addListener(_onPlaylistChanged);
@@ -45,7 +48,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   void _onPlaylistChanged() async {
     songsNowTranslated = await widget.pl?.findMusics() ?? songsNowTranslated;
     setState(() {
-      songsPlaylist = songsNowTranslated;
+      songsPlaylist = [...songsNowTranslated];
     });
   }
 
@@ -82,6 +85,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   widget.pl!.id,
                   orderMode: modeAtual.disconvert(),
                 );
+                log(modeAtual.disconvert().toString());
               }
             },
             child: Icon(Icons.reorder_outlined),
@@ -133,7 +137,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         onTap: () {
                           _searchController.text = '';
                           setState(() {
-                            songsPlaylist = songsNowTranslated;
+                            songsPlaylist = [...songsNowTranslated];
                           });
                         },
                         child: SizedBox(
@@ -153,6 +157,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   audioHandler: widget.audioHandler,
                   songsNow: songsPlaylist,
                   modeReorder: modeAtual,
+                  idPlaylist: widget.pl!.id,
+                  withReorder: true,
                   aposClique: (item) async {
                     await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,

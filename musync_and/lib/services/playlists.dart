@@ -54,13 +54,22 @@ class Playlists {
   Future<List<MediaItem>?> findMusics() async {
     List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 
-    final futuros = MusyncAudioHandler.songsAll.map((mediaItem) async {
-      if (idsAlvo.contains(mediaItem.id)) return mediaItem;
-
-      return null;
-    });
+    final futuros =
+        idsAlvo.map((id) async {
+          try {
+            return MusyncAudioHandler.songsAll.firstWhere(
+              (mediaItem) => mediaItem.id == id,
+            );
+          } catch (e) {
+            return null;
+          }
+        }).toList();
 
     final resultados = await Future.wait(futuros);
+
+    final musicas = resultados.whereType<MediaItem>();
+
+    log(musicas.map((msc) => msc.title).toList().toString());
 
     return resultados.whereType<MediaItem>().toList();
   }

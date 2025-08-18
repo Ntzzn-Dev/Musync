@@ -66,20 +66,58 @@ class _ListPlaylistState extends State<ListPlaylist> {
   }
 
   void carregarPlaylists() async {
-    final listas = await DatabaseHelper().loadPlaylists();
+    final playlists = await DatabaseHelper().loadPlaylists();
+    final allSongs = MusyncAudioHandler.songsAll;
+
+    List<List<String>> artists =
+        allSongs.map((song) {
+          final artists =
+              (song.artist ?? '')
+                  .split(',')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+          artists.sort();
+          return artists;
+        }).toList();
+
+    Map<String, int> artistCount = {};
+    for (var artist in artists) {
+      final uniqueArtists = artist.toSet();
+      for (var artist in uniqueArtists) {
+        artistCount[artist] = (artistCount[artist] ?? 0) + 1;
+      }
+    }
+
+    List<List<String>> groupedPlaylists = [];
+    Set<String> artistsAlreadyGrouped = {};
+
+    for (var artist in artists) {
+      if (artist.any((a) => artistsAlreadyGrouped.contains(a))) {
+        continue;
+      }
+
+      bool allUnique = artist.every((artist) => artistCount[artist] == 1);
+
+      if (allUnique && artist.length > 1) {
+        groupedPlaylists.add(artist);
+        artistsAlreadyGrouped.addAll(artist);
+      } else {
+        for (var art in artist) {
+          if (!artistsAlreadyGrouped.contains(art)) {
+            groupedPlaylists.add([art]);
+            artistsAlreadyGrouped.add(art);
+          }
+        }
+      }
+    }
+
     setState(() {
-      plsBase = listas;
+      plsBase = playlists;
       pls = plsBase;
+
       artsBase =
-          MusyncAudioHandler.songsAll
-              .expand(
-                (item) => (item.artist ?? '')
-                    .split(',')
-                    .map((e) => e.toLowerCase().trim())
-                    .where((e) => e.toLowerCase().trim().isNotEmpty),
-              )
-              .toSet()
-              .toList()
+          groupedPlaylists.map((group) => group.join(', ')).toList()
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       arts = artsBase;
     });

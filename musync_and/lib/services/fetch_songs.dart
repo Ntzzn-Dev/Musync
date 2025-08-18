@@ -1,8 +1,9 @@
-import 'dart:typed_data';
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 
 OnAudioQuery onAudioQuery = OnAudioQuery();
 
@@ -16,8 +17,15 @@ Future<void> accessStorage() async =>
       }
     });
 
-Future<Uint8List?> art({required int id}) async {
-  return await onAudioQuery.queryArtwork(id, ArtworkType.AUDIO, quality: 100);
+Future<Uri?> _getArtUri(SongModel song) async {
+  final artwork = await onAudioQuery.queryArtwork(song.id, ArtworkType.AUDIO);
+  if (artwork != null) {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/${song.id}.jpg');
+    await file.writeAsBytes(artwork);
+    return Uri.file(file.path);
+  }
+  return null;
 }
 
 class FetchSongs {
@@ -37,8 +45,6 @@ class FetchSongs {
       final futures =
           songs.map((song) async {
             if (song.isMusic == true) {
-              final uint8list = await art(id: song.id);
-              final bytes = uint8list?.toList();
               final date = DateTime.fromMillisecondsSinceEpoch(
                 song.dateAdded! * 1000,
               );
@@ -51,7 +57,7 @@ class FetchSongs {
                 album: song.album,
                 genre: song.genre,
                 duration: Duration(milliseconds: song.duration!),
-                artUri: uint8list == null ? null : Uri.dataFromBytes(bytes!),
+                artUri: await _getArtUri(song),
                 extras: {
                   'lastModified': date.toIso8601String(),
                   'path': song.data,

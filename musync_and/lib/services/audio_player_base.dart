@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
-enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA }
+enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual }
 
 enum ModeLoopEnum { off, all, one }
 
@@ -29,7 +29,7 @@ extension ModeShuffleEnumExt on ModeShuffleEnum {
 
 extension ModeOrderEnumExt on ModeOrderEnum {
   ModeOrderEnum next() {
-    final nextIndex = (index + 1) % ModeOrderEnum.values.length;
+    int nextIndex = (index + 1) % 4;
     return ModeOrderEnum.values[nextIndex];
   }
 
@@ -158,7 +158,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<void> initSongs({required List<MediaItem> songs}) async {
     audPl.playbackEventStream.listen(_broadcastState);
 
-    songsAtual = songs;
+    songsAtual = [...songs];
 
     await setCurrentTrack();
 
@@ -166,7 +166,6 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     audPl.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
-        log('aaa');
         skipToNextAuto();
       }
     });
@@ -183,14 +182,29 @@ class MusyncAudioHandler extends BaseAudioHandler
       return;
     }
 
-    songsAtual = songs;
+    songsAtual = [...songs];
     currentIndex.value = 0;
 
     await setCurrentTrack(index: 0);
 
     queue.add(songs);
 
-    if (shuffleMode != ModeShuffleEnum.shuffleOff) {
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+      prepareShuffle();
+    }
+  }
+
+  void reorganizeQueue({required List<MediaItem> songs}) {
+    MediaItem songAtual =
+        songsAtual[currentIndex.value == -1 ? 0 : currentIndex.value];
+
+    songsAtual = [...songs];
+
+    currentIndex.value = songs.indexOf(songAtual);
+
+    queue.add(songs);
+
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       prepareShuffle();
     }
   }
@@ -250,8 +264,10 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
       playNextShuffled();
     } else {
-      playNext();
+      await playNext();
     }
+    log(currentIndex.value.toString());
+    log(songsAtual[currentIndex.value].title);
   }
 
   void skipToNextAuto() {
@@ -374,8 +390,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   static List<MediaItem> reorder(
     ModeOrderEnum modeAtual,
-    List<MediaItem> songs,
-  ) {
+    List<MediaItem> songs, {
+    List<int>? order,
+  }) {
     List<MediaItem> ordenadas = [];
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
@@ -429,6 +446,19 @@ class MusyncAudioHandler extends BaseAudioHandler
             return 0;
           }
         });
+        break;
+      case ModeOrderEnum.manual:
+        if (order != null && order.length == songs.length) {
+          final posicoes = {for (int i = 0; i < order.length; i++) order[i]: i};
+
+          ordenadas = [...songs]..sort((a, b) {
+            final idxA = posicoes[int.tryParse(a.id)] ?? 99999;
+            final idxB = posicoes[int.tryParse(b.id)] ?? 99999;
+            return idxA.compareTo(idxB);
+          });
+        } else {
+          ordenadas = [...songs];
+        }
         break;
     }
     return ordenadas;

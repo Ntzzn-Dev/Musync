@@ -175,3 +175,12 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 - Confirmação que o nome do arquivo não terá caracteres inválidos.  
 - Separação a cada 10 índices na playlists dos downloads.  
 - Correção da interface de configurações.  
+
+### version 3.2  
+- Alteração na separação de artistas para playlists, evitando a criação de muitas playlists com apenas uma música.  
+- Implementação do sistema de seleção de múltiplas músicas (Apagar e Adicionar à uma playlist).  
+- Implementação do sistema de reordem manual.  
+- Inversão de ordem ao baixar músicas da playlist principal (da mais antiga até a mais nova). 
+- Adição de uma etapa de confirmação antes de deletar uma música.   
+- Correção ao adicionar uma música na lista após baixa-la.  
+- Correção do tratamento de imagens de capa (artUri).  
