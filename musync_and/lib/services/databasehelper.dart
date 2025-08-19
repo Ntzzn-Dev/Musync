@@ -193,6 +193,29 @@ class DatabaseHelper {
     }
   }
 
+  Future<String> verifyPlaylistTitle(String baseTitle) async {
+    final db = await database;
+    String title = baseTitle.trim();
+    int counter = 1;
+
+    while (true) {
+      final result = await db.query(
+        'playlists',
+        where: 'title = ?',
+        whereArgs: [title],
+      );
+
+      if (result.isEmpty) {
+        break;
+      }
+
+      title = '${baseTitle.trim()} ($counter)';
+      counter++;
+    }
+
+    return title;
+  }
+
   Future<List<String>> loadPlaylistMusics(int idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(

@@ -156,7 +156,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   audioHandler: widget.audioHandler,
                   songsNow: songsPlaylist,
                   modeReorder: modeAtual,
-                  idPlaylist: widget.pl!.id,
+                  idPlaylist: widget.pl?.id ?? 0,
                   withReorder: true,
                   aposClique: (item) async {
                     await widget.audioHandler.recreateQueue(

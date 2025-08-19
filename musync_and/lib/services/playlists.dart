@@ -67,10 +67,6 @@ class Playlists {
 
     final resultados = await Future.wait(futuros);
 
-    final musicas = resultados.whereType<MediaItem>();
-
-    log(musicas.map((msc) => msc.title).toList().toString());
-
     return resultados.whereType<MediaItem>().toList();
   }
 
@@ -95,8 +91,6 @@ class Playlists {
         duration: (newData['duration'] ?? oldTag?.duration) ?? 0,
         pictures: (newData['pictures'] ?? oldTag?.pictures) ?? [],
       );
-
-      log((newData['trackArtist'] ?? oldTag?.trackArtist) ?? '');
 
       AudioTags.write(filePath, tag);
 

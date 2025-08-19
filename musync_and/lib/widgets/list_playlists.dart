@@ -3,7 +3,7 @@ import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
-import 'package:musync_and/widgets/popup.dart';
+import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 
 class ListPlaylist extends StatefulWidget {
@@ -123,6 +123,58 @@ class _ListPlaylistState extends State<ListPlaylist> {
     });
   }
 
+  List<Map<String, dynamic>> moreOptions(BuildContext context, Playlists item) {
+    return [
+      {
+        'opt': 'Apagar Playlist',
+        'icon': Icons.delete_forever,
+        'funct': () async {
+          if (await showPopupAdd(context, 'Deletar playlist?', [])) {
+            await DatabaseHelper().removePlaylist(item.id);
+
+            pls = await DatabaseHelper().loadPlaylists();
+
+            setState(() {});
+
+            Navigator.of(context).pop();
+          }
+        },
+      },
+      {
+        'opt': 'Editar Playlist',
+        'icon': Icons.edit,
+        'funct': () async {
+          await showPopupAdd(
+            context,
+            'Editar Playlist',
+            [
+              {'value': 'Título', 'type': 'title'},
+              {'value': 'Subtitulo', 'type': 'text'},
+            ],
+            fieldValues: [item.title, item.subtitle],
+            onConfirm: (valores) async {
+              await DatabaseHelper().updatePlaylist(
+                item.id,
+                title: valores[0],
+                subtitle: valores[1],
+              );
+
+              plsBase = await DatabaseHelper().loadPlaylists();
+              pls = plsBase;
+
+              setState(() {});
+
+              await ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Playlist Atualizada')),
+              );
+            },
+          );
+          Navigator.of(context).pop();
+        },
+      },
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -133,7 +185,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               context,
               'Adicionar Playlist',
               [
-                {'value': 'Título', 'type': 'necessary'},
+                {'value': 'Título', 'type': 'title'},
                 {'value': 'Subtitulo', 'type': 'text'},
               ],
               onConfirm: (valores) async {
@@ -184,62 +236,11 @@ class _ListPlaylistState extends State<ListPlaylist> {
                       iconSize: 24,
                       padding: EdgeInsets.zero,
                       onPressed: () async {
-                        await showPopup(context, item.title, [
-                          {
-                            'opt': 'Apagar Playlist',
-                            'funct': () async {
-                              if (await showPopupAdd(
-                                context,
-                                'Deletar playlist?',
-                                [],
-                              )) {
-                                await DatabaseHelper().removePlaylist(item.id);
-
-                                pls = await DatabaseHelper().loadPlaylists();
-
-                                setState(() {});
-
-                                Navigator.of(context).pop();
-                              }
-                            },
-                          },
-                          {
-                            'opt': 'Editar Playlist',
-                            'funct': () async {
-                              await showPopupAdd(
-                                context,
-                                'Editar Playlist',
-                                [
-                                  {'value': 'Título', 'type': 'necessary'},
-                                  {'value': 'Subtitulo', 'type': 'text'},
-                                ],
-                                fieldValues: [item.title, item.subtitle],
-                                onConfirm: (valores) async {
-                                  await DatabaseHelper().updatePlaylist(
-                                    item.id,
-                                    title: valores[0],
-                                    subtitle: valores[1],
-                                  );
-
-                                  plsBase =
-                                      await DatabaseHelper().loadPlaylists();
-                                  pls = plsBase;
-
-                                  setState(() {});
-
-                                  await ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Playlist Atualizada'),
-                                    ),
-                                  );
-                                },
-                              );
-                              Navigator.of(context).pop();
-                            },
-                          },
-                        ]);
+                        await showPopupOptions(
+                          context,
+                          item.title,
+                          moreOptions(context, item),
+                        );
                       },
                     ),
                   ),

@@ -42,7 +42,6 @@ dependencies:
   on_audio_query: ^2.9.0
   intl: ^0.20.2
   sqflite: ^2.4.2
-  crypto: ^3.0.6
   path: ^1.9.1
   scrollable_positioned_list: ^0.3.8
   youtube_explode_dart:

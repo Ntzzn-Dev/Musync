@@ -6,6 +6,7 @@ class Letreiro extends StatefulWidget {
   final int timeStoped;
   final int fullTime;
   final double? fontSize;
+  final FontWeight? fontWeight;
 
   const Letreiro({
     super.key,
@@ -14,6 +15,7 @@ class Letreiro extends StatefulWidget {
     required this.timeStoped,
     required this.fullTime,
     this.fontSize = 16,
+    this.fontWeight = FontWeight.normal,
   });
 
   @override
@@ -100,7 +102,13 @@ class _LetreiroState extends State<Letreiro> {
 
     if (_centralizar) {
       return Center(
-        child: Text(widget.texto, style: TextStyle(fontSize: widget.fontSize)),
+        child: Text(
+          widget.texto,
+          style: TextStyle(
+            fontSize: widget.fontSize,
+            fontWeight: widget.fontWeight,
+          ),
+        ),
       );
     }
 
@@ -114,10 +122,19 @@ class _LetreiroState extends State<Letreiro> {
           Text(
             widget.texto,
             key: _textKey,
-            style: TextStyle(fontSize: widget.fontSize),
+            style: TextStyle(
+              fontSize: widget.fontSize,
+              fontWeight: widget.fontWeight,
+            ),
           ),
           SizedBox(width: widget.blankSpace),
-          Text(widget.texto, style: TextStyle(fontSize: widget.fontSize)),
+          Text(
+            widget.texto,
+            style: TextStyle(
+              fontSize: widget.fontSize,
+              fontWeight: widget.fontWeight,
+            ),
+          ),
         ],
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:musync_and/widgets/letreiro.dart';
 
-Future<void> showPopup(
+Future<void> showPopupOptions(
   BuildContext context,
   String label,
   List<Map<String, dynamic>> options,
@@ -18,35 +18,49 @@ Future<void> showPopup(
               blankSpace: 90,
               fullTime: 12,
               timeStoped: 1500,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
             ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: List.generate(options.length, (index) {
+                  final IconData? iconData =
+                      options[index]['icon'] as IconData?;
+                  final String? label = options[index]['opt'] as String?;
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              options[index]['funct']?.call();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                options[index]['opt'],
-                                style: TextStyle(
+                    child: InkWell(
+                      onTap: () {
+                        options[index]['funct']?.call();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            if (iconData != null)
+                              Icon(
+                                iconData,
+                                size: 18,
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium?.color,
+                              ),
+                            if (iconData != null) const SizedBox(width: 16),
+                            if (label != null)
+                              Text(
+                                label,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
                               ),
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   );
                 }),

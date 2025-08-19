@@ -9,7 +9,7 @@ import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
-import 'package:musync_and/widgets/popup.dart';
+import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 import 'package:collection/collection.dart';
@@ -79,102 +79,8 @@ class _ListContentState extends State<ListContent> {
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
       {
-        'opt': 'Apagar Audio',
-        'funct': () async {
-          if (await showPopupAdd(context, "Deletar Mídia?", [])) {
-            deletarMusica(item);
-            Navigator.of(context).pop();
-          }
-        },
-      },
-      {
-        'opt': 'Informações',
-        'funct': () async {
-          showSpec(item);
-        },
-      },
-      {
-        'opt': 'Editar Música',
-        'funct': () {
-          showPopupAdd(
-            context,
-            item.title,
-            [
-              {'value': 'Título', 'type': 'text'},
-              {'value': 'Artista', 'type': 'text'},
-              {'value': 'Album', 'type': 'text'},
-              {'value': 'Gênero', 'type': 'text'},
-            ],
-            fieldValues: [
-              item.title,
-              item.artist ?? '',
-              item.album ?? '',
-              item.genre ?? '',
-            ],
-            onConfirm: (valores) {
-              Playlists.editarTags(item.extras?['path'], {
-                'title': valores[0],
-                'trackArtist': valores[1],
-                'album': valores[2],
-                'genre': valores[3],
-              });
-
-              int indexSongAll = MusyncAudioHandler.songsAll.indexWhere(
-                (e) => e.id == item.id,
-              );
-
-              int indexSongNow = mutableSongs.indexWhere(
-                (e) => e.id == item.id,
-              );
-
-              if (indexSongAll != -1) {
-                final antigo = MusyncAudioHandler.songsAll[indexSongAll];
-
-                final musicEditada = antigo.copyWith(
-                  title: valores[0],
-                  artist: valores[1],
-                  album: valores[2],
-                  genre: valores[3],
-                  extras: {
-                    ...?antigo.extras,
-                    'lastModified': antigo.extras?['lastModified'],
-                    'path': antigo.extras?['path'],
-                  },
-                );
-
-                MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
-                mutableSongs[indexSongNow] = musicEditada;
-
-                setState(() {});
-
-                Navigator.of(context).pop();
-              } else {
-                log('Item não encontrado na lista para edição.');
-              }
-            },
-          );
-        },
-      },
-      {
-        'opt': 'Compartilhar',
-        'funct': () async {
-          final file = File(item.extras?['path']);
-
-          if (await file.exists()) {
-            await SharePlus.instance.share(
-              ShareParams(
-                text: item.title,
-                title: item.title,
-                files: [XFile(file.path)],
-              ),
-            );
-          } else {
-            log('Arquivo não encontrado!');
-          }
-        },
-      },
-      {
         'opt': 'Adicionar a Playlist',
+        'icon': Icons.playlist_add,
         'funct': () async {
           List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
             idMusic: item.id,
@@ -278,6 +184,105 @@ class _ListContentState extends State<ListContent> {
               );
             },
           );
+        },
+      },
+      {
+        'opt': 'Compartilhar',
+        'icon': Icons.share,
+        'funct': () async {
+          final file = File(item.extras?['path']);
+
+          if (await file.exists()) {
+            await SharePlus.instance.share(
+              ShareParams(
+                text: item.title,
+                title: item.title,
+                files: [XFile(file.path)],
+              ),
+            );
+          } else {
+            log('Arquivo não encontrado!');
+          }
+        },
+      },
+      {
+        'opt': 'Informações',
+        'icon': Icons.info_outline,
+        'funct': () async {
+          showSpec(item);
+        },
+      },
+      {
+        'opt': 'Editar Música',
+        'icon': Icons.edit,
+        'funct': () {
+          showPopupAdd(
+            context,
+            item.title,
+            [
+              {'value': 'Título', 'type': 'title', 'id': 2},
+              {'value': 'Artista', 'type': 'text'},
+              {'value': 'Album', 'type': 'text'},
+              {'value': 'Gênero', 'type': 'text'},
+            ],
+            fieldValues: [
+              item.title,
+              item.artist ?? '',
+              item.album ?? '',
+              item.genre ?? '',
+            ],
+            onConfirm: (valores) {
+              Playlists.editarTags(item.extras?['path'], {
+                'title': valores[0],
+                'trackArtist': valores[1],
+                'album': valores[2],
+                'genre': valores[3],
+              });
+
+              int indexSongAll = MusyncAudioHandler.songsAll.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              int indexSongNow = mutableSongs.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              if (indexSongAll != -1) {
+                final antigo = MusyncAudioHandler.songsAll[indexSongAll];
+
+                final musicEditada = antigo.copyWith(
+                  title: valores[0],
+                  artist: valores[1],
+                  album: valores[2],
+                  genre: valores[3],
+                  extras: {
+                    ...?antigo.extras,
+                    'lastModified': antigo.extras?['lastModified'],
+                    'path': antigo.extras?['path'],
+                  },
+                );
+
+                MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
+                mutableSongs[indexSongNow] = musicEditada;
+
+                setState(() {});
+
+                Navigator.of(context).pop();
+              } else {
+                log('Item não encontrado na lista para edição.');
+              }
+            },
+          );
+        },
+      },
+      {
+        'opt': 'Apagar Audio',
+        'icon': Icons.delete_forever,
+        'funct': () async {
+          if (await showPopupAdd(context, "Deletar Mídia?", [])) {
+            deletarMusica(item);
+            Navigator.of(context).pop();
+          }
         },
       },
     ];
@@ -606,7 +611,7 @@ class _ListContentState extends State<ListContent> {
                                                 .textForce,
                                       ),
                                       onPressed: () {
-                                        showPopup(
+                                        showPopupOptions(
                                           context,
                                           item.title,
                                           moreOptions(context, item),

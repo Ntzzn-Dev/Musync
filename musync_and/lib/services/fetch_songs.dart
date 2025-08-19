@@ -1,9 +1,11 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 OnAudioQuery onAudioQuery = OnAudioQuery();
 
@@ -42,6 +44,13 @@ class FetchSongs {
             }).toList();
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      final dirStrings =
+          (prefs.getStringList('directorys') ?? []).map((path) {
+            final parts = path.split('/').where((e) => e.isNotEmpty).toList();
+            return parts.isNotEmpty ? parts.last : '';
+          }).toList();
+
       final futures =
           songs.map((song) async {
             if (song.isMusic == true) {
@@ -50,11 +59,16 @@ class FetchSongs {
               );
               await Playlists.atualizarNoMediaStore(song.data);
 
+              String album = song.album ?? '';
+
               return MediaItem(
                 id: song.uri!,
                 title: song.title,
                 artist: song.artist,
-                album: song.album,
+                album:
+                    (album.isEmpty || dirStrings.contains(album))
+                        ? ''
+                        : song.album,
                 genre: song.genre,
                 duration: Duration(milliseconds: song.duration!),
                 artUri: await _getArtUri(song),
