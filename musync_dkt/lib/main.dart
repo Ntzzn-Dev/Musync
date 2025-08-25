@@ -1,23 +1,147 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:mime/mime.dart';
+import 'package:musync_dkt/themes.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart' as io;
+import 'dart:convert';
 
 final mp3UpdatedNotifier = ValueNotifier(false);
-void main() {
+/*void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
-  startServer();
+  startServers();
+}*/
+final AudioPlayer player = AudioPlayer();
+late WebSocket socket;
+void main() async {
+  final server = await HttpServer.bind('0.0.0.0', 8080);
+  print('Servidor rodando em ws://localhost:8080');
+
+  runApp(const MyApp());
+
+  await for (HttpRequest request in server) {
+    if (WebSocketTransformer.isUpgradeRequest(request)) {
+      socket = await WebSocketTransformer.upgrade(request);
+      print('Cliente conectado!');
+
+      socket.listen((data) async {
+        try {
+          final decoded = jsonDecode(data);
+          final action = decoded['action'];
+
+          print('Ação recebida: $action');
+          if (action == 'audio_file') {
+            log('Recebendo música...');
+            final dataList = List<int>.from(decoded['data']);
+            final bytes = Uint8List.fromList(dataList);
+            await tocarBytes(bytes);
+          } else if (action == 'pause') {
+            log('pausando');
+            player.pause();
+          } else if (action == 'play') {
+            log('tocando');
+            player.resume();
+          } else if (action == 'position') {
+            log('${Duration(milliseconds: decoded['data'].toInt())}');
+            player.seek(Duration(milliseconds: decoded['data'].toInt()));
+          }
+        } catch (e) {
+          print('Erro ao decodificar JSON ou tocar áudio: $e');
+        }
+      });
+    }
+  }
+}
+
+void enviarParaAndroid(WebSocket socket, String action, dynamic data) {
+  final message = jsonEncode({"action": action, "data": data});
+
+  socket.add(message);
+}
+
+/*void startServers() async {
+  final player = AudioPlayer();
+  final server = await HttpServer.bind('0.0.0.0', 8080);
+  print('Servidor WebSocket rodando em ws://localhost:8080');
+
+  await for (HttpRequest request in server) {
+    if (WebSocketTransformer.isUpgradeRequest(request)) {
+      final socket = await WebSocketTransformer.upgrade(request);
+
+      socket.listen((data) async {
+        final jsonData = jsonDecode(data);
+        final action = jsonData['action'];
+
+        if (action == 'play') {
+          final media = jsonData['mediaItem'];
+          await player.setUrl(media['url']);
+          player.play();
+        } else if (action == 'pause') {
+          player.pause();
+        } else if (action == 'seek') {
+          player.seek(Duration(milliseconds: jsonData['position']));
+        }
+
+        // Enviar status de volta
+        socket.add(
+          jsonEncode({
+            'status': player.playing ? 'playing' : 'paused',
+            'position': player.position.inMilliseconds,
+            'duration': player.duration?.inMilliseconds ?? 0,
+          }),
+        );
+      });
+    }
+  }
+
+  final channel = WebSocketChannel.connect(
+    Uri.parse('ws://192.168.0.100:8080'), // IP do Windows
+  );
+
+  // Enviar comando play
+  void playMedia(Map<String, dynamic> mediaItem) {
+    final jsonCommand = jsonEncode({'action': 'play', 'mediaItem': mediaItem});
+    channel.sink.add(jsonCommand);
+  }
+
+  // Receber status do Windows
+  channel.stream.listen((data) {
+    final status = jsonDecode(data);
+    print('Status do player: $status');
+  });
+}*/
+Future<void> tocarBytes(Uint8List bytes) async {
+  final tempDir = await getTemporaryDirectory();
+  final tempFile = File('${tempDir.path}/temp_audio.mp3');
+
+  await tempFile.writeAsBytes(bytes, flush: true);
+
+  await player.play(DeviceFileSource(tempFile.path));
+
+  player.onPlayerComplete.listen((event) async {
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+  });
+
+  enviarParaAndroid(socket, "position", 0);
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: HomePage());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Musync',
+      theme: lighttheme(),
+      darkTheme: darktheme(),
+      themeMode: ThemeMode.system,
+      home: HomePage(),
+    );
   }
 }
 
@@ -28,88 +152,70 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<FileSystemEntity> mp3Files = [];
+  Duration total = Duration.zero;
+  Duration position = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _loadMp3Files();
 
-    mp3UpdatedNotifier.addListener(() {
-      _loadMp3Files();
+    player.onDurationChanged.listen((d) {
+      setState(() {
+        total = d;
+      });
+    });
+
+    player.onPositionChanged.listen((p) {
+      setState(() {
+        position = p;
+      });
     });
   }
 
-  Future<void> _loadMp3Files() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final musicDir = Directory(p.join(dir.path, 'mp3'));
-    if (!musicDir.existsSync()) musicDir.createSync(recursive: true);
-
-    setState(() {
-      mp3Files =
-          musicDir.listSync().where((f) => f.path.endsWith('.mp3')).toList();
-    });
+  String formatDuration(Duration d, bool h) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(d.inHours);
+    final minutes = twoDigits(d.inMinutes.remainder(60));
+    final seconds = twoDigits(d.inSeconds.remainder(60));
+    return '${h ? '$hours:' : ''}$minutes:$seconds';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Músicas Recebidas')),
-      body: ListView.builder(
-        itemCount: mp3Files.length,
-        itemBuilder: (context, index) {
-          final file = mp3Files[index];
-          return ListTile(title: Text(p.basename(file.path)));
-        },
+      body: Column(
+        children: [
+          Slider(
+            min: 0,
+            max: total.inMilliseconds.toDouble(),
+            value:
+                position.inMilliseconds
+                    .clamp(0, total.inMilliseconds)
+                    .toDouble(),
+            onChanged: (value) {
+              final newPos = Duration(milliseconds: value.toInt());
+              player.seek(newPos);
+              setState(() {
+                position = newPos;
+              });
+
+              enviarParaAndroid(
+                socket,
+                "position",
+                position.inMilliseconds.toDouble(),
+              );
+            },
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(formatDuration(position, false)),
+              Text(formatDuration(total, false)),
+            ],
+          ),
+        ],
       ),
     );
-  }
-}
-
-void startServer() async {
-  final handler = Pipeline()
-      .addMiddleware(logRequests())
-      .addHandler(_uploadHandler);
-  final server = await io.serve(handler, '0.0.0.0', 8080);
-  log('Servidor rodando em http://${server.address.host}:${server.port}');
-}
-
-Future<Response> _uploadHandler(Request request) async {
-  if (request.method != 'POST' || request.url.path != 'upload') {
-    return Response.notFound('Rota não encontrada');
-  }
-
-  final contentType = request.headers['content-type'] ?? '';
-  if (!contentType.contains('multipart/form-data')) {
-    return Response(400, body: 'Content-Type deve ser multipart/form-data');
-  }
-
-  final boundary = contentType.split('boundary=').last;
-  final parts = MimeMultipartTransformer(boundary).bind(request.read());
-
-  try {
-    final dir = await getApplicationDocumentsDirectory();
-    final musicDir = Directory(p.join(dir.path, 'mp3'));
-    if (!musicDir.existsSync()) musicDir.createSync(recursive: true);
-
-    await for (final part in parts) {
-      final headers = part.headers;
-      final disposition = headers['content-disposition'] ?? '';
-      final match = RegExp(r'filename="(.+)"').firstMatch(disposition);
-
-      if (match == null) continue;
-      final filename = match.group(1)!;
-      final file = File(p.join(musicDir.path, filename));
-      final sink = file.openWrite();
-      await part.pipe(sink);
-      await sink.close();
-      log('Salvo: ${file.path}');
-    }
-
-    mp3UpdatedNotifier.value = !mp3UpdatedNotifier.value;
-    return Response.ok('Arquivo recebido');
-  } catch (e) {
-    log('Erro: $e');
-    return Response.internalServerError(body: 'Erro no upload');
   }
 }

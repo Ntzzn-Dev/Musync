@@ -179,3 +179,9 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Otimização do popup de confirmação/adição.  
 - Otimização de código.  
 - Adição de icones no popup de opções.  
+
+### version 4.0  
+- Integração do desktop.  
+- Comunicação bilateral.  
+- Comunicações funcionais atualmente (pause, play, reprodução de audio, slider de duração).  
+- Correção na pagina de configurações para comportar o IP (digitado manualmente por enquanto).  

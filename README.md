@@ -17,8 +17,10 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 ### Tela Principal  
 Tela onde ficam todas as músicas encontradas.  
 O player abaixo se possui os botões principais para controle da mídia.  
+<p float="left">
 <img src="assets/main_tab.jpg" width="300"/>
 <img src="assets/main_tab_more_opt.jpg" width="300"/>  
+</p>
 
 ### Configurações e Downloads  
 Na tela de configurações são definidos:  
@@ -28,17 +30,23 @@ Na tela de configurações são definidos:
 
 Na tela de donwload, a playlist padrão é carregada permitindo a seleção de uma ou mais mídias para download.  
 O download é feito através de vídeos do youtube.  
+<p float="left">
 <img src="assets/config_page.jpg" width="300"/>
 <img src="assets/download_page.jpg" width="300"/>  
+</p>
 
 ### Informações e Opções de Música  
+<p float="left">
 <img src="assets/music_info.jpg" width="300"/>
 <img src="assets/music_more_opt.jpg" width="300"/>  
+</p>
 
 ### Playlists  
 Página que controla as playlists, criadas pelo usuário ou as separadas por artista.  
+<p float="left">
 <img src="assets/playlists_tab.jpg" width="300"/>
 <img src="assets/add_playlist.jpg" width="300"/>  
+</p>
 
 ### Player da Notificação 
 Na notificação estão as ações mais importantes, incluindo controle de aleatório.   
@@ -47,14 +55,19 @@ Na notificação estão as ações mais importantes, incluindo controle de aleat
 ## Instalação  
 1. Clone este repositório:  
   ```git clone https://github.com/Ntzzn-Dev/Musync.git```  
-2. Entre na pasta e rode:  
+2. Entre na pasta e rode (para android):  
+  ```cd musync_and```  
+  ```flutter pub get```  
+  ```flutter run``` 
+3. Entre na pasta e rode (para desktop):  
+  ```cd musync_dkt```  
   ```flutter pub get```  
   ```flutter run```  
 
 ## Tecnologias  
 - Flutter (Dart)  
 - SQLite (armazenamento local)  
-- Provider (gerenciamento de estado)  
+- WebSocket (conexão via wi-fi local)
 
 ## Contribuição
 Sinta-se à vontade para abrir issues ou sugerir melhorias!  
@@ -63,5 +76,6 @@ Sinta-se à vontade para abrir issues ou sugerir melhorias!
 - **v1.0** → Versão inicial, player básico.
 - **v2.0** → Download de músicas via YouTube.
 - **v3.0** → Configurações avançadas, playlists e melhorias no modo aleatório.
+- **v4.0** → Integração do desktop, e configuração para que o android aja como um controle remoto.
 
 Veja o changelog completo em [CHANGELOG.md](CHANGELOG.md)

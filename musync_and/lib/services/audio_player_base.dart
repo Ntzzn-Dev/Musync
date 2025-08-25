@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
@@ -65,6 +66,20 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   static List<MediaItem> songsAll = [];
   List<MediaItem> songsAtual = [];
+
+  Ekosystem? eko;
+
+  void setEkosystem(Ekosystem ekosystem) {
+    eko = ekosystem;
+
+    eko?.receivedMessage.addListener(() {
+      final msg = eko?.receivedMessage.value;
+      if (msg?['action'] == 'position') {
+        final progress = Duration(milliseconds: msg?['data'].toInt());
+        seek(progress);
+      }
+    });
+  }
 
   MediaControl get shuffleButton {
     switch (shuffleMode.value) {
@@ -150,6 +165,10 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
     currentIndex.value = index ?? 0;
     final item = songsAtual[index ?? 0];
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendAudioFile(item.extras?['path']);
+    }
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
     mediaItem.add(item);
@@ -241,14 +260,33 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> play() async {
-    if (!audPl.playing) await audPl.play();
+    if (!audPl.playing) audPl.play();
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendMessage({"action": 'play', "data": 'continue'});
+    }
   }
 
   @override
-  Future<void> pause() async => audPl.pause();
+  Future<void> pause() async {
+    audPl.pause();
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendMessage({"action": 'pause', "data": 'stop'});
+    }
+  }
 
   @override
-  Future<void> seek(Duration position) async => audPl.seek(position);
+  Future<void> seek(Duration position) async {
+    audPl.seek(position);
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendMessage({
+        "action": 'position',
+        "data": position.inMilliseconds.toDouble(),
+      });
+    }
+  }
 
   @override
   Future<void> skipToQueueItem(int index) async {

@@ -51,6 +51,7 @@ dependencies:
   audiotags: ^1.4.5
   ffmpeg_kit_flutter_new: ^2.0.0
   share_plus: ^11.0.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

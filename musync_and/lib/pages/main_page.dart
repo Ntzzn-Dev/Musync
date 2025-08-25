@@ -7,12 +7,14 @@ import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
+import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 
@@ -35,6 +37,9 @@ class _MusicPageState extends State<MusicPage> {
   var modeAtual = ModeOrderEnum.dataZA;
 
   List<MediaItem> songsNow = [];
+
+  String host = '';
+  Ekosystem? ekosystem;
 
   @override
   void initState() {
@@ -67,6 +72,7 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> _initFetchSongs() async {
     final prefs = await SharedPreferences.getInstance();
     final dirStrings = prefs.getStringList('directorys') ?? [];
+    host = prefs.getString('ip_pc') ?? '';
 
     final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
 
@@ -399,6 +405,27 @@ class _MusicPageState extends State<MusicPage> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: ekosystem?.conected ?? ValueNotifier(false),
+            builder: (context, value, child) {
+              if (value) {
+                return GestureDetector(
+                  onTap: () async {
+                    if (await showPopupAdd(
+                      context,
+                      'Conectado ao desktop: $host\nDeseja deconectar?',
+                      [],
+                    )) {
+                      ekosystem?.tryToDisconect();
+                    }
+                  },
+                  child: Icon(Icons.connected_tv),
+                );
+              }
+              return SizedBox.shrink();
+            },
+          ),
+          SizedBox(width: 9),
           ValueListenableBuilder<List<Widget>>(
             valueListenable: funcSuperiores,
             builder: (context, value, child) {
@@ -408,7 +435,7 @@ class _MusicPageState extends State<MusicPage> {
           SizedBox(width: 9),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_horiz),
-            onSelected: (value) {
+            onSelected: (value) async {
               switch (value) {
                 case 'reord':
                   modeAtual = modeAtual.next();
@@ -446,6 +473,19 @@ class _MusicPageState extends State<MusicPage> {
                     ),
                   );
                   break;
+                case 'connect':
+                  if (host != '') {
+                    final eko = await Ekosystem.create(host: host, porta: 8080);
+
+                    setState(() {
+                      ekosystem = eko;
+                    });
+
+                    if (ekosystem != null) {
+                      widget.audioHandler.setEkosystem(ekosystem!);
+                    }
+                  }
+                  break;
               }
             },
             itemBuilder:
@@ -478,6 +518,18 @@ class _MusicPageState extends State<MusicPage> {
                     value: 'config',
                     child: Text(
                       'Configurações',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'connect',
+                    child: Text(
+                      'Conectar Com Pc',
                       style: TextStyle(
                         color:
                             Theme.of(
