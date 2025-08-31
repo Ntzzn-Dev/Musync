@@ -185,3 +185,8 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Comunicação bilateral.  
 - Comunicações funcionais atualmente (pause, play, reprodução de audio, slider de duração).  
 - Correção na pagina de configurações para comportar o IP (digitado manualmente por enquanto).  
+
+### version 4.1  
+- Adição de um player controlador unico, sem que a música seja reproduzida no android.  
+- Upgrade visual na versão de desktop.  
+- Adição de um controle de volume para desktop.  

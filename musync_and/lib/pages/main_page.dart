@@ -14,6 +14,7 @@ import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
+import 'package:musync_and/widgets/player_eko.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
@@ -626,16 +627,24 @@ class _MusicPageState extends State<MusicPage> {
           ValueListenableBuilder(
             valueListenable: bottomPosition,
             builder: (context, value, child) {
-              return AnimatedPositioned(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeInOut,
-                bottom: value,
-                left: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: _toggleBottom,
-                  child: Player(audioHandler: widget.audioHandler),
-                ),
+              return ValueListenableBuilder<bool>(
+                valueListenable: ekosystem?.conected ?? ValueNotifier(false),
+                builder: (context, conected, child) {
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOut,
+                    bottom: value,
+                    left: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _toggleBottom,
+                      child:
+                          conected
+                              ? EkoPlayer(audioHandler: widget.audioHandler)
+                              : Player(audioHandler: widget.audioHandler),
+                    ),
+                  );
+                },
               );
             },
           ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'package:collection/collection.dart';
 
@@ -5,6 +6,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/ekosystem.dart';
+import 'package:musync_and/services/media_atual.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
@@ -67,7 +69,10 @@ class MusyncAudioHandler extends BaseAudioHandler
   static List<MediaItem> songsAll = [];
   List<MediaItem> songsAtual = [];
 
-  Ekosystem? eko;
+  static Ekosystem? eko;
+  static ValueNotifier<MediaAtual> mediaAtual = ValueNotifier(
+    MediaAtual(total: Duration.zero),
+  );
 
   void setEkosystem(Ekosystem ekosystem) {
     eko = ekosystem;
@@ -76,7 +81,15 @@ class MusyncAudioHandler extends BaseAudioHandler
       final msg = eko?.receivedMessage.value;
       if (msg?['action'] == 'position') {
         final progress = Duration(milliseconds: msg?['data'].toInt());
-        seek(progress);
+        mediaAtual.value.seek(progress);
+      } else if (msg?['action'] == 'toggle_play') {
+        MusyncAudioHandler.mediaAtual.value.pauseAndPlay(!msg?['data']);
+      } else if (msg?['action'] == 'next') {
+        skipToNext();
+      } else if (msg?['action'] == 'volume') {
+        MediaAtual.volume.value = msg?['data'].toDouble();
+      } else if (msg?['action'] == 'finalizou') {
+        skipToNextAuto();
       }
     });
   }
@@ -165,10 +178,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
     currentIndex.value = index ?? 0;
     final item = songsAtual[index ?? 0];
-
-    if (eko?.conected.value ?? false) {
-      eko?.sendAudioFile(item.extras?['path']);
-    }
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
     mediaItem.add(item);
@@ -261,40 +270,42 @@ class MusyncAudioHandler extends BaseAudioHandler
   @override
   Future<void> play() async {
     if (!audPl.playing) audPl.play();
-
-    if (eko?.conected.value ?? false) {
-      eko?.sendMessage({"action": 'play', "data": 'continue'});
-    }
   }
 
   @override
   Future<void> pause() async {
     audPl.pause();
-
-    if (eko?.conected.value ?? false) {
-      eko?.sendMessage({"action": 'pause', "data": 'stop'});
-    }
   }
 
   @override
   Future<void> seek(Duration position) async {
     audPl.seek(position);
-
-    if (eko?.conected.value ?? false) {
-      eko?.sendMessage({
-        "action": 'position',
-        "data": position.inMilliseconds.toDouble(),
-      });
-    }
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
-    await setCurrentTrack(index: index);
-    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      prepareShuffle();
+    if (eko?.conected.value ?? false) {
+      sendMedia(index);
+    } else {
+      await setCurrentTrack(index: index);
+      if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+        prepareShuffle();
+      }
+      play();
     }
-    play();
+  }
+
+  void sendMedia(int index) {
+    final item = songsAtual[index];
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendAudioFile(item);
+    }
+
+    musyncMediaUpdateNotifier.notifyMediaChanged(item);
+
+    currentIndex.value = index;
+    mediaItem.add(item);
   }
 
   @override
@@ -332,8 +343,12 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (shouldStop) return;
 
     if (currentIndex.value + 1 < songsAtual.length) {
-      await setCurrentTrack(index: currentIndex.value + 1);
-      play();
+      if (eko?.conected.value ?? false) {
+        sendMedia(currentIndex.value + 1);
+      } else {
+        await setCurrentTrack(index: currentIndex.value + 1);
+        play();
+      }
     }
 
     if (shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
@@ -348,8 +363,12 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     if (currentIndex.value > 0) {
       currentIndex.value--;
-      await setCurrentTrack(index: currentIndex.value);
-      play();
+      if (eko?.conected.value ?? false) {
+        sendMedia(currentIndex.value);
+      } else {
+        await setCurrentTrack(index: currentIndex.value);
+        play();
+      }
     }
   }
 
@@ -390,8 +409,12 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     played.add(nextIndex);
 
-    await setCurrentTrack(index: nextIndex);
-    play();
+    if (eko?.conected.value ?? false) {
+      sendMedia(nextIndex);
+    } else {
+      await setCurrentTrack(index: nextIndex);
+      play();
+    }
   }
 
   Future<void> playPreviousShuffled() async {
@@ -404,8 +427,12 @@ class MusyncAudioHandler extends BaseAudioHandler
     played.removeLast();
 
     int prevIndex = played.last;
-    await setCurrentTrack(index: prevIndex);
-    play();
+    if (eko?.conected.value ?? false) {
+      sendMedia(prevIndex);
+    } else {
+      await setCurrentTrack(index: prevIndex);
+      play();
+    }
   }
 
   Future<bool> repeatShuffled() async {
@@ -502,3 +529,16 @@ class MusyncAudioHandler extends BaseAudioHandler
     return ordenadas;
   }
 }
+
+class MusyncMediaUpdateNotifier extends ChangeNotifier {
+  late MediaItem _lastUpdate;
+
+  MediaItem get lastUpdate => _lastUpdate;
+
+  void notifyMediaChanged(MediaItem value) {
+    _lastUpdate = value;
+    notifyListeners();
+  }
+}
+
+final musyncMediaUpdateNotifier = MusyncMediaUpdateNotifier();

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -92,15 +93,21 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
+    act['time'] = DateTime.now().millisecondsSinceEpoch;
     final msg = jsonEncode(act);
     channel?.sink.add(msg);
   }
 
-  Future<void> sendAudioFile(String pathMediaItem) async {
-    File file = File(pathMediaItem);
+  Future<void> sendAudioFile(MediaItem music) async {
+    File file = File(music.extras?['path']);
     final bytes = await file.readAsBytes();
+    print(music.title);
 
-    final msg = {"action": "audio_file", "data": bytes};
+    final msg = {
+      "action": "audio_file",
+      "audio_title": music.title,
+      "data": bytes,
+    };
 
     sendMessage(msg);
   }
