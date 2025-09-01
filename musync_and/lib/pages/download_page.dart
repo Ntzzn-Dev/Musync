@@ -1,18 +1,11 @@
-import 'package:audio_service/audio_service.dart';
-import 'package:audiotags/audiotags.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
-import 'package:musync_and/services/playlists.dart';
+import 'package:musync_and/services/download.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import 'dart:developer';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 
 class DownloadPage extends StatefulWidget {
@@ -24,19 +17,7 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   String url = '';
-  ValueNotifier<String> safeTitle = ValueNotifier('Titulo');
-  ValueNotifier<String> safeAuthor = ValueNotifier('Artista');
-  ValueNotifier<String> situation = ValueNotifier('Situação: Em espera.');
-  int? year = 2000;
-  String thumb = '';
-  bool isLoading = false;
-  String directory = '';
   var yt = YoutubeExplode();
-
-  ValueNotifier<double> progresso = ValueNotifier(0);
-  double etapas = 6;
-  double progressoAtual = 0;
-  late double incremento;
 
   bool _btnDownloadActv = true;
 
@@ -61,11 +42,10 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   void initAsync() async {
-    incremento = 100 / etapas;
-
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('playlist_principal') ?? '';
-    directory = prefs.getString('dir_download') ?? '';
+    String directory = prefs.getString('dir_download') ?? '';
+    DownloadSpecs().setDirectory(directory);
 
     if (directory == '') {
       showPopupAdd(
@@ -92,30 +72,20 @@ class _DownloadPageState extends State<DownloadPage> {
     }
   }
 
-  void atualizarProgresso(ValueNotifier<double> p) {
-    if (p.value >= 100) {
-      progressoAtual = 0;
-    }
-    progressoAtual += incremento;
-    p.value = progressoAtual;
-  }
-
   final textController = TextEditingController();
   final padding = const EdgeInsets.all(8.0);
 
   Future<void> buscarVideo(String link) async {
     try {
-      situation.value = 'Situação: Carregando.';
+      DownloadSpecs().situacao.value = 'Situação: Carregando.';
       url = link;
 
       var video = await yt.videos.get(link);
 
-      safeTitle.value = video.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      safeAuthor.value = video.author.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      DownloadSpecs().titleAtual.value = video.title;
+      DownloadSpecs().authorAtual.value = video.author;
 
-      situation.value = 'Situação: Música pronta para baixar.';
-
-      year = video.uploadDate?.year;
+      DownloadSpecs().situacao.value = 'Situação: Música pronta para baixar.';
     } catch (e) {
       procurarPlaylist(link);
     }
@@ -244,94 +214,10 @@ class _DownloadPageState extends State<DownloadPage> {
     }
   }
 
-  Future<void> baixarAudio(var video, String title, String artist) async {
-    //progresso.value = 0.1;
-    var manifest = await yt.videos.streamsClient.getManifest(video.id);
-    atualizarProgresso(progresso);
-
-    var audio = manifest.audioOnly.withHighestBitrate();
-    var stream = yt.videos.streamsClient.get(audio);
-
-    String webmpath =
-        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.webm';
-
-    String mp3path =
-        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.mp3';
-
-    var file = File(webmpath);
-    var fileStream = file.openWrite();
-
-    await stream.pipe(fileStream);
-    await fileStream.flush();
-    await fileStream.close();
-    atualizarProgresso(progresso);
-
-    await convertWebmToMp3(webmpath, mp3path);
-    atualizarProgresso(progresso);
-
-    final thumbUrl =
-        'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg';
-    final response = await http.get(Uri.parse(thumbUrl));
-    final thumbBytes = response.bodyBytes;
-
-    List<Picture> img = [];
-    if (response.statusCode == 200) {
-      img = [
-        Picture(
-          bytes: thumbBytes,
-          mimeType: MimeType.jpeg,
-          pictureType: PictureType.coverFront,
-        ),
-      ];
-    }
-    atualizarProgresso(progresso);
-
-    await Playlists.editarTags(mp3path, {
-      'title': title,
-      'trackArtist': artist,
-      'year': year,
-      'pictures': img,
-    });
-    atualizarProgresso(progresso);
-
-    final fileStat = await File(mp3path).stat();
-    final lastModified = fileStat.modified.toIso8601String();
-    final uri = Uri.file(mp3path).toString();
-
-    MediaItem musicBaixada = MediaItem(
-      id: uri,
-      title: title,
-      artist: artist,
-      duration: video.duration ?? Duration.zero,
-      extras: {'lastModified': lastModified, 'path': mp3path},
-      artUri: Uri.parse(thumbUrl),
-    );
-
-    MusyncAudioHandler.songsAll.add(musicBaixada);
-
-    await Playlists.atualizarNoMediaStore(mp3path);
-    atualizarProgresso(progresso);
-  }
-
   String preferidaOuSafe(String? preferida, String safe) {
     return (preferida != null && preferida.trim().isNotEmpty)
         ? preferida
         : safe;
-  }
-
-  Future<void> convertWebmToMp3(String webmpath, String mp3path) async {
-    final comando = '-i "$webmpath" -vn -acodec libmp3lame -q:a 2 "$mp3path"';
-
-    await FFmpegKit.execute(comando).then((session) async {
-      final returnCode = await session.getReturnCode();
-      if (ReturnCode.isSuccess(returnCode)) {
-        log('Conversão concluída: $mp3path');
-
-        await File(webmpath).delete();
-      } else {
-        log('Erro ao converter: $returnCode');
-      }
-    });
   }
 
   @override
@@ -355,13 +241,13 @@ class _DownloadPageState extends State<DownloadPage> {
                     child: Column(
                       children: [
                         ValueListenableBuilder<String>(
-                          valueListenable: safeTitle,
+                          valueListenable: DownloadSpecs().titleAtual,
                           builder: (context, title, _) {
                             return Player.titleText(title, 20);
                           },
                         ),
                         ValueListenableBuilder<String>(
-                          valueListenable: safeAuthor,
+                          valueListenable: DownloadSpecs().authorAtual,
                           builder: (context, artist, _) {
                             return Text(
                               artist,
@@ -374,7 +260,7 @@ class _DownloadPageState extends State<DownloadPage> {
                           },
                         ),
                         ValueListenableBuilder<String>(
-                          valueListenable: situation,
+                          valueListenable: DownloadSpecs().situacao,
                           builder: (context, stt, _) {
                             return Text(
                               stt,
@@ -397,7 +283,6 @@ class _DownloadPageState extends State<DownloadPage> {
                           onPressed: () async {
                             setState(() {
                               url = textController.text;
-                              isLoading = true;
                             });
                             buscarVideo(url);
                           },
@@ -408,7 +293,7 @@ class _DownloadPageState extends State<DownloadPage> {
                     ),
                   ),
                   ValueListenableBuilder<double>(
-                    valueListenable: progresso,
+                    valueListenable: DownloadSpecs().progressAtual,
                     builder: (context, pgr, _) {
                       if (pgr == 0.0) {
                         return SizedBox.shrink();
@@ -495,24 +380,13 @@ class _DownloadPageState extends State<DownloadPage> {
                         .toList();
 
                 if (videosEscolhidos.isEmpty) {
-                  baixarAudio(
+                  DownloadSpecs().configurarDownloads([
                     await yt.videos.get(url),
-                    safeTitle.value,
-                    safeAuthor.value,
-                  );
+                  ]);
                 } else {
-                  int qnt = 0;
-                  situation.value =
-                      'Situação: 0/${videosEscolhidos.length} Baixados';
-
-                  for (var video in videosEscolhidos.reversed) {
-                    safeTitle.value = video.title;
-                    safeAuthor.value = video.author;
-                    await baixarAudio(video, video.title, video.author);
-                    qnt++;
-                    situation.value =
-                        'Situação: $qnt/${videosEscolhidos.length} Baixados';
-                  }
+                  DownloadSpecs().configurarDownloads(
+                    videosEscolhidos.reversed.toList(),
+                  );
                 }
               },
               style: ButtonStyle(

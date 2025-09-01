@@ -7,6 +7,7 @@ import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/services/download.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -406,27 +407,86 @@ class _MusicPageState extends State<MusicPage> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
+          ValueListenableBuilder<int>(
+            valueListenable: DownloadSpecs().isDownloading,
+            builder: (context, value, child) {
+              if (value == 1) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    if (await showPopupAdd(context, 'Fazendo Downloads', [])) {}
+                  },
+                  style: ButtonStyle(
+                    shape: WidgetStateProperty.all(const CircleBorder()),
+                    padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
+                    backgroundColor: WidgetStateProperty.all(
+                      Theme.of(context).appBarTheme.foregroundColor,
+                    ),
+                    foregroundColor: WidgetStateProperty.all(
+                      Theme.of(context).cardTheme.color,
+                    ),
+                    elevation: WidgetStateProperty.all(3),
+                  ),
+                  child: Icon(Icons.download_rounded),
+                );
+              }
+              if (value == 2) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    if (await showPopupAdd(context, 'Finalizados', [])) {
+                      DownloadSpecs().finish();
+                      setState(() {
+                        MusyncAudioHandler
+                            .songsAll = MusyncAudioHandler.reorder(
+                          modeAtual,
+                          MusyncAudioHandler.songsAll,
+                        );
+                        songsNow = MusyncAudioHandler.songsAll;
+                      });
+                    }
+                  },
+                  style: ButtonStyle(
+                    shape: WidgetStateProperty.all(const CircleBorder()),
+                    padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
+                    backgroundColor: WidgetStateProperty.all(
+                      Theme.of(context).appBarTheme.foregroundColor,
+                    ),
+                    foregroundColor: WidgetStateProperty.all(
+                      Theme.of(context).cardTheme.color,
+                    ),
+                    elevation: WidgetStateProperty.all(3),
+                  ),
+                  child: Icon(Icons.download_done_rounded),
+                );
+              } else {
+                return SizedBox.shrink();
+              }
+            },
+          ),
           ValueListenableBuilder<bool>(
             valueListenable: ekosystem?.conected ?? ValueNotifier(false),
             builder: (context, value, child) {
               if (value) {
-                return GestureDetector(
-                  onTap: () async {
-                    if (await showPopupAdd(
-                      context,
-                      'Conectado ao desktop: $host\nDeseja deconectar?',
-                      [],
-                    )) {
-                      ekosystem?.tryToDisconect();
-                    }
-                  },
-                  child: Icon(Icons.connected_tv),
+                return Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        if (await showPopupAdd(
+                          context,
+                          'Conectado ao desktop: $host\nDeseja deconectar?',
+                          [],
+                        )) {
+                          ekosystem?.tryToDisconect();
+                        }
+                      },
+                      child: Icon(Icons.connected_tv),
+                    ),
+                    SizedBox(width: 9),
+                  ],
                 );
               }
               return SizedBox.shrink();
             },
           ),
-          SizedBox(width: 9),
           ValueListenableBuilder<List<Widget>>(
             valueListenable: funcSuperiores,
             builder: (context, value, child) {

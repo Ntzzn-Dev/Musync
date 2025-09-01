@@ -190,3 +190,9 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição de um player controlador unico, sem que a música seja reproduzida no android.  
 - Upgrade visual na versão de desktop.  
 - Adição de um controle de volume para desktop.  
+
+### version 4.2  
+- Adição de um botão superior para controlar as músicas que estão sendo baixadas, sem a necessidade de esperar na pagina download.  
+- Controle de porcentagem de download melhorada.   
+- Correção de exibição de imagens após download.  
+- Adição de um botão para criar uma nova playlist na tela 'adicionar a playlist'.  

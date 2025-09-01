@@ -103,80 +103,121 @@ class _ListContentState extends State<ListContent> {
                           top: Radius.circular(20),
                         ),
                       ),
-                      child: ListView.builder(
-                        itemCount: playlists.length,
-                        itemBuilder: (context, index) {
-                          final playlist = playlists[index];
-                          return Container(
-                            color:
-                                playlist.haveMusic ?? false
-                                    ? Color.fromARGB(255, 243, 160, 34)
-                                    : null,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: () async {
-                                if (playlist.haveMusic ?? false) {
-                                  await DatabaseHelper().removeFromPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                } else {
-                                  await DatabaseHelper().addToPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                }
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                showPopupAdd(
+                                  context,
+                                  'Adicionar Playlist',
+                                  [
+                                    {'value': 'Título', 'type': 'title'},
+                                    {'value': 'Subtitulo', 'type': 'text'},
+                                  ],
+                                  onConfirm: (valores) async {
+                                    DatabaseHelper().insertPlaylist(
+                                      valores[0],
+                                      valores[1],
+                                      1,
+                                    );
 
-                                setModalState(() {
-                                  playlists[index] = playlist.copyWith(
-                                    haveMusic: !(playlist.haveMusic ?? false),
-                                  );
-                                });
+                                    playlists =
+                                        await DatabaseHelper().loadPlaylists();
+                                  },
+                                );
+                              },
+                              child: const Text("Adicionar playlist"),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: playlists.length,
+                              itemBuilder: (context, index) {
+                                final playlist = playlists[index];
+                                return Container(
+                                  color:
+                                      playlist.haveMusic ?? false
+                                          ? Color.fromARGB(255, 243, 160, 34)
+                                          : null,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                      if (playlist.haveMusic ?? false) {
+                                        await DatabaseHelper()
+                                            .removeFromPlaylist(
+                                              playlist.id,
+                                              item.id,
+                                            );
+                                      } else {
+                                        await DatabaseHelper().addToPlaylist(
+                                          playlist.id,
+                                          item.id,
+                                        );
+                                      }
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                      setModalState(() {
+                                        playlists[index] = playlist.copyWith(
+                                          haveMusic:
+                                              !(playlist.haveMusic ?? false),
+                                        );
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            playlist.title,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            playlist.subtitle,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 3,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      playlist.title,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      softWrap: true,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 2,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      playlist.subtitle,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
-                                      ),
-                                      softWrap: true,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 3,
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -422,6 +463,13 @@ class _ListContentState extends State<ListContent> {
             if (artUri.scheme == 'file') {
               return Image.file(
                 File(artUri.toFilePath()),
+                width: 45,
+                height: 45,
+                fit: BoxFit.cover,
+              );
+            } else if (artUri.scheme == 'http' || artUri.scheme == 'https') {
+              return Image.network(
+                artUri.toString(),
                 width: 45,
                 height: 45,
                 fit: BoxFit.cover,
