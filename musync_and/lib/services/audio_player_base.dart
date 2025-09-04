@@ -70,12 +70,21 @@ class MusyncAudioHandler extends BaseAudioHandler
   List<MediaItem> songsAtual = [];
 
   static Ekosystem? eko;
-  static ValueNotifier<MediaAtual> mediaAtual = ValueNotifier(
-    MediaAtual(total: Duration.zero),
-  );
+  static late ValueNotifier<MediaAtual> mediaAtual;
 
   void setEkosystem(Ekosystem ekosystem) {
     eko = ekosystem;
+
+    if (eko?.conected.value ?? false) {
+      eko?.sendMessage({'action': 'iniciado'});
+      final start = 0;
+      final end = (currentIndex.value + 50).clamp(0, songsAtual.length - 1);
+
+      final songs = songsAtual.sublist(start, end + 1);
+      eko?.sendAudios(songs);
+    }
+
+    mediaAtual = ValueNotifier(MediaAtual(total: Duration.zero));
 
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
@@ -83,13 +92,13 @@ class MusyncAudioHandler extends BaseAudioHandler
         final progress = Duration(milliseconds: msg?['data'].toInt());
         mediaAtual.value.seek(progress);
       } else if (msg?['action'] == 'toggle_play') {
-        MusyncAudioHandler.mediaAtual.value.pauseAndPlay(!msg?['data']);
-      } else if (msg?['action'] == 'next') {
-        skipToNext();
+        MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
       } else if (msg?['action'] == 'volume') {
         MediaAtual.volume.value = msg?['data'].toDouble();
       } else if (msg?['action'] == 'finalizou') {
         skipToNextAuto();
+      } else if (msg?['action'] == 'newindex') {
+        setMediaIndex(msg?['data'].toInt());
       }
     });
   }
@@ -285,7 +294,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   @override
   Future<void> skipToQueueItem(int index) async {
     if (eko?.conected.value ?? false) {
-      sendMedia(index);
+      sendMediaIndex(index);
     } else {
       await setCurrentTrack(index: index);
       if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
@@ -295,12 +304,16 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void sendMedia(int index) {
-    final item = songsAtual[index];
-
+  void sendMediaIndex(int index) {
     if (eko?.conected.value ?? false) {
-      eko?.sendAudioFile(item);
+      eko?.sendMessage({'action': 'newindex', 'data': index});
     }
+
+    setMediaIndex(index);
+  }
+
+  void setMediaIndex(int index) {
+    final item = songsAtual[index];
 
     musyncMediaUpdateNotifier.notifyMediaChanged(item);
 
@@ -315,8 +328,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       await playNext();
     }
-    log(currentIndex.value.toString());
-    log(songsAtual[currentIndex.value].title);
   }
 
   void skipToNextAuto() {
@@ -344,7 +355,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     if (currentIndex.value + 1 < songsAtual.length) {
       if (eko?.conected.value ?? false) {
-        sendMedia(currentIndex.value + 1);
+        sendMediaIndex(currentIndex.value + 1);
       } else {
         await setCurrentTrack(index: currentIndex.value + 1);
         play();
@@ -364,7 +375,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (currentIndex.value > 0) {
       currentIndex.value--;
       if (eko?.conected.value ?? false) {
-        sendMedia(currentIndex.value);
+        sendMediaIndex(currentIndex.value);
       } else {
         await setCurrentTrack(index: currentIndex.value);
         play();
@@ -410,7 +421,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     played.add(nextIndex);
 
     if (eko?.conected.value ?? false) {
-      sendMedia(nextIndex);
+      sendMediaIndex(nextIndex);
     } else {
       await setCurrentTrack(index: nextIndex);
       play();
@@ -428,7 +439,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     int prevIndex = played.last;
     if (eko?.conected.value ?? false) {
-      sendMedia(prevIndex);
+      sendMediaIndex(prevIndex);
     } else {
       await setCurrentTrack(index: prevIndex);
       play();

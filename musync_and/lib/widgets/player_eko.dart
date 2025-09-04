@@ -194,7 +194,7 @@ class _EkoPlayerState extends State<EkoPlayer> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () {
-                        MusyncAudioHandler.mediaAtual.value.pauseAndPlay(
+                        MusyncAudioHandler.mediaAtual.value.sendPauseAndPlay(
                           !value,
                         );
                       },

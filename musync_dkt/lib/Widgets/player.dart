@@ -1,14 +1,14 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
+import 'package:musync_dkt/Services/media_music.dart';
 import 'package:musync_dkt/main.dart';
 import 'package:musync_dkt/widgets/letreiro.dart';
 
 class Player extends StatefulWidget {
   final MusyncAudioHandler player;
-  final ValueNotifier<MediaAtual> media;
 
-  const Player({super.key, required this.player, required this.media});
+  const Player({super.key, required this.player});
 
   static String formatDuration(Duration d, bool h) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -71,8 +71,8 @@ class _PlayerState extends State<Player> {
         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 20),
         child: Column(
           children: [
-            ValueListenableBuilder<MediaAtual>(
-              valueListenable: widget.media,
+            ValueListenableBuilder<MediaMusic>(
+              valueListenable: widget.player.musicAtual,
               builder: (context, value, child) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -171,7 +171,7 @@ class _PlayerState extends State<Player> {
                     shape: const CircleBorder(),
                   ),
                   onPressed: () async {
-                    enviarParaAndroid(socket, "next", "proxima");
+                    widget.player.prev();
                   },
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
@@ -214,6 +214,7 @@ class _PlayerState extends State<Player> {
                       ),
                       onPressed: () async {
                         //await widget.audioHandler.skipToNext();
+                        widget.player.next();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional

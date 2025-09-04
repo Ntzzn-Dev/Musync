@@ -1,0 +1,704 @@
+import 'dart:developer';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:collection/collection.dart';
+import 'package:musync_dkt/Services/audio_player.dart';
+import 'package:musync_dkt/Services/media_music.dart';
+
+class ListContent extends StatefulWidget {
+  final MusyncAudioHandler audioHandler;
+  final List<MediaMusic> songsNow;
+  final ModeOrderEnum modeReorder;
+  final int? idPlaylist;
+  final bool? withReorder;
+  final void Function(MediaMusic)? aposClique;
+  final void Function(List<int>)? selecaoDeMusicas;
+
+  const ListContent({
+    super.key,
+    required this.audioHandler,
+    required this.songsNow,
+    required this.modeReorder,
+    this.idPlaylist,
+    this.withReorder,
+    this.aposClique,
+    this.selecaoDeMusicas,
+  });
+
+  @override
+  State<ListContent> createState() => _ListContentState();
+}
+
+class _ListContentState extends State<ListContent> {
+  late final ScrollController _scrollController;
+  late bool listaEmUso;
+  late List<int> idsSelecoes;
+
+  late List<MediaMusic> mutableSongs;
+  late ModeOrderEnum mode;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    listaEmUso = const ListEquality().equals(
+      widget.songsNow,
+      widget.audioHandler.songsAtual,
+    );
+    idsSelecoes = [];
+    mutableSongs = List.from(widget.songsNow);
+    mode = widget.modeReorder;
+  }
+
+  @override
+  void didUpdateWidget(covariant ListContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.songsNow != widget.songsNow) {
+      mutableSongs = List.from(widget.songsNow);
+      mode = widget.modeReorder;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /*List<Map<String, dynamic>> moreOptions(BuildContext context, MediaMusic item) {
+    return [
+      {
+        'opt': 'Adicionar a Playlist',
+        'icon': Icons.playlist_add,
+        'funct': () async {
+          List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+            idMusic: item.id,
+          );
+
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) {
+              return StatefulBuilder(
+                builder: (context, setModalState) {
+                  return FractionallySizedBox(
+                    heightFactor: 0.45,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                showPopupAdd(
+                                  context,
+                                  'Adicionar Playlist',
+                                  [
+                                    {'value': 'Título', 'type': 'title'},
+                                    {'value': 'Subtitulo', 'type': 'text'},
+                                  ],
+                                  onConfirm: (valores) async {
+                                    DatabaseHelper().insertPlaylist(
+                                      valores[0],
+                                      valores[1],
+                                      1,
+                                    );
+
+                                    playlists =
+                                        await DatabaseHelper().loadPlaylists();
+                                  },
+                                );
+                              },
+                              child: const Text("Adicionar playlist"),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: playlists.length,
+                              itemBuilder: (context, index) {
+                                final playlist = playlists[index];
+                                return Container(
+                                  color:
+                                      playlist.haveMusic ?? false
+                                          ? Color.fromARGB(255, 243, 160, 34)
+                                          : null,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                      if (playlist.haveMusic ?? false) {
+                                        await DatabaseHelper()
+                                            .removeFromPlaylist(
+                                              playlist.id,
+                                              item.id,
+                                            );
+                                      } else {
+                                        await DatabaseHelper().addToPlaylist(
+                                          playlist.id,
+                                          item.id,
+                                        );
+                                      }
+
+                                      setModalState(() {
+                                        playlists[index] = playlist.copyWith(
+                                          haveMusic:
+                                              !(playlist.haveMusic ?? false),
+                                        );
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            playlist.title,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            playlist.subtitle,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 3,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      },
+      {
+        'opt': 'Compartilhar',
+        'icon': Icons.share,
+        'funct': () async {
+          final file = File(item.extras?['path']);
+
+          if (await file.exists()) {
+            await SharePlus.instance.share(
+              ShareParams(
+                text: item.title,
+                title: item.title,
+                files: [XFile(file.path)],
+              ),
+            );
+          } else {
+            log('Arquivo não encontrado!');
+          }
+        },
+      },
+      {
+        'opt': 'Informações',
+        'icon': Icons.info_outline,
+        'funct': () async {
+          showSpec(item);
+        },
+      },
+      {
+        'opt': 'Editar Música',
+        'icon': Icons.edit,
+        'funct': () {
+          showPopupAdd(
+            context,
+            item.title,
+            [
+              {'value': 'Título', 'type': 'title', 'id': 2},
+              {'value': 'Artista', 'type': 'text'},
+              {'value': 'Album', 'type': 'text'},
+              {'value': 'Gênero', 'type': 'text'},
+            ],
+            fieldValues: [
+              item.title,
+              item.artist ?? '',
+              item.album ?? '',
+              item.genre ?? '',
+            ],
+            onConfirm: (valores) {
+              Playlists.editarTags(item.extras?['path'], {
+                'title': valores[0],
+                'trackArtist': valores[1],
+                'album': valores[2],
+                'genre': valores[3],
+              });
+
+              int indexSongAll = MusyncAudioHandler.songsAll.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              int indexSongNow = mutableSongs.indexWhere(
+                (e) => e.id == item.id,
+              );
+
+              if (indexSongAll != -1) {
+                final antigo = MusyncAudioHandler.songsAll[indexSongAll];
+
+                final musicEditada = antigo.copyWith(
+                  title: valores[0],
+                  artist: valores[1],
+                  album: valores[2],
+                  genre: valores[3],
+                  extras: {
+                    ...?antigo.extras,
+                    'lastModified': antigo.extras?['lastModified'],
+                    'path': antigo.extras?['path'],
+                  },
+                );
+
+                MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
+                mutableSongs[indexSongNow] = musicEditada;
+
+                setState(() {});
+
+                Navigator.of(context).pop();
+              } else {
+                log('Item não encontrado na lista para edição.');
+              }
+            },
+          );
+        },
+      },
+      {
+        'opt': 'Apagar Audio',
+        'icon': Icons.delete_forever,
+        'funct': () async {
+          if (await showPopupAdd(context, "Deletar Mídia?", [])) {
+            deletarMusica(item);
+            Navigator.of(context).pop();
+          }
+        },
+      },
+    ];
+  }*/
+
+  /*void showSpec(MediaItem item) {
+    showPopupList(
+      context,
+      item.title,
+      [
+        {'valor1': 'Nome', 'valor2': item.title},
+        {'valor1': 'Artista', 'valor2': item.artist},
+        {'valor1': 'Album', 'valor2': item.album},
+        {
+          'valor1': 'Duração',
+          'valor2': Player.formatDuration(item.duration!, true),
+        },
+        {'valor1': 'Caminho', 'valor2': item.extras?['path']},
+        {
+          'valor1': 'Data',
+          'valor2': DateFormat(
+            'HH:mm:ss dd/MM/yyyy',
+          ).format(DateTime.parse(item.extras?['lastModified'])),
+        },
+      ],
+      [
+        {'name': 'Dado', 'flex': 1, 'centralize': true, 'bold': true},
+        {'name': 'Valor', 'flex': 3, 'centralize': true, 'bold': false},
+      ],
+    );
+  }*/
+
+  /*Future<void> deletarMusica(MediaItem item) async {
+    final file = File(item.extras?['path']);
+    if (await file.exists()) {
+      try {
+        setState(() {
+          mutableSongs.remove(item);
+          MusyncAudioHandler.songsAll.remove(item);
+        });
+        await widget.audioHandler.recreateQueue(songs: mutableSongs);
+        await file.delete();
+      } catch (e) {
+        log('Erro ao deletar: $e');
+      }
+    } else {
+      log('Arquivo não encontrado');
+    }
+  }*/
+
+  /*String getDateCategory(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final inputDate = DateTime(date.year, date.month, date.day);
+
+    if (inputDate == today) {
+      return 'Hoje';
+    }
+
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+    if (inputDate.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+        inputDate.isBefore(endOfWeek.add(const Duration(days: 1)))) {
+      return 'Esta semana';
+    }
+
+    final lastMonth = DateTime(now.year, now.month - 1, now.day);
+    if (inputDate.isAfter(lastMonth)) {
+      return 'Último mês';
+    }
+
+    if (inputDate.year == now.year) {
+      return 'Este ano';
+    }
+
+    return DateFormat('dd/MM/yyyy').format(date);
+  }*/
+
+  void scrollToIndex(int index) {
+    final double position = index * 78;
+    _scrollController.animateTo(
+      position,
+      duration: Duration(seconds: 1),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void toggleSelecao(ValueNotifier<List<bool>> musicasSelecionadas, int index) {
+    final novaLista = List<bool>.from(musicasSelecionadas.value);
+    novaLista[index] = !novaLista[index];
+    musicasSelecionadas.value = novaLista;
+
+    if (novaLista[index]) {
+      idsSelecoes.add(index);
+    } else {
+      idsSelecoes.remove(index);
+    }
+
+    widget.selecaoDeMusicas?.call(idsSelecoes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    mutableSongs = widget.songsNow;
+    final musicasSelecionadas = ValueNotifier(
+      List.filled(mutableSongs.length, false),
+    );
+    bool selecionando = false;
+
+    log(widget.songsNow.length.toString());
+
+    void onReorder(int oldIndex, int newIndex) async {
+      /*setState(() {
+        if (mode != ModeOrderEnum.manual) {
+          mode = ModeOrderEnum.manual;
+        }
+        if (newIndex > oldIndex) newIndex -= 1;
+        final item = mutableSongs.removeAt(oldIndex);
+        mutableSongs.insert(newIndex, item);
+      });
+
+      await DatabaseHelper().updatePlaylist(
+        widget.idPlaylist!,
+        orderMode: mode.disconvert(),
+      );
+
+      await DatabaseHelper().updateOrderMusics(
+        mutableSongs,
+        widget.idPlaylist ?? 0,
+      );
+
+      widget.audioHandler.reorganizeQueue(songs: mutableSongs);*/
+    }
+
+    /*List<Widget> imgs =
+        mutableSongs.map((item) {
+          final artUri = item.artUri;
+
+          if (artUri != null) {
+            if (artUri.scheme == 'file') {
+              return Image.file(
+                File(artUri.toFilePath()),
+                width: 45,
+                height: 45,
+                fit: BoxFit.cover,
+              );
+            } else if (artUri.scheme == 'http' || artUri.scheme == 'https') {
+              return Image.network(
+                artUri.toString(),
+                width: 45,
+                height: 45,
+                fit: BoxFit.cover,
+              );
+            }
+          }
+
+          return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
+        }).toList();*/
+
+    return ValueListenableBuilder<int>(
+      valueListenable: widget.audioHandler.currentIndex,
+      builder: (context, value, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients && listaEmUso) {
+            scrollToIndex(value);
+          }
+        });
+
+        return ValueListenableBuilder<List<bool>>(
+          valueListenable: musicasSelecionadas,
+          builder: (context, selecionada, child) {
+            return ReorderableListView.builder(
+              onReorder: onReorder,
+              scrollController: _scrollController,
+              itemCount: mutableSongs.length,
+              itemBuilder: (context, index) {
+                MediaMusic item = mutableSongs[index];
+                final corFundo =
+                    selecionada[index]
+                        ? Color.fromARGB(95, 243, 34, 34)
+                        : value != -1 &&
+                            mutableSongs[index] ==
+                                widget.audioHandler.songsAtual[value] &&
+                            listaEmUso
+                        ? Color.fromARGB(96, 243, 159, 34)
+                        : null;
+
+                String currentSlice = '';
+                String previousSlice = '';
+
+                /*if (mode == ModeOrderEnum.dataZA ||
+                    mode == ModeOrderEnum.dataAZ) {
+                  final lastModified = DateTime.parse(
+                    item.extras?['lastModified'],
+                  );
+                  currentSlice = getDateCategory(lastModified);
+                  previousSlice =
+                      index > 0
+                          ? getDateCategory(
+                            DateTime.parse(
+                              mutableSongs[index - 1].extras?['lastModified'],
+                            ),
+                          )
+                          : '';
+                } else if (mode == ModeOrderEnum.titleZA ||
+                    mode == ModeOrderEnum.titleAZ) {
+                  currentSlice = item.title[0].toUpperCase();
+                  previousSlice =
+                      index > 0
+                          ? mutableSongs[index - 1].title[0].toUpperCase()
+                          : '';
+                } else {
+                  currentSlice = '';
+                  previousSlice = '';
+                }*/
+
+                bool showSliceHeader =
+                    index == 0 || currentSlice != previousSlice;
+
+                if (mode == ModeOrderEnum.manual) {
+                  showSliceHeader = false;
+                }
+
+                List<Widget> children = [];
+
+                if (showSliceHeader) {
+                  children.add(
+                    Container(
+                      height: 30,
+                      width: double.infinity,
+                      color: const Color.fromARGB(255, 54, 54, 54),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        currentSlice,
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 243, 160, 34),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                }
+
+                children.add(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          color: corFundo,
+                          height: 78,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () async {
+                              if (selecionando) {
+                                toggleSelecao(musicasSelecionadas, index);
+                                if (!musicasSelecionadas.value.contains(true)) {
+                                  selecionando = false;
+                                }
+                              } else {
+                                try {
+                                  if (!listaEmUso) {
+                                    setState(() {
+                                      listaEmUso = true;
+                                    });
+                                  }
+                                  widget.aposClique?.call(mutableSongs[index]);
+                                } catch (e) {
+                                  log('Erro ao tocar música: $e');
+                                }
+                              }
+                            },
+                            onLongPress: () {
+                              toggleSelecao(musicasSelecionadas, index);
+                              if (selecionando &&
+                                  !musicasSelecionadas.value.contains(true)) {
+                                selecionando = false;
+                              } else {
+                                selecionando = true;
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  /*ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: imgs[index],
+                                  ),*/
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.artist ?? "Artista desconhecido",
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 3,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 44,
+                                    height: 78,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.more_vert_rounded,
+                                        /*color:
+                                            Theme.of(context)
+                                                .extension<CustomColors>()!
+                                                .textForce,*/
+                                      ),
+                                      onPressed: () {
+                                        /*showPopupOptions(
+                                          context,
+                                          item.title,
+                                          moreOptions(context, item),
+                                        );*/
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      widget.withReorder ?? false
+                          ? ReorderableDragStartListener(
+                            index: index,
+                            child: Container(
+                              color: corFundo,
+                              width: 44,
+                              height: 78,
+                              child: Icon(
+                                Icons.drag_handle,
+                                /*color:
+                                    Theme.of(
+                                      context,
+                                    ).extension<CustomColors>()!.textForce,*/
+                              ),
+                            ),
+                          )
+                          : SizedBox.shrink(),
+                    ],
+                  ),
+                );
+
+                return Column(
+                  key: ValueKey(item.id),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: children,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}

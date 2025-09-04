@@ -196,3 +196,7 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Controle de porcentagem de download melhorada.   
 - Correção de exibição de imagens após download.  
 - Adição de um botão para criar uma nova playlist na tela 'adicionar a playlist'.  
+
+### version 4.3  
+- Transmissão de músicas do smartphone para o desktop de maneira mais rápida e sem travamento.  
+- Criação de lista de músicas temporária no desktop.  

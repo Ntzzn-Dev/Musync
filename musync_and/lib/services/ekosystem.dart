@@ -93,22 +93,54 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
-    act['time'] = DateTime.now().millisecondsSinceEpoch;
     final msg = jsonEncode(act);
     channel?.sink.add(msg);
   }
 
-  Future<void> sendAudioFile(MediaItem music) async {
-    File file = File(music.extras?['path']);
-    final bytes = await file.readAsBytes();
-    print(music.title);
+  Future<void> sendFileInChunks(MediaItem music) async {
+    final file = File(music.extras?['path']);
+    final stream = file.openRead();
 
-    final msg = {
-      "action": "audio_file",
+    int chunkIndex = 0;
+
+    sendMessage({
+      "action": "audio_start",
       "audio_title": music.title,
-      "data": bytes,
-    };
+      "audio_artist": music.artist,
+      "id": music.id,
+    });
 
-    sendMessage(msg);
+    await for (final chunk in stream) {
+      final base64Data = base64Encode(chunk);
+
+      sendMessage({
+        "action": "audio_chunk",
+        "audio_title": music.title,
+        "audio_artist": music.artist,
+        "id": music.id,
+        "index": chunkIndex,
+        "data": base64Data,
+      });
+      chunkIndex++;
+
+      await Future.delayed(const Duration(milliseconds: 5));
+    }
+
+    sendMessage({
+      "action": "audio_end",
+      "audio_title": music.title,
+      "audio_artist": music.artist,
+      "id": music.id,
+    });
+  }
+
+  Future<void> sendAudios(List<MediaItem> musicas) async {
+    sendMessage({"action": "package_start", "count": musicas.length});
+
+    for (final music in musicas) {
+      await sendFileInChunks(music);
+    }
+
+    sendMessage({"action": "package_end"});
   }
 }

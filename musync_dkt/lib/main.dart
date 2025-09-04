@@ -1,7 +1,9 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
+import 'package:musync_dkt/Widgets/list_content.dart';
 import 'package:musync_dkt/Widgets/player.dart';
 import 'package:musync_dkt/Widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
@@ -46,9 +48,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   ValueNotifier<bool> connected = ValueNotifier(false);
-  ValueNotifier<MediaAtual> mediaAtual = ValueNotifier(
-    MediaAtual(title: 'Titulo', artist: 'Artista'),
-  );
+
+  final Map<String, List<int>> fileBuffers = {};
 
   void startServer() async {
     final server = await HttpServer.bind('0.0.0.0', 8080);
@@ -64,31 +65,52 @@ class _HomePageState extends State<HomePage> {
             try {
               final decoded = jsonDecode(data);
               final action = decoded['action'];
-
               print('Ação recebida: $action');
-              if (action == 'audio_file') {
-                log('Recebendo música...');
-                await player.tocarMusic(decoded);
 
-                enviarParaAndroid(socket, "position", 0);
-                mediaAtual.value = MediaAtual(
-                  title: decoded['audio_title'],
-                  artist: 'artist',
-                );
+              if (action == 'audio_start') {
+                final title = decoded['audio_title'];
+                fileBuffers[title] = [];
+                print("Iniciando recebimento: $title");
+              } else if (action == 'audio_chunk') {
+                final title = decoded['audio_title'];
+                final bytes = base64Decode(decoded['data']);
+                fileBuffers[title]?.addAll(bytes);
+              } else if (action == 'audio_end') {
+                final title = decoded['audio_title'];
+                final artist = decoded['audio_artist'];
+
+                if (fileBuffers.containsKey(title)) {
+                  final fullBytes = Uint8List.fromList(fileBuffers[title]!);
+                  fileBuffers.remove(title);
+
+                  await player.tocarMusic({
+                    'audio_title': title,
+                    'audio_artist': artist,
+                    'data': fullBytes,
+                    'id': int.parse(decoded['id'].split("/").last),
+                  });
+
+                  print("Música recebida e tocando: $title");
+                }
+              } else if (action == 'package_start') {
+                print("Iniciando pacote de músicas...");
+              } else if (action == 'package_end') {
+                print("Fim do pacote de músicas");
               } else if (action == 'toggle_play') {
                 if (decoded['data']) {
-                  log('tocando');
                   player.resume();
                 } else {
-                  log('pausando');
                   player.pause();
                 }
               } else if (action == 'position') {
-                log('${Duration(milliseconds: decoded['data'].toInt())}');
-                player.seek(Duration(milliseconds: decoded['data'].toInt()));
+                final pos = Duration(milliseconds: decoded['data'].toInt());
+                player.seek(pos);
               } else if (action == 'volume') {
                 double vol = decoded['data'].toDouble();
                 player.setVolume(vol);
+              } else if (action == 'newindex') {
+                int newindex = decoded['data'].toInt();
+                player.setIndex(newindex);
               }
             } catch (e) {
               print('Erro ao decodificar JSON ou tocar áudio: $e');
@@ -114,6 +136,12 @@ class _HomePageState extends State<HomePage> {
     startServer();
     player.setVolume(50);
   }
+
+  void _toggleBottom() {
+    bottomPosition.value = bottomPosition.value == -135 ? 0 : -135;
+  }
+
+  ValueNotifier<double> bottomPosition = ValueNotifier(0);
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +171,33 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Column(children: [Player(player: player, media: mediaAtual)]),
+      body: Stack(
+        children: [
+          ListContent(
+            audioHandler: player,
+            songsNow: player.songsAtual,
+            modeReorder: ModeOrderEnum.dataAZ,
+          ),
+          ValueListenableBuilder<double>(
+            valueListenable: bottomPosition,
+            builder: (context, value, child) {
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+                bottom: value,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    _toggleBottom();
+                  },
+                  child: Player(player: player),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

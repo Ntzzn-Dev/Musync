@@ -22,6 +22,13 @@ class MediaAtual {
   void pauseAndPlay(bool playing) {
     log(playing.toString());
     isPlaying.value = playing;
+  }
+
+  void sendPauseAndPlay(bool playing) {
+    log(playing.toString());
+    log(isPlaying.value.toString());
+    isPlaying.value = playing;
+    log(isPlaying.value.toString());
     if (MusyncAudioHandler.eko?.conected.value ?? false) {
       MusyncAudioHandler.eko?.sendMessage({
         "action": 'toggle_play',
