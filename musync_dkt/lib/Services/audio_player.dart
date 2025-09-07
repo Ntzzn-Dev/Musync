@@ -1,7 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
-
+import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/media_music.dart';
@@ -67,9 +67,15 @@ class MusyncAudioHandler extends AudioPlayer {
   bool muted = false;
   double volumeatual = 50;
   File? tempFile;
-  List<MediaMusic> songsAtual = [];
+  ValueNotifier<List<MediaMusic>> songsAtual = ValueNotifier([]);
   ValueNotifier<MediaMusic> musicAtual = ValueNotifier(
-    MediaMusic(id: 0, title: 'title', artist: 'artist', bytes: Uint8List(0)),
+    MediaMusic(
+      id: 0,
+      title: 'title',
+      artist: 'artist',
+      bytes: Uint8List(0),
+      artUri: Uint8List(0),
+    ),
   );
 
   void toggleMute() {
@@ -97,7 +103,7 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void setIndex(int index) async {
-    if (index > songsAtual.length) {
+    if (index >= songsAtual.value.length) {
       log('Esperar carregar todas');
       return;
     }
@@ -106,32 +112,52 @@ class MusyncAudioHandler extends AudioPlayer {
     final tempDir = await getTemporaryDirectory();
 
     tempFile = File(
-      p.join(tempDir.path, 'temp_${safeFileName(songsAtual[index].title)}.mp3'),
+      p.join(
+        tempDir.path,
+        'temp_${safeFileName(songsAtual.value[index].title)}.mp3',
+      ),
     );
 
     if (!await tempFile!.exists()) {
-      await tempFile?.writeAsBytes(songsAtual[index].bytes, flush: true);
+      await tempFile?.writeAsBytes(songsAtual.value[index].bytes, flush: true);
     }
 
-    musicAtual.value = songsAtual[index];
+    musicAtual.value = songsAtual.value[index];
 
     await audPl.play(DeviceFileSource(tempFile!.path));
   }
 
-  Future<void> tocarMusic(dynamic music) async {
-    bool iniciar = songsAtual.isEmpty;
-
-    songsAtual.add(
+  Future<void> tocarMusic(dynamic music, bool? iniciar) async {
+    final novaLista = List<MediaMusic>.from(songsAtual.value)..insert(
+      music['part'] == 2 ? 0 : songsAtual.value.length,
       MediaMusic(
         id: music['id'],
         title: music['audio_title'],
         artist: music['audio_artist'],
         bytes: Uint8List.fromList(List<int>.from(music['data'])),
+        artUri:
+            music['art'] != null ? base64Decode(music['art']) : Uint8List(0),
       ),
     );
-    if (iniciar) {
+
+    songsAtual.value = novaLista;
+
+    currentIndex.value = novaLista.indexOf(musicAtual.value);
+
+    if (iniciar ?? false) {
       setIndex(0);
     }
+  }
+
+  void reorganizeQueue({required List<MediaMusic> songs}) {
+    songsAtual.value = songs;
+    currentIndex.value = songs.indexOf(musicAtual.value);
+
+    Map<String, int> temporaryOrder = {
+      for (int i = 0; i < songs.length; i++) songs[i].id.toString(): i,
+    };
+
+    enviarParaAndroid(socket, 'newtemporaryorder', temporaryOrder);
   }
 
   String safeFileName(String name) {
@@ -139,7 +165,7 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void next() {
-    if (currentIndex.value + 1 < songsAtual.length) {
+    if (currentIndex.value + 1 < songsAtual.value.length) {
       currentIndex.value += 1;
       setIndex(currentIndex.value);
       enviarParaAndroid(socket, 'newindex', currentIndex.value);

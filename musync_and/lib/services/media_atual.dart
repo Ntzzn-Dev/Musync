@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 
@@ -12,23 +10,21 @@ class MediaAtual {
   bool muted = false;
 
   Timer? _timer;
-  ValueNotifier<bool> isPlaying = ValueNotifier(false);
+  ValueNotifier<bool> isPlaying;
 
   MediaAtual({required this.total, Duration? start})
-    : position = ValueNotifier(start ?? Duration.zero) {
+    : position = ValueNotifier(start ?? Duration.zero),
+      isPlaying = ValueNotifier(true) {
     _startTimer();
   }
 
   void pauseAndPlay(bool playing) {
-    log(playing.toString());
     isPlaying.value = playing;
   }
 
   void sendPauseAndPlay(bool playing) {
-    log(playing.toString());
-    log(isPlaying.value.toString());
     isPlaying.value = playing;
-    log(isPlaying.value.toString());
+
     if (MusyncAudioHandler.eko?.conected.value ?? false) {
       MusyncAudioHandler.eko?.sendMessage({
         "action": 'toggle_play',
@@ -85,5 +81,6 @@ class MediaAtual {
   void dispose() {
     _timer?.cancel();
     position.dispose();
+    isPlaying.dispose();
   }
 }

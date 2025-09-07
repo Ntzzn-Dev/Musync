@@ -200,3 +200,12 @@ Todas as mudanças neste projeto serão documentadas aqui.
 ### version 4.3  
 - Transmissão de músicas do smartphone para o desktop de maneira mais rápida e sem travamento.  
 - Criação de lista de músicas temporária no desktop.  
+
+### version 4.4  
+- Envio de imagem junto com música.  
+- Correção da lista.  
+- Sincronização inicial corrigida.  
+- Correção de index errado ao adicionar novas músicas antes do carregamento total no desktop.  
+- Correção do botão de pause no android.  
+- Adição de reordenação temporária.  
+- Adição de porcentagem para quantidade de músicas já recebidas no desktop.  

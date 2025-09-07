@@ -182,27 +182,29 @@ class _EkoPlayerState extends State<EkoPlayer> {
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
                 const SizedBox(width: 16),
-                ValueListenableBuilder<bool>(
-                  valueListenable:
-                      MusyncAudioHandler.mediaAtual.value.isPlaying,
+                ValueListenableBuilder<MediaAtual>(
+                  valueListenable: MusyncAudioHandler.mediaAtual,
                   builder: (context, value, child) {
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: EdgeInsets.all(15),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: () {
-                        MusyncAudioHandler.mediaAtual.value.sendPauseAndPlay(
-                          !value,
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: value.isPlaying,
+                      builder: (context, playing, child) {
+                        return ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: EdgeInsets.all(15),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: const CircleBorder(),
+                          ),
+                          onPressed: () {
+                            value.sendPauseAndPlay(!playing);
+                          },
+                          child: Icon(
+                            playing
+                                ? Icons.pause_outlined
+                                : Icons.play_arrow_outlined,
+                          ),
                         );
                       },
-                      child: Icon(
-                        value
-                            ? Icons.pause_outlined
-                            : Icons.play_arrow_outlined,
-                      ),
                     );
                   },
                 ),

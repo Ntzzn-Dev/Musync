@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
 import 'package:musync_dkt/Services/media_music.dart';
+import 'package:musync_dkt/themes.dart';
 
 class ListContent extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -44,7 +46,7 @@ class _ListContentState extends State<ListContent> {
     _scrollController = ScrollController();
     listaEmUso = const ListEquality().equals(
       widget.songsNow,
-      widget.audioHandler.songsAtual,
+      widget.audioHandler.songsAtual.value,
     );
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
@@ -424,10 +426,8 @@ class _ListContentState extends State<ListContent> {
     );
     bool selecionando = false;
 
-    log(widget.songsNow.length.toString());
-
     void onReorder(int oldIndex, int newIndex) async {
-      /*setState(() {
+      setState(() {
         if (mode != ModeOrderEnum.manual) {
           mode = ModeOrderEnum.manual;
         }
@@ -436,43 +436,29 @@ class _ListContentState extends State<ListContent> {
         mutableSongs.insert(newIndex, item);
       });
 
-      await DatabaseHelper().updatePlaylist(
-        widget.idPlaylist!,
-        orderMode: mode.disconvert(),
-      );
-
-      await DatabaseHelper().updateOrderMusics(
-        mutableSongs,
-        widget.idPlaylist ?? 0,
-      );
-
-      widget.audioHandler.reorganizeQueue(songs: mutableSongs);*/
+      widget.audioHandler.reorganizeQueue(songs: mutableSongs);
     }
 
-    /*List<Widget> imgs =
+    List<Widget> imgs =
         mutableSongs.map((item) {
-          final artUri = item.artUri;
+          final artBase64 = item.artUri;
 
-          if (artUri != null) {
-            if (artUri.scheme == 'file') {
-              return Image.file(
-                File(artUri.toFilePath()),
+          if (artBase64.isNotEmpty) {
+            try {
+              final artBytes = artBase64;
+              return Image.memory(
+                artBytes,
                 width: 45,
                 height: 45,
                 fit: BoxFit.cover,
               );
-            } else if (artUri.scheme == 'http' || artUri.scheme == 'https') {
-              return Image.network(
-                artUri.toString(),
-                width: 45,
-                height: 45,
-                fit: BoxFit.cover,
-              );
+            } catch (e) {
+              print('Erro ao decodificar base64: $e');
             }
           }
 
           return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
-        }).toList();*/
+        }).toList();
 
     return ValueListenableBuilder<int>(
       valueListenable: widget.audioHandler.currentIndex,
@@ -493,14 +479,15 @@ class _ListContentState extends State<ListContent> {
               itemBuilder: (context, index) {
                 MediaMusic item = mutableSongs[index];
                 final corFundo =
-                    selecionada[index]
+                    /*selecionada[index]
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
                             mutableSongs[index] ==
                                 widget.audioHandler.songsAtual[value] &&
                             listaEmUso
                         ? Color.fromARGB(96, 243, 159, 34)
-                        : null;
+                        : */
+                    null;
 
                 String currentSlice = '';
                 String previousSlice = '';
@@ -606,11 +593,13 @@ class _ListContentState extends State<ListContent> {
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.max,
                                 children: [
-                                  /*ClipRRect(
+                                  ClipRRect(
                                     borderRadius: BorderRadius.circular(3),
                                     child: imgs[index],
-                                  ),*/
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
@@ -630,7 +619,7 @@ class _ListContentState extends State<ListContent> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          item.artist ?? "Artista desconhecido",
+                                          item.artist,
                                           style: const TextStyle(
                                             fontSize: 10,
                                             color: Colors.grey,
@@ -643,14 +632,14 @@ class _ListContentState extends State<ListContent> {
                                   ),
                                   SizedBox(
                                     width: 44,
-                                    height: 78,
+                                    height: 44,
                                     child: IconButton(
                                       icon: Icon(
                                         Icons.more_vert_rounded,
-                                        /*color:
+                                        color:
                                             Theme.of(context)
                                                 .extension<CustomColors>()!
-                                                .textForce,*/
+                                                .textForce,
                                       ),
                                       onPressed: () {
                                         /*showPopupOptions(
@@ -661,30 +650,29 @@ class _ListContentState extends State<ListContent> {
                                       },
                                     ),
                                   ),
+                                  const SizedBox(width: 15),
+                                  if (widget.withReorder ?? false)
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: Container(
+                                        color: corFundo,
+                                        width: 44,
+                                        height: 78,
+                                        child: Icon(
+                                          Icons.drag_handle,
+                                          color:
+                                              Theme.of(context)
+                                                  .extension<CustomColors>()!
+                                                  .textForce,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
                           ),
                         ),
                       ),
-
-                      widget.withReorder ?? false
-                          ? ReorderableDragStartListener(
-                            index: index,
-                            child: Container(
-                              color: corFundo,
-                              width: 44,
-                              height: 78,
-                              child: Icon(
-                                Icons.drag_handle,
-                                /*color:
-                                    Theme.of(
-                                      context,
-                                    ).extension<CustomColors>()!.textForce,*/
-                              ),
-                            ),
-                          )
-                          : SizedBox.shrink(),
                     ],
                   ),
                 );

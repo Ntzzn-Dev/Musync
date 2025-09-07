@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
 
 class Ekosystem {
   ValueNotifier<bool> conected;
@@ -97,7 +98,7 @@ class Ekosystem {
     channel?.sink.add(msg);
   }
 
-  Future<void> sendFileInChunks(MediaItem music) async {
+  Future<void> sendFileInChunks(MediaItem music, int part) async {
     final file = File(music.extras?['path']);
     final stream = file.openRead();
 
@@ -125,20 +126,52 @@ class Ekosystem {
 
       await Future.delayed(const Duration(milliseconds: 5));
     }
-
+    final artBase64 = await getArtBase64(music.artUri?.toString());
     sendMessage({
       "action": "audio_end",
       "audio_title": music.title,
       "audio_artist": music.artist,
       "id": music.id,
+      "parte": part,
+      "artUri": artBase64,
     });
   }
 
-  Future<void> sendAudios(List<MediaItem> musicas) async {
+  Future<String?> getArtBase64(String? artUriStr) async {
+    if (artUriStr == null) return null;
+
+    try {
+      final uri = Uri.parse(artUriStr);
+
+      if (uri.scheme == 'file') {
+        final file = File(uri.toFilePath());
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          return base64Encode(bytes);
+        }
+      } else if (uri.scheme == 'http' || uri.scheme == 'https') {
+        final response = await http.get(Uri.parse(artUriStr));
+        if (response.statusCode == 200) return base64Encode(response.bodyBytes);
+      }
+    } catch (e) {
+      print('Erro ao ler artUri: $e');
+    }
+
+    return null;
+  }
+
+  Future<void> sendAudios(List<MediaItem> musicas, int indx) async {
+    List<MediaItem> mscs1 = musicas.sublist(indx);
+    List<MediaItem> mscs2 = musicas.sublist(0, indx).reversed.toList();
+
     sendMessage({"action": "package_start", "count": musicas.length});
 
-    for (final music in musicas) {
-      await sendFileInChunks(music);
+    for (final music in mscs1) {
+      await sendFileInChunks(music, 1);
+    }
+
+    for (final music in mscs2) {
+      await sendFileInChunks(music, 2);
     }
 
     sendMessage({"action": "package_end"});

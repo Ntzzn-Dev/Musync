@@ -74,17 +74,17 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   void setEkosystem(Ekosystem ekosystem) {
     eko = ekosystem;
+    pause();
 
     if (eko?.conected.value ?? false) {
-      eko?.sendMessage({'action': 'iniciado'});
-      final start = 0;
-      final end = (currentIndex.value + 50).clamp(0, songsAtual.length - 1);
-
-      final songs = songsAtual.sublist(start, end + 1);
-      eko?.sendAudios(songs);
+      eko?.sendAudios(songsAtual, currentIndex.value);
     }
 
-    mediaAtual = ValueNotifier(MediaAtual(total: Duration.zero));
+    mediaAtual = ValueNotifier(
+      MediaAtual(
+        total: songsAtual[currentIndex.value].duration ?? Duration.zero,
+      ),
+    );
 
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
@@ -99,7 +99,17 @@ class MusyncAudioHandler extends BaseAudioHandler
         skipToNextAuto();
       } else if (msg?['action'] == 'newindex') {
         setMediaIndex(msg?['data'].toInt());
+      } else if (msg?['action'] == 'newtemporaryorder') {
+        reorganizeSongsAtual(msg?['data']);
       }
+    });
+  }
+
+  void reorganizeSongsAtual(Map<String, dynamic> ordem) {
+    songsAtual.sort((a, b) {
+      final posA = ordem[a.id.split('/').last] ?? 0;
+      final posB = ordem[b.id.split('/').last] ?? 0;
+      return posA.compareTo(posB);
     });
   }
 
@@ -220,14 +230,21 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
 
     songsAtual = [...songs];
-    currentIndex.value = 0;
+    if (eko?.conected.value ?? false) {
+      eko?.sendAudios(
+        songsAtual,
+        currentIndex.value,
+      ); // CORRIGIR CURRENT INDEX ERRADO AO CLICAR EM OUTRA PLAYLIST
+    } else {
+      currentIndex.value = 0;
 
-    await setCurrentTrack(index: 0);
+      await setCurrentTrack(index: 0);
 
-    queue.add(songs);
+      queue.add(songs);
 
-    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      prepareShuffle();
+      if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+        prepareShuffle();
+      }
     }
   }
 

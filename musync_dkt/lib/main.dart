@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
+import 'package:musync_dkt/Services/media_music.dart';
 import 'package:musync_dkt/Widgets/list_content.dart';
 import 'package:musync_dkt/Widgets/player.dart';
 import 'package:musync_dkt/Widgets/popup_add.dart';
@@ -48,6 +49,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   ValueNotifier<bool> connected = ValueNotifier(false);
+  ValueNotifier<String> musicsPercent = ValueNotifier('0%');
+  String musicsLoaded = '0/0';
 
   final Map<String, List<int>> fileBuffers = {};
 
@@ -59,6 +62,7 @@ class _HomePageState extends State<HomePage> {
         socket = await WebSocketTransformer.upgrade(request);
         print('Cliente conectado!');
         connected.value = true;
+        enviarParaAndroid(socket, 'volume', player.vol.value);
 
         socket.listen(
           (data) async {
@@ -88,14 +92,20 @@ class _HomePageState extends State<HomePage> {
                     'audio_artist': artist,
                     'data': fullBytes,
                     'id': int.parse(decoded['id'].split("/").last),
-                  });
+                    'part': decoded['parte'],
+                    'art': decoded['artUri'],
+                  }, musicsLoaded.split('/').first == '0');
 
-                  print("Música recebida e tocando: $title");
+                  addLoaded();
+
+                  print("Música recebida: $title");
                 }
               } else if (action == 'package_start') {
-                print("Iniciando pacote de músicas...");
+                log("Iniciando pacote de músicas...");
+                player.songsAtual.value.clear();
+                musicsLoaded = '0/${decoded['count']}';
               } else if (action == 'package_end') {
-                print("Fim do pacote de músicas");
+                log("Fim da primeira parte");
               } else if (action == 'toggle_play') {
                 if (decoded['data']) {
                   player.resume();
@@ -130,6 +140,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void addLoaded() {
+    final regex = RegExp(r'^\s*(\d+)\s*/\s*(\d+)\s*$');
+
+    final match = regex.firstMatch(musicsLoaded);
+    if (match != null) {
+      final first = int.parse(match.group(1)!) + 1;
+      final second = int.parse(match.group(2)!);
+
+      musicsPercent.value = '${(first / second * 100).toStringAsFixed(1)}%';
+
+      musicsLoaded = '$first/$second';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,6 +173,25 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Músicas Recebidas'),
         actions: [
+          ValueListenableBuilder<String>(
+            valueListenable: musicsPercent,
+            builder: (context, value, child) {
+              final qnts = RegExp(
+                r'^\s*(\d+)\s*/\s*(\d+)\s*$',
+              ).firstMatch(musicsLoaded)?.group(2);
+
+              return Tooltip(
+                message: 'Músicas carregadas: $musicsLoaded',
+                child: Row(
+                  children: [
+                    Icon(Icons.music_note_outlined),
+                    Text(value == '100.0%' ? qnts ?? '' : value),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 9),
           ValueListenableBuilder<bool>(
             valueListenable: connected,
             builder: (context, value, child) {
@@ -169,14 +212,20 @@ class _HomePageState extends State<HomePage> {
               return SizedBox.shrink();
             },
           ),
+          const SizedBox(width: 9),
         ],
       ),
       body: Stack(
         children: [
-          ListContent(
-            audioHandler: player,
-            songsNow: player.songsAtual,
-            modeReorder: ModeOrderEnum.dataAZ,
+          ValueListenableBuilder<List<MediaMusic>>(
+            valueListenable: player.songsAtual,
+            builder: (context, value, child) {
+              return ListContent(
+                audioHandler: player,
+                songsNow: player.songsAtual.value,
+                modeReorder: ModeOrderEnum.dataAZ,
+              );
+            },
           ),
           ValueListenableBuilder<double>(
             valueListenable: bottomPosition,
