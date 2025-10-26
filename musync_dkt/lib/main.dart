@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
               if (action == 'audio_start') {
                 final title = decoded['audio_title'];
                 fileBuffers[title] = [];
-                print("Iniciando recebimento: $title");
+                //print("Iniciando recebimento: $title");
               } else if (action == 'audio_chunk') {
                 final title = decoded['audio_title'];
                 final bytes = base64Decode(decoded['data']);
@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
 
                   addLoaded();
 
-                  print("Música recebida: $title");
+                  //print("Música recebida: $title");
                 }
               } else if (action == 'package_start') {
                 log("Iniciando pacote de músicas...");
@@ -106,6 +106,7 @@ class _HomePageState extends State<HomePage> {
                 musicsLoaded = '0/${decoded['count']}';
               } else if (action == 'package_end') {
                 log("Fim da primeira parte");
+                enviarParaAndroid(socket, "package_end", 0);
               } else if (action == 'toggle_play') {
                 if (decoded['data']) {
                   player.resume();
@@ -120,10 +121,13 @@ class _HomePageState extends State<HomePage> {
                 player.setVolume(vol);
               } else if (action == 'newindex') {
                 int newindex = decoded['data'].toInt();
+                log(newindex.toString());
                 player.setIndex(newindex);
               }
             } catch (e) {
-              print('Erro ao decodificar JSON ou tocar áudio: $e');
+              print(
+                'Erro ao decodificar JSON ou tocar áudio: $e  ${jsonDecode(data)['action']}',
+              );
             }
           },
           onError: (error) {

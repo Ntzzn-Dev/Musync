@@ -532,7 +532,10 @@ class _MusicPageState extends State<MusicPage> {
                       builder: (context) => SettingsPage(),
                       settings: RouteSettings(name: 'settings'),
                     ),
-                  );
+                  ).then((_) async {
+                    final prefs = await SharedPreferences.getInstance();
+                    host = prefs.getString('ip_pc') ?? '';
+                  });
                   break;
                 case 'connect':
                   if (host != '') {

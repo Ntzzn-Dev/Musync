@@ -1,5 +1,5 @@
 name: musync_and
-description: "A new Flutter project."
+description: "Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, baixar e transferir as musicas entre plataformas."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 4.5.0+1
 
 environment:
   sdk: ^3.7.2
@@ -49,11 +49,13 @@ dependencies:
       url: https://github.com/Hexer10/youtube_explode_dart
       ref: master
   audiotags: ^1.4.5
-  ffmpeg_kit_flutter_new: ^2.0.0
+  ffmpeg_kit_flutter_new: ^3.2.0
   share_plus: ^11.0.0
   web_socket_channel: ^3.0.3
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
   flutter_test:
     sdk: flutter
 
@@ -63,6 +65,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/musyncIcon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

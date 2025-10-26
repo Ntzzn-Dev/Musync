@@ -94,11 +94,18 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
-    final msg = jsonEncode(act);
-    channel?.sink.add(msg);
+    try {
+      final msg = jsonEncode(act);
+      channel?.sink.add(msg);
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
+  static int indexSending = 0;
+
   Future<void> sendFileInChunks(MediaItem music, int part) async {
+    if (!conected.value) return;
     final file = File(music.extras?['path']);
     final stream = file.openRead();
 
@@ -167,6 +174,7 @@ class Ekosystem {
     sendMessage({"action": "package_start", "count": musicas.length});
 
     for (final music in mscs1) {
+      indexSending = mscs1.indexOf(music);
       await sendFileInChunks(music, 1);
     }
 

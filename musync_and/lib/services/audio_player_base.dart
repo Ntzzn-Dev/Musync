@@ -70,6 +70,8 @@ class MusyncAudioHandler extends BaseAudioHandler
   List<MediaItem> songsAtual = [];
 
   static Ekosystem? eko;
+  static int indexInitial = 0;
+  static int indexAnterior = 0;
   static late ValueNotifier<MediaAtual> mediaAtual;
 
   void setEkosystem(Ekosystem ekosystem) {
@@ -78,6 +80,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     if (eko?.conected.value ?? false) {
       eko?.sendAudios(songsAtual, currentIndex.value);
+      indexInitial = currentIndex.value;
     }
 
     mediaAtual = ValueNotifier(
@@ -101,6 +104,8 @@ class MusyncAudioHandler extends BaseAudioHandler
         setMediaIndex(msg?['data'].toInt());
       } else if (msg?['action'] == 'newtemporaryorder') {
         reorganizeSongsAtual(msg?['data']);
+      } else if (msg?['action'] == 'package_end') {
+        indexInitial = 0;
       }
     });
   }
@@ -323,7 +328,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   void sendMediaIndex(int index) {
     if (eko?.conected.value ?? false) {
-      eko?.sendMessage({'action': 'newindex', 'data': index});
+      if (Ekosystem.indexSending < index) return;
+      int indexRelative = index - indexInitial;
+      eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
     }
 
     setMediaIndex(index);

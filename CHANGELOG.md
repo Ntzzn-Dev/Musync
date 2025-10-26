@@ -209,3 +209,12 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção do botão de pause no android.  
 - Adição de reordenação temporária.  
 - Adição de porcentagem para quantidade de músicas já recebidas no desktop.  
+
+### version 4.5  
+- ### Desativação do modo Download, por conta de mudanças internas do próprio Youtube.  
+- Correção do manifest.  
+- Correção da desconexão através do mobile.  
+- Correção do valor do IP padrão definido na versão mobile.  
+- Correção da mudança de index na versão mobile enquanto a versão desktop ainda não havia recebido a música.  
+- Correção de indices relativos ao começo da lista.  
+- Adição de icone para app Android.  

@@ -55,6 +55,10 @@ class _DownloadPageState extends State<DownloadPage> {
       );
     }
 
+    setState(() {
+      _btnDownloadActv = false;
+    });
+
     procurarPlaylist(url);
   }
 
@@ -243,7 +247,11 @@ class _DownloadPageState extends State<DownloadPage> {
                         ValueListenableBuilder<String>(
                           valueListenable: DownloadSpecs().titleAtual,
                           builder: (context, title, _) {
-                            return Player.titleText(title, 20);
+                            return Player.titleText(
+                              "DESATIVADO TEMPORÁRIAMENTE",
+                              20,
+                            );
+                            //return Player.titleText(title, 20);
                           },
                         ),
                         ValueListenableBuilder<String>(

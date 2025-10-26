@@ -14,6 +14,8 @@ Um aplicativo mobile com capacidade de organizar musicas locais, reproduzi-las, 
 
 ## Demonstração  
 
+## Android
+
 ### Tela Principal  
 Tela onde ficam todas as músicas encontradas.  
 O player abaixo se possui os botões principais para controle da mídia.  
@@ -50,9 +52,31 @@ Página que controla as playlists, criadas pelo usuário ou as separadas por art
 
 ### Player da Notificação 
 Na notificação estão as ações mais importantes, incluindo controle de aleatório.   
+
 <img src="assets/notify_bar.jpg" width="300"/>  
 
-## Instalação  
+## Desktop  
+Para conectar, primeiramente é necessário digitar manualmente o IP local do desktop nas configurações do mobile.  
+### Conexão
+Ao começar uma conexão, automáticamente toda a lista de músicas que estão sendo reproduzidas atualmente serão enviadas para o desktop em partes quebradas e reconstruidas localmente. Tudo isso enquanto outras músicas, já carregadas, podem ser reproduzidas.  
+Durante a conexão, a versão mobile se apropria de um player avermelhado, que serve de indicação de conexão efetuada.  
+
+<img src="assets/Inicio.png" width="600"/>  
+
+### Recepção  
+Conforme as músicas forem sendo carregadas um contador exibirá sua porcentagem e/ou razão precisa no canto superior direito.   
+É possível controlar a música atual, volume e posição atual, através do smartphone e do desktop, por meio de conversas rápidas WebSocket.  
+
+<img src="assets/InicioRecebendo2.png" width="600"/>  
+
+### Desconexão  
+É possível desconectar de ambos os lados, tanto clicando no ícone de conexão e desconectando manualmente, ou simplesmente fechando um dos dois.  
+<p float="left">
+<img src="assets/Desconectar.png" width="600"/>
+<img src="assets/EkosystemMobile.jpg" width="152"/>  
+</p>
+
+## Utilização  
 1. Clone este repositório:  
   ```git clone https://github.com/Ntzzn-Dev/Musync.git```  
 2. Entre na pasta e rode (para android):  
