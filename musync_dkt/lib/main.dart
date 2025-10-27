@@ -17,13 +17,17 @@ void main() async {
 }
 
 void enviarParaAndroid(WebSocket socket, String action, dynamic data) {
-  final message = jsonEncode({
-    "action": action,
-    "data": data,
-    "time": DateTime.now().millisecondsSinceEpoch,
-  });
+  try {
+    final message = jsonEncode({
+      "action": action,
+      "data": data,
+      "time": DateTime.now().millisecondsSinceEpoch,
+    });
 
-  socket.add(message);
+    socket.add(message);
+  } catch (e) {
+    log(e.toString());
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -74,7 +78,7 @@ class _HomePageState extends State<HomePage> {
               if (action == 'audio_start') {
                 final title = decoded['audio_title'];
                 fileBuffers[title] = [];
-                //print("Iniciando recebimento: $title");
+                print("Iniciando recebimento: $title");
               } else if (action == 'audio_chunk') {
                 final title = decoded['audio_title'];
                 final bytes = base64Decode(decoded['data']);
@@ -98,7 +102,7 @@ class _HomePageState extends State<HomePage> {
 
                   addLoaded();
 
-                  //print("Música recebida: $title");
+                  print("Música recebida: $title");
                 }
               } else if (action == 'package_start') {
                 log("Iniciando pacote de músicas...");
@@ -228,6 +232,12 @@ class _HomePageState extends State<HomePage> {
                 audioHandler: player,
                 songsNow: player.songsAtual.value,
                 modeReorder: ModeOrderEnum.dataAZ,
+                aposClique: (item) async {
+                  int indiceCerto = player.songsAtual.value.indexWhere(
+                    (t) => t == item,
+                  );
+                  player.setIndex(indiceCerto);
+                },
               );
             },
           ),

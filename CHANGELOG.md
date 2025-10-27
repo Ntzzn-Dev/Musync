@@ -223,3 +223,8 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção no mobile ao index recebido pelo desktop ser diferente antes de receber todas as músicas.  
 - Correção de modo aleatório e repetição no desktop para funcionar de maneira autônoma.  
 - Correção na visualização dos modos, incluindo a imagem do shuffle especial.  
+
+### version 4.6.1
+- Adição da seleção através do clique na lista, na versão de desktop.  
+- Adição de identificação visual de música atual na lista.  
+- Correção na visualização de modos do player do ekosystem.  

@@ -33,8 +33,6 @@ class EkoPlayer extends StatefulWidget {
 }
 
 class _EkoPlayerState extends State<EkoPlayer> {
-  ValueNotifier<ModeLoopEnum> toLoop = ValueNotifier(ModeLoopEnum.off);
-
   @override
   void initState() {
     super.initState();
@@ -236,7 +234,7 @@ class _EkoPlayerState extends State<EkoPlayer> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeLoopEnum>(
-                  valueListenable: toLoop,
+                  valueListenable: widget.audioHandler.loopMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -247,7 +245,6 @@ class _EkoPlayerState extends State<EkoPlayer> {
                       ),
                       onPressed: () async {
                         widget.audioHandler.setLoopModeEnabled();
-                        toLoop.value = value.next();
                       },
                       child: Icon(
                         value == ModeLoopEnum.off
