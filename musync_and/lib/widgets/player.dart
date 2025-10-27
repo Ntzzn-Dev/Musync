@@ -32,8 +32,6 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  ValueNotifier<ModeLoopEnum> toLoop = ValueNotifier(ModeLoopEnum.off);
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -215,7 +213,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeLoopEnum>(
-                  valueListenable: toLoop,
+                  valueListenable: widget.audioHandler.loopMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -226,7 +224,6 @@ class _PlayerState extends State<Player> {
                       ),
                       onPressed: () async {
                         widget.audioHandler.setLoopModeEnabled();
-                        toLoop.value = value.next();
                       },
                       child: Icon(
                         value == ModeLoopEnum.off

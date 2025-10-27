@@ -98,7 +98,7 @@ class MusyncAudioHandler extends AudioPlayer {
       } catch (e) {
         print('Erro ao deletar arquivo: $e');
       }
-      enviarParaAndroid(socket, "finalizou", true);
+      skipToNextAuto();
     });
   }
 
@@ -164,22 +164,6 @@ class MusyncAudioHandler extends AudioPlayer {
     return name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
   }
 
-  void next() {
-    if (currentIndex.value + 1 < songsAtual.value.length) {
-      currentIndex.value += 1;
-      setIndex(currentIndex.value);
-      enviarParaAndroid(socket, 'newindex', currentIndex.value);
-    }
-  }
-
-  void prev() {
-    if (currentIndex.value > 0) {
-      currentIndex.value -= 1;
-      setIndex(currentIndex.value);
-      enviarParaAndroid(socket, 'newindex', currentIndex.value);
-    }
-  }
-
   @override
   Future<void> pause() async {
     audPl.pause();
@@ -210,4 +194,156 @@ class MusyncAudioHandler extends AudioPlayer {
 
   @override
   Future<void> seek(Duration position) async => audPl.seek(position);
+
+  ValueNotifier<ModeShuffleEnum> shuffleMode = ValueNotifier<ModeShuffleEnum>(
+    ModeShuffleEnum.shuffleOff,
+  );
+
+  ValueNotifier<ModeLoopEnum> loopMode = ValueNotifier<ModeLoopEnum>(
+    ModeLoopEnum.all,
+  );
+
+  void setShuffleModeEnabled() {
+    shuffleMode.value = shuffleMode.value.next();
+    prepareShuffle();
+    enviarParaAndroid(socket, 'newshuffle', shuffleMode.value.disconvert());
+  }
+
+  ModeShuffleEnum isShuffleEnabled() {
+    return shuffleMode.value;
+  }
+
+  void setLoopModeEnabled() {
+    loopMode.value = loopMode.value.next();
+    enviarParaAndroid(socket, 'newloop', loopMode.value.disconvert());
+  }
+
+  ModeLoopEnum isLoopEnabled() {
+    return loopMode.value;
+  }
+
+  Future<void> next() async {
+    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+      playNextShuffled();
+    } else {
+      await playNext();
+    }
+  }
+
+  void skipToNextAuto() {
+    if (shuffleMode.value == ModeShuffleEnum.shuffleNormal) {
+      playNextShuffled();
+    } else {
+      playNext();
+    }
+  }
+
+  Future<void> prev() async {
+    Duration pos = await audPl.getCurrentPosition() ?? Duration(seconds: 0);
+    if (pos > Duration(seconds: 5)) {
+      await audPl.seek(Duration.zero);
+    } else if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+      playPreviousShuffled();
+    } else {
+      playPrevious();
+    }
+  }
+
+  Future<void> playNext() async {
+    final shouldStop = await repeatNormal();
+    if (shouldStop) return;
+
+    if (currentIndex.value + 1 < songsAtual.value.length) {
+      setIndex(currentIndex.value + 1);
+
+      enviarParaAndroid(socket, 'newindex', currentIndex.value);
+    }
+
+    if (shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
+      unplayed.removeWhere((i) => i == currentIndex.value);
+      played.add(currentIndex.value);
+    }
+  }
+
+  Future<void> playPrevious() async {
+    final shouldStop = await repeatNormal();
+    if (shouldStop) return;
+
+    if (currentIndex.value > 0) {
+      currentIndex.value--;
+      setIndex(currentIndex.value);
+      enviarParaAndroid(socket, 'newindex', currentIndex.value);
+    }
+  }
+
+  Future<bool> repeatNormal() async {
+    if (loopMode.value == ModeLoopEnum.one) {
+      await audPl.seek(Duration.zero);
+      resume();
+      return true;
+    } else if (loopMode.value == ModeLoopEnum.all &&
+        currentIndex.value + 1 >= songsAtual.value.length) {
+      currentIndex.value = -1;
+      return false;
+    } else {
+      return false;
+    }
+  }
+
+  /* SHUFFLE PERSONALIZED */
+  List<int> played = [];
+  List<int> unplayed = [];
+
+  void prepareShuffle() {
+    played.clear();
+    reshuffle();
+    played.add(currentIndex.value);
+  }
+
+  void reshuffle() {
+    int countSongs = songsAtual.value.length;
+    unplayed = List.generate(countSongs, (i) => i)..shuffle();
+  }
+
+  Future<void> playNextShuffled() async {
+    final shouldStop = await repeatShuffled();
+    if (shouldStop) return;
+
+    int nextIndex = unplayed.removeAt(0);
+
+    played.add(nextIndex);
+
+    setIndex(nextIndex);
+    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+  }
+
+  Future<void> playPreviousShuffled() async {
+    if (played.length <= 1) return;
+
+    final shouldStop = await repeatShuffled();
+    if (shouldStop) return;
+
+    unplayed.add(played.last);
+    played.removeLast();
+
+    int prevIndex = played.last;
+    setIndex(prevIndex);
+    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+  }
+
+  Future<bool> repeatShuffled() async {
+    if (loopMode.value == ModeLoopEnum.one) {
+      await audPl.seek(Duration.zero);
+      resume();
+      return true;
+    } else if (loopMode.value == ModeLoopEnum.all) {
+      if (unplayed.isEmpty) {
+        reshuffle();
+      }
+      return false;
+    } else {
+      if (unplayed.isEmpty) return true;
+      return false;
+    }
+  }
 }

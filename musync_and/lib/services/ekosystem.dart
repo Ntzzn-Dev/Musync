@@ -103,6 +103,7 @@ class Ekosystem {
   }
 
   static int indexSending = 0;
+  static int indexInitial = 0;
 
   Future<void> sendFileInChunks(MediaItem music, int part) async {
     if (!conected.value) return;

@@ -34,7 +34,6 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  ValueNotifier<ModeLoopEnum> toLoop = ValueNotifier(ModeLoopEnum.off);
   Duration total = Duration.zero;
   Duration position = Duration.zero;
   ValueNotifier<PlayerState> state = ValueNotifier(PlayerState.playing);
@@ -134,7 +133,7 @@ class _PlayerState extends State<Player> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: ValueNotifier(ModeShuffleEnum.shuffleNormal),
+                  valueListenable: widget.player.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -144,7 +143,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () {
-                        //widget.audioHandler.setShuffleModeEnabled();
+                        widget.player.setShuffleModeEnabled();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional
@@ -203,7 +202,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: ValueNotifier(ModeShuffleEnum.shuffleNormal),
+                  valueListenable: widget.player.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -213,7 +212,6 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        //await widget.audioHandler.skipToNext();
                         widget.player.next();
                       },
                       child:
@@ -230,7 +228,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeLoopEnum>(
-                  valueListenable: toLoop,
+                  valueListenable: widget.player.loopMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -240,8 +238,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        //widget.audioHandler.setLoopModeEnabled();
-                        toLoop.value = value.next();
+                        widget.player.setLoopModeEnabled();
                       },
                       child: Icon(
                         value == ModeLoopEnum.off

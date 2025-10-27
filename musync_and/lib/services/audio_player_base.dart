@@ -70,7 +70,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   List<MediaItem> songsAtual = [];
 
   static Ekosystem? eko;
-  static int indexInitial = 0;
   static int indexAnterior = 0;
   static late ValueNotifier<MediaAtual> mediaAtual;
 
@@ -80,7 +79,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     if (eko?.conected.value ?? false) {
       eko?.sendAudios(songsAtual, currentIndex.value);
-      indexInitial = currentIndex.value;
+      Ekosystem.indexInitial = currentIndex.value;
     }
 
     mediaAtual = ValueNotifier(
@@ -98,14 +97,17 @@ class MusyncAudioHandler extends BaseAudioHandler
         MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
       } else if (msg?['action'] == 'volume') {
         MediaAtual.volume.value = msg?['data'].toDouble();
-      } else if (msg?['action'] == 'finalizou') {
-        skipToNextAuto();
+      } else if (msg?['action'] == 'newloop') {
+        loopMode.value = ModeLoopEnumExt.convert(msg?['data']);
+      } else if (msg?['action'] == 'newshuffle') {
+        shuffleMode.value = ModeShuffleEnumExt.convert(msg?['data']);
       } else if (msg?['action'] == 'newindex') {
-        setMediaIndex(msg?['data'].toInt());
+        int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
+        setMediaIndex(indexRelative);
       } else if (msg?['action'] == 'newtemporaryorder') {
         reorganizeSongsAtual(msg?['data']);
       } else if (msg?['action'] == 'package_end') {
-        indexInitial = 0;
+        Ekosystem.indexInitial = 0;
       }
     });
   }
@@ -236,10 +238,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     songsAtual = [...songs];
     if (eko?.conected.value ?? false) {
-      eko?.sendAudios(
-        songsAtual,
-        currentIndex.value,
-      ); // CORRIGIR CURRENT INDEX ERRADO AO CLICAR EM OUTRA PLAYLIST
+      eko?.sendAudios(songsAtual, currentIndex.value);
     } else {
       currentIndex.value = 0;
 
@@ -278,7 +277,9 @@ class MusyncAudioHandler extends BaseAudioHandler
     ModeShuffleEnum.shuffleOff,
   );
 
-  ModeLoopEnum loopMode = ModeLoopEnum.off;
+  ValueNotifier<ModeLoopEnum> loopMode = ValueNotifier<ModeLoopEnum>(
+    ModeLoopEnum.off,
+  );
 
   void setShuffleModeEnabled() {
     shuffleMode.value = shuffleMode.value.next();
@@ -291,11 +292,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void setLoopModeEnabled() {
-    loopMode = loopMode.next();
+    loopMode.value = loopMode.value.next();
   }
 
   ModeLoopEnum isLoopEnabled() {
-    return loopMode;
+    return loopMode.value;
   }
 
   @override
@@ -329,7 +330,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   void sendMediaIndex(int index) {
     if (eko?.conected.value ?? false) {
       if (Ekosystem.indexSending < index) return;
-      int indexRelative = index - indexInitial;
+      int indexRelative = index - Ekosystem.indexInitial;
       eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
     }
 
@@ -408,11 +409,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<bool> repeatNormal() async {
-    if (loopMode == ModeLoopEnum.one) {
+    if (loopMode.value == ModeLoopEnum.one) {
       await audPl.seek(Duration.zero);
       play();
       return true;
-    } else if (loopMode == ModeLoopEnum.all &&
+    } else if (loopMode.value == ModeLoopEnum.all &&
         currentIndex.value + 1 >= songsAtual.length) {
       currentIndex.value = -1;
       return false;
@@ -471,11 +472,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<bool> repeatShuffled() async {
-    if (loopMode == ModeLoopEnum.one) {
+    if (loopMode.value == ModeLoopEnum.one) {
       await audPl.seek(Duration.zero);
       play();
       return true;
-    } else if (loopMode == ModeLoopEnum.all) {
+    } else if (loopMode.value == ModeLoopEnum.all) {
       if (unplayed.isEmpty) {
         reshuffle();
       }

@@ -218,3 +218,8 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção da mudança de index na versão mobile enquanto a versão desktop ainda não havia recebido a música.  
 - Correção de indices relativos ao começo da lista.  
 - Adição de icone para app Android.  
+
+### version 4.6
+- Correção no mobile ao index recebido pelo desktop ser diferente antes de receber todas as músicas.  
+- Correção de modo aleatório e repetição no desktop para funcionar de maneira autônoma.  
+- Correção na visualização dos modos, incluindo a imagem do shuffle especial.  
