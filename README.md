@@ -101,5 +101,6 @@ Sinta-se à vontade para abrir issues ou sugerir melhorias!
 - **v2.0** → Download de músicas via YouTube.
 - **v3.0** → Configurações avançadas, playlists e melhorias no modo aleatório.
 - **v4.0** → Integração do desktop, e configuração para que o android aja como um controle remoto.
+- **v5.0** → Tela de Controle Aprimorado, possui apenas botões essenciais e grandes.  
 
 Veja o changelog completo em [CHANGELOG.md](CHANGELOG.md)

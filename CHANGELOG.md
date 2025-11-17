@@ -228,3 +228,8 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da seleção através do clique na lista, na versão de desktop.  
 - Adição de identificação visual de música atual na lista.  
 - Correção na visualização de modos do player do ekosystem.  
+
+### version 5.0
+- Adição da tela de Controle
+- Otimização no recebimento de mensagens do ekosystem
+- Implementação de memória para playlist no player principal.  

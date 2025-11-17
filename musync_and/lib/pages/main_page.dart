@@ -2,6 +2,8 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:musync_and/pages/control_page.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
@@ -31,7 +33,7 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> {
   final TextEditingController _searchController = TextEditingController();
-  ValueNotifier<double> bottomPosition = ValueNotifier(0);
+  ValueNotifier<double> bottomPosition = ValueNotifier(50);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
   ValueNotifier<List<Widget>> funcSuperiores = ValueNotifier([]);
@@ -55,6 +57,8 @@ class _MusicPageState extends State<MusicPage> {
         child: Icon(Icons.play_arrow_rounded),
       ),
     ];
+
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
   @override
@@ -64,7 +68,7 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   void _toggleBottom() {
-    bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
+    bottomPosition.value = bottomPosition.value == 50 ? -50 : 50;
   }
 
   void _toggleTop() {
@@ -537,6 +541,24 @@ class _MusicPageState extends State<MusicPage> {
                     host = prefs.getString('ip_pc') ?? '';
                   });
                   break;
+                case 'controletotal':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              ControlPage(audioHandler: widget.audioHandler),
+                      settings: RouteSettings(name: 'control'),
+                    ),
+                  ).then((_) {
+                    SystemChrome.setEnabledSystemUIMode(
+                      SystemUiMode.edgeToEdge,
+                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      SystemChrome.restoreSystemUIOverlays();
+                    });
+                  });
+                  break;
                 case 'connect':
                   if (host != '') {
                     final eko = await Ekosystem.create(host: host, porta: 8080);
@@ -582,6 +604,18 @@ class _MusicPageState extends State<MusicPage> {
                     value: 'config',
                     child: Text(
                       'Configurações',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'control',
+                    child: Text(
+                      'SuperControl',
                       style: TextStyle(
                         color:
                             Theme.of(

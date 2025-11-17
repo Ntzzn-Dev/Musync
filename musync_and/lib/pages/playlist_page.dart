@@ -27,7 +27,7 @@ class PlaylistPage extends StatefulWidget {
 }
 
 class _PlaylistPageState extends State<PlaylistPage> {
-  ValueNotifier<double> bottomPosition = ValueNotifier(0);
+  ValueNotifier<double> bottomPosition = ValueNotifier(50);
   final TextEditingController _searchController = TextEditingController();
   late List<MediaItem> songsPlaylist;
   late List<MediaItem> songsNowTranslated;
@@ -58,7 +58,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   void _toggleBottom() {
-    bottomPosition.value = bottomPosition.value == 0 ? -100 : 0;
+    bottomPosition.value = bottomPosition.value == 50 ? -50 : 50;
   }
 
   @override
@@ -164,6 +164,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     );
                     widget.audioHandler.savePl(
                       (widget.pl?.id ?? widget.plTitle).toString(),
+                      subt: widget.pl?.subtitle ?? 'Artist',
+                      id: widget.pl?.id,
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,

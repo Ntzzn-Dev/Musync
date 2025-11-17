@@ -15,7 +15,7 @@ ThemeData lighttheme() {
         foregroundColor: Color.fromARGB(255, 243, 160, 34),
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: Color.fromARGB(255, 255, 255, 255),
       surfaceTintColor: Colors.transparent,
     ),
@@ -41,7 +41,7 @@ ThemeData lighttheme() {
         fontWeight: FontWeight.bold,
       ),
     ),
-    dialogTheme: DialogTheme(
+    dialogTheme: DialogThemeData(
       backgroundColor: Color.fromARGB(255, 242, 242, 242),
     ),
     textTheme: ThemeData.dark().textTheme.apply(
@@ -155,7 +155,7 @@ ThemeData darktheme() {
         foregroundColor: Color.fromARGB(255, 243, 160, 34),
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: Color.fromARGB(255, 36, 36, 36),
       surfaceTintColor: Colors.transparent,
     ),
@@ -181,7 +181,7 @@ ThemeData darktheme() {
         fontWeight: FontWeight.bold,
       ),
     ),
-    dialogTheme: DialogTheme(
+    dialogTheme: DialogThemeData(
       backgroundColor: Color.fromARGB(255, 48, 48, 48),
       titleTextStyle: TextStyle(color: Colors.white),
     ),

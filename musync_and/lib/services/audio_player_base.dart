@@ -69,8 +69,15 @@ class MusyncAudioHandler extends BaseAudioHandler
   static List<MediaItem> songsAll = [];
   List<MediaItem> songsAtual = [];
 
+  ValueNotifier<Map<String, dynamic>> atualPlaylist = ValueNotifier({
+    'id': 0,
+    'title': 'Todas',
+    'subtitle': '',
+    'qntTotal': 1,
+    'nowPlaying': 0,
+  });
+
   static Ekosystem? eko;
-  static int indexAnterior = 0;
   static late ValueNotifier<MediaAtual> mediaAtual;
 
   void setEkosystem(Ekosystem ekosystem) {
@@ -90,24 +97,33 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
-      if (msg?['action'] == 'position') {
-        final progress = Duration(milliseconds: msg?['data'].toInt());
-        mediaAtual.value.seek(progress);
-      } else if (msg?['action'] == 'toggle_play') {
-        MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
-      } else if (msg?['action'] == 'volume') {
-        MediaAtual.volume.value = msg?['data'].toDouble();
-      } else if (msg?['action'] == 'newloop') {
-        loopMode.value = ModeLoopEnumExt.convert(msg?['data']);
-      } else if (msg?['action'] == 'newshuffle') {
-        shuffleMode.value = ModeShuffleEnumExt.convert(msg?['data']);
-      } else if (msg?['action'] == 'newindex') {
-        int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
-        setMediaIndex(indexRelative);
-      } else if (msg?['action'] == 'newtemporaryorder') {
-        reorganizeSongsAtual(msg?['data']);
-      } else if (msg?['action'] == 'package_end') {
-        Ekosystem.indexInitial = 0;
+      switch (msg?['action']) {
+        case 'position':
+          final progress = Duration(milliseconds: msg?['data'].toInt());
+          mediaAtual.value.seek(progress);
+          break;
+        case 'toggle_play':
+          MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
+          break;
+        case 'volume':
+          MediaAtual.volume.value = msg?['data'].toDouble();
+          break;
+        case 'newloop':
+          loopMode.value = ModeLoopEnumExt.convert(msg?['data']);
+          break;
+        case 'newshuffle':
+          shuffleMode.value = ModeShuffleEnumExt.convert(msg?['data']);
+          break;
+        case 'newindex':
+          int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
+          setMediaIndex(indexRelative);
+          break;
+        case 'newtemporaryorder':
+          reorganizeSongsAtual(msg?['data']);
+          break;
+        case 'package_end':
+          Ekosystem.indexInitial = 0;
+          break;
       }
     });
   }
@@ -188,9 +204,21 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void savePl(String plDynamic) async {
+  void savePl(String plDynamic, {String? subt, int? id}) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('pl_last', plDynamic.toString());
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'subtitle': subt ?? '',
+      'title': plDynamic,
+      'id': id,
+    };
+  }
+
+  Future<void> skipToPreviousPlaylist() async {}
+
+  Future<void> skipToNextPlaylist() async {
+    // DatabaseHelper().pegarNovaplaylist
   }
 
   void saveInd(int mscInd) async {
@@ -201,8 +229,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<void> setCurrentTrack({int? index}) async {
     if (index != null) {
       saveInd(index);
+    } else {
+      return;
     }
     currentIndex.value = index ?? 0;
+    atualPlaylist.value = {...atualPlaylist.value, 'nowPlaying': index};
     final item = songsAtual[index ?? 0];
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
@@ -213,6 +244,11 @@ class MusyncAudioHandler extends BaseAudioHandler
     audPl.playbackEventStream.listen(_broadcastState);
 
     songsAtual = [...songs];
+
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'qntTotal': songsAtual.length,
+    };
 
     await setCurrentTrack();
 
@@ -237,6 +273,12 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
 
     songsAtual = [...songs];
+
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'qntTotal': songsAtual.length,
+    };
+
     if (eko?.conected.value ?? false) {
       eko?.sendAudios(songsAtual, currentIndex.value);
     } else {
@@ -257,6 +299,11 @@ class MusyncAudioHandler extends BaseAudioHandler
         songsAtual[currentIndex.value == -1 ? 0 : currentIndex.value];
 
     songsAtual = [...songs];
+
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'qntTotal': songsAtual.length,
+    };
 
     currentIndex.value = songs.indexOf(songAtual);
 
