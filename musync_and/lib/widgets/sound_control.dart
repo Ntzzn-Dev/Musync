@@ -1,6 +1,5 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
+import 'package:musync_and/themes.dart';
 import 'package:volume_controller/volume_controller.dart';
 
 class SoundControl extends StatefulWidget {
@@ -70,7 +69,7 @@ class _SoundControlState extends State<SoundControl> {
                     alignment: Alignment.centerLeft,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 243, 160, 34),
+                        color: baseAppColor,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       width: totalWidth * volume,

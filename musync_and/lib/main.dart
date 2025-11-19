@@ -3,6 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/pages/main_page.dart';
 import 'themes.dart';
 import 'services/audio_player_base.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 MusyncAudioHandler _audioHandler = MusyncAudioHandler();
 
@@ -18,6 +19,8 @@ Future<void> main() async {
       androidShowNotificationBadge: true,
     ),
   );
+
+  await initializeDateFormatting('pt_BR', null);
   //await DatabaseHelper().deleteDatabaseFile();
   runApp(MyApp());
 }

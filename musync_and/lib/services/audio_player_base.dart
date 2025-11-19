@@ -5,8 +5,10 @@ import 'package:collection/collection.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
+import 'package:musync_and/services/playlists.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
@@ -72,7 +74,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   ValueNotifier<Map<String, dynamic>> atualPlaylist = ValueNotifier({
     'id': 0,
     'title': 'Todas',
-    'subtitle': '',
+    'subtitle': '-=+=-',
     'qntTotal': 1,
     'nowPlaying': 0,
   });
@@ -204,21 +206,51 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void savePl(String plDynamic, {String? subt, int? id}) async {
+  void savePl(String plDynamic, {String? subt, String? title, int? id}) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('pl_last', plDynamic.toString());
     atualPlaylist.value = {
       ...atualPlaylist.value,
       'subtitle': subt ?? '',
-      'title': plDynamic,
+      'title': title,
       'id': id,
     };
   }
 
-  Future<void> skipToPreviousPlaylist() async {}
+  Future<void> skipPlaylist(bool next) async {
+    var playlists = await DatabaseHelper().loadPlaylists();
+    playlists.insert(
+      0,
+      Playlists(
+        id: 0,
+        title: 'Todas',
+        subtitle: '-=+=-',
+        ordem: 0,
+        orderMode: 0,
+      ),
+    );
+    List<int> idsPls = playlists.map((pl) => pl.id).toList();
 
-  Future<void> skipToNextPlaylist() async {
-    // DatabaseHelper().pegarNovaplaylist
+    final currentIndex = idsPls.indexOf(atualPlaylist.value['id']);
+    if (currentIndex == -1) return;
+
+    final nextIndex = (currentIndex + (next ? 1 : -1)) % idsPls.length;
+    final idNext = idsPls[nextIndex];
+
+    final nextPlaylist = playlists.firstWhere((pl) => pl.id == idNext);
+
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'id': idNext,
+      'title': nextPlaylist.title,
+      'subtitle': nextPlaylist.subtitle,
+    };
+
+    List<MediaItem> newsongs = await nextPlaylist.findMusics() ?? [];
+
+    if (newsongs.isEmpty) newsongs = songsAll;
+
+    await recreateQueue(songs: newsongs);
   }
 
   void saveInd(int mscInd) async {
@@ -232,9 +264,9 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       return;
     }
-    currentIndex.value = index ?? 0;
+    currentIndex.value = index;
     atualPlaylist.value = {...atualPlaylist.value, 'nowPlaying': index};
-    final item = songsAtual[index ?? 0];
+    final item = songsAtual[index];
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
     mediaItem.add(item);

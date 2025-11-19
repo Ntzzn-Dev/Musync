@@ -57,8 +57,6 @@ class _MusicPageState extends State<MusicPage> {
         child: Icon(Icons.play_arrow_rounded),
       ),
     ];
-
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
   @override
@@ -138,7 +136,12 @@ class _MusicPageState extends State<MusicPage> {
             await widget.audioHandler.recreateQueue(
               songs: MusyncAudioHandler.songsAll,
             );
-            widget.audioHandler.savePl('Todas');
+            widget.audioHandler.savePl(
+              'Todas',
+              subt: '-=+=-',
+              title: 'Todas',
+              id: 0,
+            );
             int indiceCerto = MusyncAudioHandler.songsAll.indexWhere(
               (t) => t == item,
             );
@@ -541,7 +544,7 @@ class _MusicPageState extends State<MusicPage> {
                     host = prefs.getString('ip_pc') ?? '';
                   });
                   break;
-                case 'controletotal':
+                case 'control':
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -719,6 +722,7 @@ class _MusicPageState extends State<MusicPage> {
                 ],
               ),
               Expanded(child: pageSelect(abaSelect)),
+              Padding(padding: EdgeInsets.only(bottom: 120)),
             ],
           ),
           ValueListenableBuilder(

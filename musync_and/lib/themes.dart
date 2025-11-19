@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 
+final baseElementDark = Color.fromARGB(255, 38, 38, 39);
+final baseFundoDark = Color.fromARGB(255, 23, 23, 24);
+final baseFundoDarkDark = Color.fromARGB(255, 8, 8, 10);
+final baseAppColor = Color.fromARGB(255, 243, 160, 34);
 ThemeData lighttheme() {
   return ThemeData(
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: Color.fromARGB(255, 242, 242, 242),
     appBarTheme: AppBarTheme(
       backgroundColor: Color.fromARGB(255, 237, 237, 237),
-      foregroundColor: Color.fromARGB(255, 243, 160, 34),
+      foregroundColor: baseAppColor,
       surfaceTintColor: Color.fromARGB(255, 242, 242, 242),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: Color.fromARGB(255, 242, 242, 242),
-        foregroundColor: Color.fromARGB(255, 243, 160, 34),
+        foregroundColor: baseAppColor,
       ),
     ),
     cardTheme: CardThemeData(
@@ -21,21 +25,18 @@ ThemeData lighttheme() {
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: Color.fromARGB(255, 242, 242, 242),
-      textStyle: TextStyle(
-        color: Color.fromARGB(255, 243, 160, 34),
-        fontWeight: FontWeight.w600,
-      ),
+      textStyle: TextStyle(color: baseAppColor, fontWeight: FontWeight.w600),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     sliderTheme: SliderThemeData(
-      activeTrackColor: Color.fromARGB(255, 243, 160, 34),
+      activeTrackColor: baseAppColor,
       inactiveTrackColor: Color.fromARGB(77, 243, 160, 34),
       trackHeight: 4,
-      thumbColor: Color.fromARGB(255, 243, 160, 34),
+      thumbColor: baseAppColor,
       thumbShape: RoundSliderThumbShape(enabledThumbRadius: 12),
       overlayColor: Color.fromARGB(51, 243, 160, 34),
       overlayShape: RoundSliderOverlayShape(overlayRadius: 24),
-      valueIndicatorColor: Color.fromARGB(255, 243, 160, 34),
+      valueIndicatorColor: baseAppColor,
       valueIndicatorTextStyle: TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.bold,
@@ -51,7 +52,7 @@ ThemeData lighttheme() {
     inputDecorationTheme: InputDecorationTheme(
       labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
       floatingLabelStyle: TextStyle(
-        color: Color.fromARGB(255, 243, 160, 34),
+        color: baseAppColor,
         fontSize: 20,
         fontWeight: FontWeight.w900,
       ),
@@ -66,10 +67,7 @@ ThemeData lighttheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: Color.fromARGB(255, 243, 160, 34),
-          width: 2.0,
-        ),
+        borderSide: BorderSide(color: baseAppColor, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -91,10 +89,7 @@ ThemeData lighttheme() {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Color.fromARGB(255, 243, 160, 34),
-            width: 2,
-          ),
+          borderSide: BorderSide(color: baseAppColor, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -117,17 +112,17 @@ ThemeData lighttheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        side: BorderSide(color: Color.fromARGB(255, 243, 160, 34), width: 2),
+        side: BorderSide(color: baseAppColor, width: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     textSelectionTheme: TextSelectionThemeData(
-      selectionColor: Color.fromARGB(255, 243, 160, 34).withAlpha(60),
+      selectionColor: baseAppColor.withAlpha(60),
       cursorColor: Color.fromARGB(255, 0, 0, 0),
-      selectionHandleColor: Color.fromARGB(255, 243, 160, 34),
+      selectionHandleColor: baseAppColor,
     ),
-    focusColor: Color.fromARGB(255, 243, 160, 34),
-    highlightColor: Color.fromARGB(255, 243, 160, 34),
+    focusColor: baseAppColor,
+    highlightColor: baseAppColor,
     extensions: <ThemeExtension<dynamic>>[
       CustomColors(
         textForce: Color.fromARGB(255, 0, 0, 0),
@@ -143,16 +138,16 @@ ThemeData lighttheme() {
 ThemeData darktheme() {
   return ThemeData(
     primarySwatch: Colors.orange,
-    scaffoldBackgroundColor: Color.fromARGB(255, 48, 48, 48),
+    scaffoldBackgroundColor: baseElementDark,
     appBarTheme: AppBarTheme(
-      backgroundColor: Color.fromARGB(255, 37, 37, 37),
-      foregroundColor: Color.fromARGB(255, 243, 160, 34),
-      surfaceTintColor: Color.fromARGB(255, 37, 37, 37),
+      backgroundColor: baseFundoDark,
+      foregroundColor: baseAppColor,
+      surfaceTintColor: baseFundoDark,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromARGB(255, 48, 48, 48),
-        foregroundColor: Color.fromARGB(255, 243, 160, 34),
+        backgroundColor: baseElementDark,
+        foregroundColor: baseAppColor,
       ),
     ),
     cardTheme: CardThemeData(
@@ -160,29 +155,26 @@ ThemeData darktheme() {
       surfaceTintColor: Colors.transparent,
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: Color.fromARGB(255, 37, 37, 37),
-      textStyle: TextStyle(
-        color: Color.fromARGB(255, 243, 160, 34),
-        fontWeight: FontWeight.w600,
-      ),
+      color: baseFundoDark,
+      textStyle: TextStyle(color: baseAppColor, fontWeight: FontWeight.w600),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     sliderTheme: SliderThemeData(
-      activeTrackColor: Color.fromARGB(255, 243, 160, 34),
+      activeTrackColor: baseAppColor,
       inactiveTrackColor: Color.fromARGB(77, 243, 160, 34),
       trackHeight: 4,
-      thumbColor: Color.fromARGB(255, 243, 160, 34),
+      thumbColor: baseAppColor,
       thumbShape: RoundSliderThumbShape(enabledThumbRadius: 12),
       overlayColor: Color.fromARGB(51, 243, 160, 34),
       overlayShape: RoundSliderOverlayShape(overlayRadius: 24),
-      valueIndicatorColor: Color.fromARGB(255, 243, 160, 34),
+      valueIndicatorColor: baseAppColor,
       valueIndicatorTextStyle: TextStyle(
-        color: Color.fromARGB(255, 48, 48, 48),
+        color: baseElementDark,
         fontWeight: FontWeight.bold,
       ),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Color.fromARGB(255, 48, 48, 48),
+      backgroundColor: baseElementDark,
       titleTextStyle: TextStyle(color: Colors.white),
     ),
 
@@ -197,7 +189,7 @@ ThemeData darktheme() {
         fontWeight: FontWeight.w900,
       ),
       floatingLabelStyle: TextStyle(
-        color: Color.fromARGB(255, 243, 160, 34),
+        color: baseAppColor,
         fontSize: 20,
         fontWeight: FontWeight.w900,
       ),
@@ -208,17 +200,11 @@ ThemeData darktheme() {
       fillColor: Color.fromRGBO(60, 60, 60, 0.5),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: Color.fromARGB(255, 48, 48, 48),
-          width: 1.5,
-        ),
+        borderSide: BorderSide(color: baseElementDark, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: Color.fromARGB(255, 243, 160, 34),
-          width: 2.0,
-        ),
+        borderSide: BorderSide(color: baseAppColor, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -236,17 +222,11 @@ ThemeData darktheme() {
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Color.fromARGB(255, 48, 48, 48),
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: baseElementDark, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Color.fromARGB(255, 243, 160, 34),
-            width: 2,
-          ),
+          borderSide: BorderSide(color: baseAppColor, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -259,9 +239,7 @@ ThemeData darktheme() {
       ),
       textStyle: TextStyle(color: Colors.black87, fontSize: 16),
       menuStyle: MenuStyle(
-        backgroundColor: MaterialStateProperty.all(
-          Color.fromARGB(255, 37, 37, 37),
-        ),
+        backgroundColor: MaterialStateProperty.all(baseFundoDark),
         shape: MaterialStateProperty.all(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -269,24 +247,24 @@ ThemeData darktheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        side: BorderSide(color: Color.fromARGB(255, 243, 160, 34), width: 2),
+        side: BorderSide(color: baseAppColor, width: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     textSelectionTheme: TextSelectionThemeData(
-      selectionColor: Color.fromARGB(255, 243, 160, 34).withAlpha(60),
+      selectionColor: baseAppColor.withAlpha(60),
       cursorColor: Color.fromARGB(255, 0, 0, 0),
-      selectionHandleColor: Color.fromARGB(255, 243, 160, 34),
+      selectionHandleColor: baseAppColor,
     ),
-    focusColor: Color.fromARGB(255, 243, 160, 34),
-    highlightColor: Color.fromARGB(255, 243, 160, 34),
+    focusColor: baseAppColor,
+    highlightColor: baseAppColor,
     extensions: <ThemeExtension<dynamic>>[
       CustomColors(
         textForce: Color.fromARGB(255, 214, 214, 214),
         subtextForce: Color.fromARGB(255, 160, 160, 160),
         disabledText: Color.fromARGB(255, 179, 151, 109),
         disabledBack: Color.fromARGB(255, 83, 83, 83),
-        backgroundForce: Color.fromARGB(255, 48, 48, 48),
+        backgroundForce: baseElementDark,
       ),
     ],
   );

@@ -165,6 +165,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     widget.audioHandler.savePl(
                       (widget.pl?.id ?? widget.plTitle).toString(),
                       subt: widget.pl?.subtitle ?? 'Artist',
+                      title: widget.pl?.title,
                       id: widget.pl?.id,
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
@@ -174,7 +175,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   },
                 ),
               ),
-              Padding(padding: EdgeInsets.fromLTRB(0, 0, 0, 70)),
+              Padding(padding: EdgeInsets.only(bottom: 120)),
             ],
           ),
 

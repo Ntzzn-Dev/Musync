@@ -233,3 +233,10 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da tela de Controle
 - Otimização no recebimento de mensagens do ekosystem
 - Implementação de memória para playlist no player principal.  
+
+### version 5.1
+- Alteração em algumas cores do tema escuro.  
+- Ativação do modo passar playlist.
+- Correção do padding de todas as listas por conta do player.  
+- Adição de um relógio no superControle.  
+- Alteração na visualização da playlist no superControle.

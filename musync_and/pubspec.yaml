@@ -85,6 +85,11 @@ flutter:
 
   assets:
     - assets/dice.png
+    
+  fonts:
+    - family: Digital
+      fonts:
+        - asset: assets/fonts/digital-7.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
