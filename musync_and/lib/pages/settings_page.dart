@@ -10,7 +10,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final TextEditingController _ipPcDefault = TextEditingController();
   final TextEditingController _playlistDefault = TextEditingController();
   final TextEditingController _dirDownload = TextEditingController();
   List<TextEditingController> dirControllers = [];
@@ -29,12 +28,10 @@ class _SettingsPageState extends State<SettingsPage> {
   void carregarPreferencias() async {
     final prefs = await SharedPreferences.getInstance();
     final dirStrings = prefs.getStringList('directorys') ?? [];
-    final ipPcDefault = prefs.getString('ip_pc') ?? '';
     final plDefault = prefs.getString('playlist_principal') ?? '';
     final dirDownload = prefs.getString('dir_download') ?? '';
 
     _playlistDefault.text = plDefault;
-    _ipPcDefault.text = ipPcDefault;
     _dirDownload.text = dirDownload;
 
     setState(() {
@@ -46,7 +43,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void salvar() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('ip_pc', _ipPcDefault.text);
     prefs.setString('playlist_principal', _playlistDefault.text);
     prefs.setString('dir_download', _dirDownload.text);
     prefs.setStringList(
@@ -87,24 +83,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    TextField(
-                      controller: _ipPcDefault,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()?.textForce,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'IP computador padrão',
-                        contentPadding: EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     TextField(
                       controller: _playlistDefault,
                       style: TextStyle(

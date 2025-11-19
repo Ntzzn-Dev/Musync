@@ -21,6 +21,7 @@ import 'package:musync_and/widgets/player_eko.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class MusicPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -33,16 +34,17 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> {
   final TextEditingController _searchController = TextEditingController();
-  ValueNotifier<double> bottomPosition = ValueNotifier(50);
+  ValueNotifier<bool> toDown = ValueNotifier(false);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
   ValueNotifier<List<Widget>> funcSuperiores = ValueNotifier([]);
 
   var modeAtual = ModeOrderEnum.dataZA;
+  final menuController = MenuController();
+  double bottomInset = 0;
 
   List<MediaItem> songsNow = [];
 
-  String host = '';
   Ekosystem? ekosystem;
 
   @override
@@ -66,7 +68,7 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   void _toggleBottom() {
-    bottomPosition.value = bottomPosition.value == 50 ? -50 : 50;
+    toDown.value = !toDown.value;
   }
 
   void _toggleTop() {
@@ -76,7 +78,6 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> _initFetchSongs() async {
     final prefs = await SharedPreferences.getInstance();
     final dirStrings = prefs.getStringList('directorys') ?? [];
-    host = prefs.getString('ip_pc') ?? '';
 
     final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
 
@@ -123,6 +124,59 @@ class _MusicPageState extends State<MusicPage> {
 
     await widget.audioHandler.recreateQueue(songs: newsongs);
     await widget.audioHandler.skipToQueueItem(ultimaMusica ?? 0);
+  }
+
+  Future<String?> openQrScanner() async {
+    String? codeFinal;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder:
+          (context) => Center(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.85,
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  children: [
+                    MobileScanner(
+                      onDetect: (capture) {
+                        final barcode = capture.barcodes.first;
+                        final String? code = barcode.rawValue;
+
+                        if (code != null) {
+                          Navigator.pop(context);
+                          codeFinal = code;
+                        }
+                      },
+                    ),
+
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+    );
+
+    return codeFinal;
   }
 
   Widget pageSelect(int pageIndex) {
@@ -479,7 +533,7 @@ class _MusicPageState extends State<MusicPage> {
                       onTap: () async {
                         if (await showPopupAdd(
                           context,
-                          'Conectado ao desktop: $host\nDeseja deconectar?',
+                          'Deseja deconectar do desktop?',
                           [],
                         )) {
                           ekosystem?.tryToDisconect();
@@ -501,21 +555,159 @@ class _MusicPageState extends State<MusicPage> {
             },
           ),
           SizedBox(width: 9),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_horiz),
-            onSelected: (value) async {
-              switch (value) {
-                case 'reord':
-                  modeAtual = modeAtual.next();
-                  setState(() {
-                    MusyncAudioHandler.songsAll = MusyncAudioHandler.reorder(
-                      modeAtual,
-                      MusyncAudioHandler.songsAll,
-                    );
-                    songsNow = MusyncAudioHandler.songsAll;
-                  });
-                  break;
-                case 'downl':
+          MenuAnchor(
+            controller: menuController,
+            builder: (context, controller, child) {
+              return IconButton(
+                icon: Icon(Icons.more_horiz),
+                onPressed:
+                    () =>
+                        controller.isOpen
+                            ? controller.close()
+                            : controller.open(),
+              );
+            },
+            menuChildren: [
+              SubmenuButton(
+                child: Text(
+                  'Reordenar',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                menuChildren: [
+                  MenuItemButton(
+                    style:
+                        modeAtual == ModeOrderEnum.titleAZ
+                            ? ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                baseAppColor,
+                              ),
+                            )
+                            : null,
+                    child: Text(
+                      'Titulo A - Z',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    onPressed: () {
+                      modeAtual = ModeOrderEnum.titleAZ;
+                      setState(() {
+                        MusyncAudioHandler
+                            .songsAll = MusyncAudioHandler.reorder(
+                          modeAtual,
+                          MusyncAudioHandler.songsAll,
+                        );
+                        songsNow = MusyncAudioHandler.songsAll;
+                      });
+                    },
+                  ),
+                  MenuItemButton(
+                    style:
+                        modeAtual == ModeOrderEnum.titleZA
+                            ? ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                baseAppColor,
+                              ),
+                            )
+                            : null,
+                    child: Text(
+                      'Titulo Z - A',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    onPressed: () {
+                      modeAtual = ModeOrderEnum.titleZA;
+                      setState(() {
+                        MusyncAudioHandler
+                            .songsAll = MusyncAudioHandler.reorder(
+                          modeAtual,
+                          MusyncAudioHandler.songsAll,
+                        );
+                        songsNow = MusyncAudioHandler.songsAll;
+                      });
+                    },
+                  ),
+                  MenuItemButton(
+                    style:
+                        modeAtual == ModeOrderEnum.dataAZ
+                            ? ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                baseAppColor,
+                              ),
+                            )
+                            : null,
+                    child: Text(
+                      'Data A - Z',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    onPressed: () {
+                      modeAtual = ModeOrderEnum.dataAZ;
+                      setState(() {
+                        MusyncAudioHandler
+                            .songsAll = MusyncAudioHandler.reorder(
+                          modeAtual,
+                          MusyncAudioHandler.songsAll,
+                        );
+                        songsNow = MusyncAudioHandler.songsAll;
+                      });
+                    },
+                  ),
+                  MenuItemButton(
+                    style:
+                        modeAtual == ModeOrderEnum.dataZA
+                            ? ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                baseAppColor,
+                              ),
+                            )
+                            : null,
+                    child: Text(
+                      'Data Z - A',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    onPressed: () {
+                      modeAtual = ModeOrderEnum.dataZA;
+                      setState(() {
+                        MusyncAudioHandler
+                            .songsAll = MusyncAudioHandler.reorder(
+                          modeAtual,
+                          MusyncAudioHandler.songsAll,
+                        );
+                        songsNow = MusyncAudioHandler.songsAll;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              MenuItemButton(
+                child: Text(
+                  'Download',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -531,20 +723,35 @@ class _MusicPageState extends State<MusicPage> {
                       songsNow = MusyncAudioHandler.songsAll;
                     });
                   });
-                  break;
-                case 'config':
+                },
+              ),
+              MenuItemButton(
+                child: Text(
+                  'Configurações',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => SettingsPage(),
                       settings: RouteSettings(name: 'settings'),
                     ),
-                  ).then((_) async {
-                    final prefs = await SharedPreferences.getInstance();
-                    host = prefs.getString('ip_pc') ?? '';
-                  });
-                  break;
-                case 'control':
+                  );
+                },
+              ),
+              MenuItemButton(
+                child: Text(
+                  'SuperControl',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -561,8 +768,18 @@ class _MusicPageState extends State<MusicPage> {
                       SystemChrome.restoreSystemUIOverlays();
                     });
                   });
-                  break;
-                case 'connect':
+                },
+              ),
+              MenuItemButton(
+                child: Text(
+                  'Connect Desktop',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () async {
+                  final host = await openQrScanner() ?? '';
                   if (host != '') {
                     final eko = await Ekosystem.create(host: host, porta: 8080);
 
@@ -574,72 +791,10 @@ class _MusicPageState extends State<MusicPage> {
                       widget.audioHandler.setEkosystem(ekosystem!);
                     }
                   }
-                  break;
-              }
-            },
-            itemBuilder:
-                (context) => [
-                  PopupMenuItem(
-                    value: 'reord',
-                    child: Text(
-                      'Reordenar',
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'downl',
-                    child: Text(
-                      'Downloads',
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'config',
-                    child: Text(
-                      'Configurações',
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'control',
-                    child: Text(
-                      'SuperControl',
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'connect',
-                    child: Text(
-                      'Conectar Com Pc',
-                      style: TextStyle(
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                    ),
-                  ),
-                ],
+                },
+              ),
+            ],
+            child: Icon(Icons.more_horiz),
           ),
         ],
       ),
@@ -722,19 +877,20 @@ class _MusicPageState extends State<MusicPage> {
                 ],
               ),
               Expanded(child: pageSelect(abaSelect)),
-              Padding(padding: EdgeInsets.only(bottom: 120)),
+              Padding(padding: EdgeInsets.only(bottom: 52 + bottomInset)),
             ],
           ),
           ValueListenableBuilder(
-            valueListenable: bottomPosition,
+            valueListenable: toDown,
             builder: (context, value, child) {
+              bottomInset = MediaQuery.of(context).padding.bottom;
               return ValueListenableBuilder<bool>(
                 valueListenable: ekosystem?.conected ?? ValueNotifier(false),
                 builder: (context, conected, child) {
                   return AnimatedPositioned(
                     duration: const Duration(milliseconds: 500),
                     curve: Curves.easeInOut,
-                    bottom: value,
+                    bottom: bottomInset - (value ? (conected ? 160 : 102) : 0),
                     left: 0,
                     right: 0,
                     child: GestureDetector(

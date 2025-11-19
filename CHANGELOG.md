@@ -240,3 +240,10 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção do padding de todas as listas por conta do player.  
 - Adição de um relógio no superControle.  
 - Alteração na visualização da playlist no superControle.
+
+### version 5.2
+- Foi adicionada a conexão com desktop usando QRCode.  
+- Alteração de logo.  
+- Adição de um menu mais controlável, principalmente sobre reordem.  
+- Correção na altura do player e playerEko.  
+- Adição do playerEko nas playlists.  

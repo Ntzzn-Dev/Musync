@@ -9,6 +9,8 @@ import 'package:musync_dkt/Widgets/player.dart';
 import 'package:musync_dkt/Widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
 import 'dart:convert';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 final MusyncAudioHandler player = MusyncAudioHandler();
 late WebSocket socket;
@@ -162,6 +164,77 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<String?> getLocalIp() async {
+    final info = NetworkInfo();
+    final ip = await info.getWifiIP();
+    return ip;
+  }
+
+  void enableQRCode() async {
+    final ip = await getLocalIp();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: connected,
+          builder: (context, isConnected, _) {
+            if (isConnected) {
+              Future.microtask(() {
+                if (Navigator.canPop(context)) Navigator.pop(context);
+              });
+            }
+
+            return AlertDialog(
+              backgroundColor: Colors.black87,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.orangeAccent, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: PrettyQrView.data(
+                      data: ip ?? '',
+                      decoration: PrettyQrDecoration(
+                        shape: PrettyQrShape.custom(
+                          PrettyQrDotsSymbol(color: baseAppColor),
+                          finderPattern: PrettyQrSmoothSymbol(
+                            color: baseAppColor,
+                          ),
+                          alignmentPatterns: PrettyQrSmoothSymbol(
+                            color: baseAppColor,
+                          ),
+                        ),
+                        image: PrettyQrDecorationImage(
+                          image: AssetImage("assets/MusyncLogo.png"),
+                          colorFilter: ColorFilter.mode(
+                            baseAppColor,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                      errorCorrectLevel: QrErrorCorrectLevel.H,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Fechar"),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -221,6 +294,10 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           const SizedBox(width: 9),
+          ElevatedButton(
+            onPressed: () => enableQRCode(),
+            child: Icon(Icons.qr_code_rounded),
+          ),
         ],
       ),
       body: Stack(

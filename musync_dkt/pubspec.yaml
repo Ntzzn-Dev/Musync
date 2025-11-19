@@ -1,5 +1,5 @@
 name: musync_dkt
-description: "A new Flutter project."
+description: "Um aplicativo de desktop com capacidade de receber e reproduzir musicas do aplicativo mobile."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -33,6 +33,8 @@ dependencies:
   path_provider: ^2.0.14
   mime: ^1.0.0
   web_socket_channel: ^2.3.0
+  pretty_qr_code: ^3.0.1
+  network_info_plus: ^6.0.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -63,6 +65,7 @@ flutter:
 
   assets:
     - assets/dice.png
+    - assets/MusyncLogo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

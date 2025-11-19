@@ -6,6 +6,7 @@ final baseFundoDarkDark = Color.fromARGB(255, 8, 8, 10);
 final baseAppColor = Color.fromARGB(255, 243, 160, 34);
 ThemeData lighttheme() {
   return ThemeData(
+    useMaterial3: true,
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: Color.fromARGB(255, 242, 242, 242),
     appBarTheme: AppBarTheme(
@@ -137,6 +138,7 @@ ThemeData lighttheme() {
 
 ThemeData darktheme() {
   return ThemeData(
+    useMaterial3: true,
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: baseElementDark,
     appBarTheme: AppBarTheme(
@@ -255,6 +257,17 @@ ThemeData darktheme() {
       selectionColor: baseAppColor.withAlpha(60),
       cursorColor: Color.fromARGB(255, 0, 0, 0),
       selectionHandleColor: baseAppColor,
+    ),
+    menuTheme: MenuThemeData(
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(baseFundoDark),
+        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+        shadowColor: WidgetStatePropertyAll(baseFundoDarkDark),
+        elevation: WidgetStatePropertyAll(8),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
     ),
     focusColor: baseAppColor,
     highlightColor: baseAppColor,

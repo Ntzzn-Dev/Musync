@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "br.com.nathandv" "\0"
+            VALUE "CompanyName", "com.example" "\0"
             VALUE "FileDescription", "musync_dkt" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "musync_dkt" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 br.com.nathandv. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "musync_dkt.exe" "\0"
             VALUE "ProductName", "musync_dkt" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

@@ -4,22 +4,26 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/player.dart';
+import 'package:musync_and/widgets/player_eko.dart';
 
 class PlaylistPage extends StatefulWidget {
   final String plTitle;
   final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsPL;
   final Playlists? pl;
+  final Ekosystem? ekosystem;
   const PlaylistPage({
     super.key,
     required this.plTitle,
     required this.audioHandler,
     required this.songsPL,
     this.pl,
+    this.ekosystem,
   });
 
   @override
@@ -27,10 +31,12 @@ class PlaylistPage extends StatefulWidget {
 }
 
 class _PlaylistPageState extends State<PlaylistPage> {
-  ValueNotifier<double> bottomPosition = ValueNotifier(50);
+  ValueNotifier<bool> toDown = ValueNotifier(false);
   final TextEditingController _searchController = TextEditingController();
   late List<MediaItem> songsPlaylist;
   late List<MediaItem> songsNowTranslated;
+  double bottomInset = 0;
+  final menuController = MenuController();
 
   late ModeOrderEnum modeAtual;
 
@@ -58,7 +64,20 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   void _toggleBottom() {
-    bottomPosition.value = bottomPosition.value == 50 ? -50 : 50;
+    toDown.value = !toDown.value;
+  }
+
+  void reorganizar() {
+    setState(() {
+      songsPlaylist = MusyncAudioHandler.reorder(modeAtual, songsNowTranslated);
+    });
+    if (widget.pl != null) {
+      DatabaseHelper().updatePlaylist(
+        widget.pl!.id,
+        orderMode: modeAtual.disconvert(),
+      );
+      log(modeAtual.disconvert().toString());
+    }
   }
 
   @override
@@ -70,24 +89,115 @@ class _PlaylistPageState extends State<PlaylistPage> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              modeAtual = modeAtual.next();
-              setState(() {
-                songsPlaylist = MusyncAudioHandler.reorder(
-                  modeAtual,
-                  songsNowTranslated,
-                );
-              });
-              if (widget.pl != null) {
-                DatabaseHelper().updatePlaylist(
-                  widget.pl!.id,
-                  orderMode: modeAtual.disconvert(),
-                );
-                log(modeAtual.disconvert().toString());
-              }
+          MenuAnchor(
+            controller: menuController,
+            builder: (context, controller, child) {
+              return IconButton(
+                icon: Icon(Icons.more_horiz),
+                onPressed:
+                    () =>
+                        controller.isOpen
+                            ? controller.close()
+                            : controller.open(),
+              );
             },
-            child: Icon(Icons.reorder_outlined),
+            menuChildren: [
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.manual
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Manual',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.titleAZ;
+                  reorganizar();
+                },
+              ),
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.titleAZ
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Titulo A - Z',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.titleAZ;
+                  reorganizar();
+                },
+              ),
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.titleZA
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Titulo Z - A',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.titleZA;
+                  reorganizar();
+                },
+              ),
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.dataAZ
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Data A - Z',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.dataAZ;
+                  reorganizar();
+                },
+              ),
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.dataZA
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Data Z - A',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.dataZA;
+                  reorganizar();
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -175,23 +285,33 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   },
                 ),
               ),
-              Padding(padding: EdgeInsets.only(bottom: 120)),
+              Padding(padding: EdgeInsets.only(bottom: 52 + bottomInset)),
             ],
           ),
 
           ValueListenableBuilder(
-            valueListenable: bottomPosition,
+            valueListenable: toDown,
             builder: (context, value, child) {
-              return AnimatedPositioned(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeInOut,
-                bottom: value,
-                left: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: _toggleBottom,
-                  child: Player(audioHandler: widget.audioHandler),
-                ),
+              bottomInset = MediaQuery.of(context).padding.bottom;
+              return ValueListenableBuilder<bool>(
+                valueListenable:
+                    widget.ekosystem?.conected ?? ValueNotifier(false),
+                builder: (context, conected, child) {
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOut,
+                    bottom: bottomInset - (value ? (conected ? 160 : 102) : 0),
+                    left: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _toggleBottom,
+                      child:
+                          conected
+                              ? EkoPlayer(audioHandler: widget.audioHandler)
+                              : Player(audioHandler: widget.audioHandler),
+                    ),
+                  );
+                },
               );
             },
           ),

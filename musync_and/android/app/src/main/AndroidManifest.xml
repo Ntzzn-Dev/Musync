@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <application
-        android:label="musync_and"
+        android:label="Musync"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">

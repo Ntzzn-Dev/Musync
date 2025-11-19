@@ -3,30 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/widgets/letreiro.dart';
+import 'package:musync_and/widgets/player.dart';
 
 class EkoPlayer extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
 
   const EkoPlayer({super.key, required this.audioHandler});
-
-  static String formatDuration(Duration d, bool h) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(d.inHours);
-    final minutes = twoDigits(d.inMinutes.remainder(60));
-    final seconds = twoDigits(d.inSeconds.remainder(60));
-    return '${h ? '$hours:' : ''}$minutes:$seconds';
-  }
-
-  static Widget titleText(String text, double fontsize) {
-    return Letreiro(
-      key: ValueKey(text),
-      texto: text,
-      blankSpace: 90,
-      fullTime: 12,
-      timeStoped: 1500,
-      fontSize: fontsize,
-    );
-  }
 
   @override
   State<EkoPlayer> createState() => _EkoPlayerState();
@@ -77,8 +59,8 @@ class _EkoPlayerState extends State<EkoPlayer> {
                   ),
                   child: Column(
                     children: [
-                      EkoPlayer.titleText(mediaItem.title, 16),
-                      EkoPlayer.titleText(mediaItem.artist ?? '', 11),
+                      Player.titleText(mediaItem.title, 16),
+                      Player.titleText(mediaItem.artist ?? '', 11),
                     ],
                   ),
                 );
@@ -120,10 +102,8 @@ class _EkoPlayerState extends State<EkoPlayer> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(EkoPlayer.formatDuration(pos, false)),
-                              Text(
-                                EkoPlayer.formatDuration(value.total, false),
-                              ),
+                              Text(Player.formatDuration(pos, false)),
+                              Text(Player.formatDuration(value.total, false)),
                             ],
                           ),
                         ),
