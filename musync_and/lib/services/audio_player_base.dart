@@ -79,6 +79,8 @@ class MusyncAudioHandler extends BaseAudioHandler
     'nowPlaying': 0,
   });
 
+  late List<Playlists> playlists;
+
   static Ekosystem? eko;
   static late ValueNotifier<MediaAtual> mediaAtual;
 
@@ -218,17 +220,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> skipPlaylist(bool next) async {
-    var playlists = await DatabaseHelper().loadPlaylists();
-    playlists.insert(
-      0,
-      Playlists(
-        id: 0,
-        title: 'Todas',
-        subtitle: '-=+=-',
-        ordem: 0,
-        orderMode: 0,
-      ),
-    );
     List<int> idsPls = playlists.map((pl) => pl.id).toList();
 
     final currentIndex = idsPls.indexOf(atualPlaylist.value['id']);
@@ -273,6 +264,18 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> initSongs({required List<MediaItem> songs}) async {
+    playlists = await DatabaseHelper().loadPlaylists();
+    playlists.insert(
+      0,
+      Playlists(
+        id: 0,
+        title: 'Todas',
+        subtitle: '-=====-',
+        ordem: 0,
+        orderMode: 0,
+      ),
+    );
+
     audPl.playbackEventStream.listen(_broadcastState);
 
     songsAtual = [...songs];

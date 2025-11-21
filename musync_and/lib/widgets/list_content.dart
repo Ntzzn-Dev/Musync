@@ -247,13 +247,6 @@ class _ListContentState extends State<ListContent> {
         },
       },
       {
-        'opt': 'Informações',
-        'icon': Icons.info_outline,
-        'funct': () async {
-          showSpec(item);
-        },
-      },
-      {
         'opt': 'Editar Música',
         'icon': Icons.edit,
         'funct': () {
@@ -324,6 +317,13 @@ class _ListContentState extends State<ListContent> {
             deletarMusica(item);
             Navigator.of(context).pop();
           }
+        },
+      },
+      {
+        'opt': 'Informações',
+        'icon': Icons.info_outline,
+        'funct': () async {
+          showSpec(item);
         },
       },
     ];
@@ -403,7 +403,7 @@ class _ListContentState extends State<ListContent> {
   }
 
   void scrollToIndex(int index) {
-    final double position = index * 78;
+    final double position = index * 65;
     _scrollController.animateTo(
       position,
       duration: Duration(seconds: 1),
@@ -502,6 +502,7 @@ class _ListContentState extends State<ListContent> {
                     selecionada[index]
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
+                            widget.audioHandler.songsAtual.isNotEmpty &&
                             mutableSongs[index] ==
                                 widget.audioHandler.songsAtual[value] &&
                             listaEmUso
@@ -574,7 +575,7 @@ class _ListContentState extends State<ListContent> {
                       Expanded(
                         child: Container(
                           color: corFundo,
-                          height: 78,
+                          height: 65,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(8),
                             onTap: () async {
@@ -632,7 +633,7 @@ class _ListContentState extends State<ListContent> {
                                             fontWeight: FontWeight.bold,
                                           ),
                                           overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
+                                          maxLines: 1,
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
@@ -648,11 +649,11 @@ class _ListContentState extends State<ListContent> {
                                     ),
                                   ),
                                   SizedBox(
-                                    width: 44,
-                                    height: 78,
+                                    width: 30,
+                                    height: 65,
                                     child: IconButton(
                                       icon: Icon(
-                                        Icons.more_vert_rounded,
+                                        Icons.more_horiz_outlined,
                                         color:
                                             Theme.of(context)
                                                 .extension<CustomColors>()!
@@ -679,10 +680,10 @@ class _ListContentState extends State<ListContent> {
                             index: index,
                             child: Container(
                               color: corFundo,
-                              width: 44,
-                              height: 78,
+                              width: 25,
+                              height: 65,
                               child: Icon(
-                                Icons.drag_handle,
+                                Icons.unfold_more_sharp,
                                 color:
                                     Theme.of(
                                       context,

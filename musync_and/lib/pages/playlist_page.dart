@@ -84,9 +84,21 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.plTitle,
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.plTitle,
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+            widget.pl?.subtitle != '' && widget.pl?.subtitle != null
+                ? Text(
+                  widget.pl?.subtitle ?? '',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+                )
+                : SizedBox.shrink(),
+          ],
         ),
         actions: [
           MenuAnchor(
@@ -244,7 +256,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          _searchController.text = '';
+                          FocusScope.of(context).requestFocus(FocusNode());
+                          _searchController.clear();
                           setState(() {
                             songsPlaylist = [...songsNowTranslated];
                           });

@@ -247,3 +247,10 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição de um menu mais controlável, principalmente sobre reordem.  
 - Correção na altura do player e playerEko.  
 - Adição do playerEko nas playlists.  
+
+### version 5.3 
+- Adicionada resposta tátil ao adicionar mais de uma musica a uma playlist.
+- Alterado tamanho das faixas de 78 para 65, para um melhor preenchimento de espaço.  
+- Alterada a maneira em que as músicas das playlists eram puxadas, sem necessidade de reorganização após consulta de banco de dados.  
+- Melhora na barra de pesquisa, ignora assentos e sai de foco ao fechar.  
+- Melhora em pequenos aspectos de UI.  

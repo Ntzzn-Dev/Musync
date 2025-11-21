@@ -140,7 +140,7 @@ class DatabaseHelper {
             whereArgs: [idPlaylist, ...idsMusic],
           );
 
-          final hasMusic = result.isNotEmpty;
+          final hasMusic = result.length == idsMusic.length;
 
           return Playlists(
             id: idPlaylist,

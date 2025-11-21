@@ -22,6 +22,7 @@ import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:diacritic/diacritic.dart';
 
 class MusicPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -276,11 +277,6 @@ class _MusicPageState extends State<MusicPage> {
     Playlists? pl;
     if (idPl != null) {
       pl = await DatabaseHelper().loadPlaylist(idPl);
-
-      songsPl = MusyncAudioHandler.reorder(
-        ModeOrderEnumExt.convert(pl!.orderMode),
-        songs,
-      );
     }
 
     Navigator.push(
@@ -331,7 +327,12 @@ class _MusicPageState extends State<MusicPage> {
                               itemCount: playlists.length,
                               itemBuilder: (context, index) {
                                 final playlist = playlists[index];
-                                return SizedBox(
+                                log(playlist.haveMusic.toString());
+                                return Container(
+                                  color:
+                                      playlist.haveMusic ?? false
+                                          ? Color.fromARGB(255, 243, 160, 34)
+                                          : null,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(8),
                                     onTap: () async {
@@ -802,79 +803,91 @@ class _MusicPageState extends State<MusicPage> {
         children: [
           Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          abaSelect = 0;
-                        });
-                        songsNow = MusyncAudioHandler.songsAll;
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          border: Border(
-                            bottom: BorderSide(
-                              color:
-                                  abaSelect == 0
-                                      ? Color.fromARGB(255, 243, 160, 34)
-                                      : Colors.transparent,
-                              width: 3,
+              SizedBox(
+                height: 56,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            abaSelect = 0;
+                          });
+                          songsNow = MusyncAudioHandler.songsAll;
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: baseFundoDark,
+                            border: Border(
+                              bottom: BorderSide(
+                                color:
+                                    abaSelect == 0
+                                        ? Color.fromARGB(255, 243, 160, 34)
+                                        : Colors.transparent,
+                                width: 3,
+                              ),
                             ),
                           ),
-                        ),
-                        child: Text(
-                          'Todas',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          child: Text(
+                            'Todas',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        setState(() {
-                          abaSelect = 1;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          border: Border(
-                            bottom: BorderSide(
-                              color:
-                                  abaSelect == 1
-                                      ? Color.fromARGB(255, 243, 160, 34)
-                                      : Colors.transparent,
-                              width: 3,
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          setState(() {
+                            abaSelect = 1;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: baseFundoDark,
+                            border: Border(
+                              bottom: BorderSide(
+                                color:
+                                    abaSelect == 1
+                                        ? Color.fromARGB(255, 243, 160, 34)
+                                        : Colors.transparent,
+                                width: 3,
+                              ),
                             ),
                           ),
-                        ),
-                        child: Text(
-                          'Playlists',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          child: Text(
+                            'Playlists',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _toggleTop,
-                    icon: Icon(Icons.search),
-                    color: Color.fromARGB(255, 243, 160, 34),
-                  ),
-                ],
+                    Container(
+                      height: double.infinity,
+                      color: baseFundoDark,
+                      child: InkWell(
+                        onTap: _toggleTop,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Icon(
+                            Icons.search,
+                            color: Color.fromARGB(255, 243, 160, 34),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Expanded(child: pageSelect(abaSelect)),
               Padding(padding: EdgeInsets.only(bottom: 52 + bottomInset)),
@@ -948,7 +961,7 @@ class _MusicPageState extends State<MusicPage> {
                                 songsNow =
                                     MusyncAudioHandler.songsAll
                                         .where(
-                                          (item) => item.title
+                                          (item) => removeDiacritics(item.title)
                                               .toLowerCase()
                                               .contains(value.toLowerCase()),
                                         )
@@ -959,7 +972,9 @@ class _MusicPageState extends State<MusicPage> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            _searchController.text = '';
+                            FocusScope.of(context).requestFocus(FocusNode());
+
+                            _searchController.clear();
 
                             setState(() {
                               songsNow = MusyncAudioHandler.songsAll;

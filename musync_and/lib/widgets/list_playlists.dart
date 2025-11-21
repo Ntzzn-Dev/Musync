@@ -253,7 +253,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               Container(
                 height: 30,
                 width: double.infinity,
-                color: const Color.fromARGB(255, 54, 54, 54),
+                color: baseFundoDark,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.centerLeft,
                 child: Text(

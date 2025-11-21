@@ -65,9 +65,16 @@ class Playlists {
           }
         }).toList();
 
-    final resultados = await Future.wait(futuros);
+    final resultadoTemp = await Future.wait(futuros);
 
-    return resultados.whereType<MediaItem>().toList();
+    final musicas = resultadoTemp.whereType<MediaItem>().toList();
+
+    final resultados = MusyncAudioHandler.reorder(
+      ModeOrderEnumExt.convert(orderMode),
+      musicas,
+    );
+
+    return resultados;
   }
 
   static Future<void> editarTags(
