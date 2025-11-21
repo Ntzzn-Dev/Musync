@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -32,11 +33,13 @@ class PlaylistPage extends StatefulWidget {
 
 class _PlaylistPageState extends State<PlaylistPage> {
   ValueNotifier<bool> toDown = ValueNotifier(false);
+  ValueNotifier<Widget> funcSuperior = ValueNotifier(SizedBox.shrink());
   final TextEditingController _searchController = TextEditingController();
   late List<MediaItem> songsPlaylist;
   late List<MediaItem> songsNowTranslated;
   double bottomInset = 0;
   final menuController = MenuController();
+  List<String> idsMsc = [];
 
   late ModeOrderEnum modeAtual;
 
@@ -80,6 +83,180 @@ class _PlaylistPageState extends State<PlaylistPage> {
     }
   }
 
+  void deletarMusicas(List<MediaItem> itens) async {
+    for (MediaItem item in itens) {
+      final file = File(item.extras?['path']);
+      if (await file.exists()) {
+        try {
+          setState(() {
+            songsNowTranslated.remove(item);
+            MusyncAudioHandler.songsAll.remove(item);
+          });
+          await widget.audioHandler.recreateQueue(songs: songsNowTranslated);
+          await file.delete();
+        } catch (e) {
+          log('Erro ao deletar: $e');
+        }
+      } else {
+        log('Arquivo não encontrado');
+      }
+    }
+  }
+
+  void moreOptionsSelected(List<int> indexMsc) async {
+    if (indexMsc.isNotEmpty) {
+      List<String> idsMscs =
+          indexMsc.map((i) => songsNowTranslated[i].id).toList();
+      List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+        idsMusic: idsMscs,
+      );
+      funcSuperior.value = PopupMenuButton<String>(
+        icon: Icon(Icons.queue_music_rounded),
+        onSelected: (value) {
+          switch (value) {
+            case 'addtoplaylist':
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) {
+                  return StatefulBuilder(
+                    builder: (context, setModalState) {
+                      return FractionallySizedBox(
+                        heightFactor: 0.45,
+                        child: Container(
+                          padding: const EdgeInsets.only(top: 20),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: ListView.builder(
+                            itemCount: playlists.length,
+                            itemBuilder: (context, index) {
+                              final playlist = playlists[index];
+                              log(playlist.haveMusic.toString());
+                              return Container(
+                                color:
+                                    playlist.haveMusic ?? false
+                                        ? Color.fromARGB(255, 243, 160, 34)
+                                        : null,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () async {
+                                    for (String id in idsMscs) {
+                                      if (playlist.haveMusic ?? false) {
+                                        await DatabaseHelper()
+                                            .removeFromPlaylist(
+                                              playlist.id,
+                                              id,
+                                            );
+                                      } else {
+                                        await DatabaseHelper().addToPlaylist(
+                                          playlist.id,
+                                          id,
+                                        );
+                                      }
+                                    }
+
+                                    setModalState(() {
+                                      playlists[index] = playlist.copyWith(
+                                        haveMusic:
+                                            !(playlist.haveMusic ?? false),
+                                      );
+                                    });
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          playlist.title,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          softWrap: true,
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          playlist.subtitle,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                          softWrap: true,
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 3,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+              break;
+            case 'delete':
+              deletarMusicas(
+                indexMsc.map((i) => songsNowTranslated[i]).toList(),
+              );
+              break;
+          }
+        },
+        itemBuilder:
+            (context) => [
+              PopupMenuItem(
+                value: 'addtoplaylist',
+                child: Text(
+                  'Adicionar à Playlist',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(
+                  'Apagar',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+              ),
+            ],
+      );
+    } else {
+      funcSuperior.value = SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,6 +278,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ],
         ),
         actions: [
+          ValueListenableBuilder(
+            valueListenable: funcSuperior,
+            builder: (context, value, child) {
+              return value;
+            },
+          ),
           MenuAnchor(
             controller: menuController,
             builder: (context, controller, child) {
@@ -295,6 +478,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       (t) => t == item,
                     );
                     await widget.audioHandler.skipToQueueItem(indiceCerto);
+                  },
+                  selecaoDeMusicas: (indexMsc) {
+                    moreOptionsSelected(indexMsc);
                   },
                 ),
               ),

@@ -254,3 +254,11 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Alterada a maneira em que as músicas das playlists eram puxadas, sem necessidade de reorganização após consulta de banco de dados.  
 - Melhora na barra de pesquisa, ignora assentos e sai de foco ao fechar.  
 - Melhora em pequenos aspectos de UI.  
+
+### version 5.4
+- Adicionada imagem da música no supercontrol.  
+- Correção para que música inicial seja definida desde o inicio do app.  
+- Fonte do aplicativo trocada.
+- Adição de função superior para mais de uma seleção em playlists.  
+- Correção do clique no desktop mudar atual no mobile.  
+- Inicio da implementação do modo de união de musicas de mobile para desktop.

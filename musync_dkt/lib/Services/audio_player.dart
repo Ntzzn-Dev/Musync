@@ -67,6 +67,7 @@ class MusyncAudioHandler extends AudioPlayer {
   bool muted = false;
   double volumeatual = 50;
   File? tempFile;
+  List<MediaMusic> songsAll = [];
   ValueNotifier<List<MediaMusic>> songsAtual = ValueNotifier([]);
   ValueNotifier<MediaMusic> musicAtual = ValueNotifier(
     MediaMusic(
@@ -124,23 +125,24 @@ class MusyncAudioHandler extends AudioPlayer {
 
     musicAtual.value = songsAtual.value[index];
 
+    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+
     await audPl.play(DeviceFileSource(tempFile!.path));
   }
 
   Future<void> tocarMusic(dynamic music, bool? iniciar) async {
-    final novaLista = List<MediaMusic>.from(songsAtual.value)..insert(
-      music['part'] == 2 ? 0 : songsAtual.value.length,
-      MediaMusic(
-        id: music['id'],
-        title: music['audio_title'],
-        artist: music['audio_artist'],
-        bytes: Uint8List.fromList(List<int>.from(music['data'])),
-        artUri:
-            music['art'] != null ? base64Decode(music['art']) : Uint8List(0),
-      ),
+    final newMsc = MediaMusic(
+      id: music['id'],
+      title: music['audio_title'],
+      artist: music['audio_artist'],
+      bytes: Uint8List.fromList(List<int>.from(music['data'])),
+      artUri: music['art'] != null ? base64Decode(music['art']) : Uint8List(0),
     );
+    final novaLista = List<MediaMusic>.from(songsAtual.value)
+      ..insert(music['part'] == 2 ? 0 : songsAtual.value.length, newMsc);
 
     songsAtual.value = novaLista;
+    songsAll.add(newMsc);
 
     currentIndex.value = novaLista.indexOf(musicAtual.value);
 

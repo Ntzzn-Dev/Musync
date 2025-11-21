@@ -81,6 +81,7 @@ class _HomePageState extends State<HomePage> {
                 final title = decoded['audio_title'];
                 fileBuffers[title] = [];
                 print("Iniciando recebimento: $title");
+                log(decoded['id']);
               } else if (action == 'audio_chunk') {
                 final title = decoded['audio_title'];
                 final bytes = base64Decode(decoded['data']);
@@ -106,6 +107,12 @@ class _HomePageState extends State<HomePage> {
 
                   print("Música recebida: $title");
                 }
+              } else if (action == 'add_to_atual') {
+                player.songsAtual.value.add(
+                  player.songsAll.firstWhere(
+                    (msc) => msc.id == decoded['data'],
+                  ),
+                );
               } else if (action == 'package_start') {
                 log("Iniciando pacote de músicas...");
                 player.songsAtual.value.clear();
@@ -113,6 +120,12 @@ class _HomePageState extends State<HomePage> {
               } else if (action == 'package_end') {
                 log("Fim da primeira parte");
                 enviarParaAndroid(socket, "package_end", 0);
+              } else if (action == 'request_data') {
+                enviarParaAndroid(
+                  socket,
+                  'verify_data',
+                  player.songsAtual.value.map((msc) => msc.id).join(','),
+                );
               } else if (action == 'toggle_play') {
                 if (decoded['data']) {
                   player.resume();

@@ -70,7 +70,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/MusyncLogo.png"
@@ -92,6 +92,15 @@ flutter:
     - family: Digital
       fonts:
         - asset: assets/fonts/digital-7.ttf
+    - family: Titles
+      fonts:
+        - asset: assets/fonts/Moderniz.otf
+    - family: Default-Thin
+      fonts:
+        - asset: assets/fonts/ZTNature-Thin.ttf
+    - family: Default-Medium
+      fonts:
+        - asset: assets/fonts/ZTNature-Medium.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

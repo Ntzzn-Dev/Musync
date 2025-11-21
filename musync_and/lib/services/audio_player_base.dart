@@ -74,7 +74,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   ValueNotifier<Map<String, dynamic>> atualPlaylist = ValueNotifier({
     'id': 0,
     'title': 'Todas',
-    'subtitle': '-=+=-',
+    'subtitle': '=---=',
     'qntTotal': 1,
     'nowPlaying': 0,
   });
@@ -89,8 +89,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     pause();
 
     if (eko?.conected.value ?? false) {
-      eko?.sendAudios(songsAtual, currentIndex.value);
-      Ekosystem.indexInitial = currentIndex.value;
+      eko?.sendMessage({'action': 'request_data', 'data': ''});
     }
 
     mediaAtual = ValueNotifier(
@@ -102,6 +101,13 @@ class MusyncAudioHandler extends BaseAudioHandler
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
       switch (msg?['action']) {
+        case 'verify_data':
+          String allIds = msg?['data'];
+          final listIds = allIds.split(',');
+
+          eko?.sendAudios(songsAtual, currentIndex.value, listIds);
+          Ekosystem.indexInitial = currentIndex.value;
+          break;
         case 'position':
           final progress = Duration(milliseconds: msg?['data'].toInt());
           mediaAtual.value.seek(progress);
@@ -232,12 +238,12 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     atualPlaylist.value = {
       ...atualPlaylist.value,
-      'id': idNext,
+      'id': nextPlaylist.id,
       'title': nextPlaylist.title,
       'subtitle': nextPlaylist.subtitle,
     };
 
-    List<MediaItem> newsongs = await nextPlaylist.findMusics() ?? [];
+    List<MediaItem> newsongs = await nextPlaylist.findMusics();
 
     if (newsongs.isEmpty) newsongs = songsAll;
 
@@ -253,7 +259,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (index != null) {
       saveInd(index);
     } else {
-      return;
+      index = 0;
     }
     currentIndex.value = index;
     atualPlaylist.value = {...atualPlaylist.value, 'nowPlaying': index};
@@ -269,8 +275,8 @@ class MusyncAudioHandler extends BaseAudioHandler
       0,
       Playlists(
         id: 0,
-        title: 'Todas',
-        subtitle: '-=====-',
+        title: atualPlaylist.value['title'],
+        subtitle: atualPlaylist.value['subtitle'],
         ordem: 0,
         orderMode: 0,
       ),
@@ -315,7 +321,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     };
 
     if (eko?.conected.value ?? false) {
-      eko?.sendAudios(songsAtual, currentIndex.value);
+      eko?.sendMessage({'action': 'request_data', 'data': ''});
     } else {
       currentIndex.value = 0;
 
@@ -416,7 +422,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
     }
 
-    setMediaIndex(index);
+    //setMediaIndex(index);
   }
 
   void setMediaIndex(int index) {

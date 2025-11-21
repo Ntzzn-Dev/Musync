@@ -105,8 +105,14 @@ class _PlayerState extends State<Player> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(Player.formatDuration(position, false)),
-                          Text(Player.formatDuration(total, false)),
+                          Text(
+                            Player.formatDuration(position, false),
+                            style: TextStyle(fontFamily: 'Default-Thin'),
+                          ),
+                          Text(
+                            Player.formatDuration(total, false),
+                            style: TextStyle(fontFamily: 'Default-Thin'),
+                          ),
                         ],
                       ),
                     ),

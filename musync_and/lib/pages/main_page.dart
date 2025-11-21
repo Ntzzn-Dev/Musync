@@ -219,7 +219,7 @@ class _MusicPageState extends State<MusicPage> {
           searchController: _searchController,
           escolhaDePlaylist: (pl) async {
             final newsongs = await pl.findMusics();
-            if (newsongs != null) {
+            if (newsongs.isNotEmpty) {
               _abrirPlaylist(title: pl.title, songs: newsongs, idPl: pl.id);
             }
           },
@@ -466,7 +466,11 @@ class _MusicPageState extends State<MusicPage> {
       appBar: AppBar(
         title: const Text(
           'MUSYNC',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            fontFamily: 'Titles',
+          ),
         ),
         actions: [
           ValueListenableBuilder<int>(

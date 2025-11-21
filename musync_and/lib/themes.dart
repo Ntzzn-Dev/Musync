@@ -138,6 +138,7 @@ ThemeData lighttheme() {
 
 ThemeData darktheme() {
   return ThemeData(
+    fontFamily: "Default-Medium",
     useMaterial3: true,
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: baseElementDark,

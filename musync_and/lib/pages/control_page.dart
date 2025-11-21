@@ -1,6 +1,5 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/widgets/sound_control.dart';
@@ -43,129 +42,110 @@ class _ControlPageState extends State<ControlPage> {
           children: [
             Column(
               children: [
-                SizedBox(
-                  height: 130,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 4,
-                          child: Padding(
-                            padding: EdgeInsetsGeometry.symmetric(vertical: 15),
-                            child: Column(
-                              children: [
-                                StreamBuilder<MediaItem?>(
-                                  stream: widget.audioHandler.mediaItem,
-                                  builder: (context, snapshot) {
-                                    final mediaItem = snapshot.data;
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    height: 130,
+                    child: Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          StreamBuilder<MediaItem?>(
+                            stream: widget.audioHandler.mediaItem,
+                            builder: (context, snapshot) {
+                              final mediaItem = snapshot.data;
 
-                                    if (mediaItem == null) {
-                                      return const Text("...");
-                                    }
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 0,
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Player.titleText(mediaItem.title, 20),
-                                          Player.titleText(
-                                            mediaItem.artist ?? '',
-                                            13,
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
+                              if (mediaItem == null) {
+                                return const Text("...");
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 0,
                                 ),
-                                StreamBuilder<Duration>(
-                                  stream: widget.audioHandler.positionStream,
-                                  builder: (context, snapshot) {
-                                    final position =
-                                        snapshot.data ?? Duration.zero;
-                                    final total =
-                                        widget.audioHandler.duration ??
-                                        Duration.zero;
+                                child: Column(
+                                  children: [
+                                    Player.titleText(mediaItem.title, 20),
+                                    Player.titleText(
+                                      mediaItem.artist ?? '',
+                                      13,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          StreamBuilder<Duration>(
+                            stream: widget.audioHandler.positionStream,
+                            builder: (context, snapshot) {
+                              final position = snapshot.data ?? Duration.zero;
+                              final total =
+                                  widget.audioHandler.duration ?? Duration.zero;
 
-                                    return Column(
-                                      children: [
-                                        SliderTheme(
-                                          data: SliderTheme.of(
-                                            context,
-                                          ).copyWith(
-                                            trackHeight: 2,
-                                            thumbShape:
-                                                const RoundSliderThumbShape(
-                                                  enabledThumbRadius: 6,
-                                                ),
-                                            overlayShape:
-                                                const RoundSliderOverlayShape(
-                                                  overlayRadius: 12,
-                                                ),
+                              return Column(
+                                children: [
+                                  SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 2,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 6,
+                                      ),
+                                      overlayShape:
+                                          const RoundSliderOverlayShape(
+                                            overlayRadius: 12,
                                           ),
-                                          child: Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 0,
-                                            ),
-                                            child: Slider(
-                                              min: 0,
-                                              max:
-                                                  total.inMilliseconds
-                                                      .toDouble(),
-                                              value:
-                                                  position.inMilliseconds
-                                                      .clamp(
-                                                        0,
-                                                        total.inMilliseconds,
-                                                      )
-                                                      .toDouble(),
-                                              onChanged: (value) {
-                                                widget.audioHandler.seek(
-                                                  Duration(
-                                                    milliseconds: value.toInt(),
-                                                  ),
-                                                );
-                                              },
-                                            ),
+                                    ),
+                                    child: Slider(
+                                      min: 0,
+                                      max: total.inMilliseconds.toDouble(),
+                                      value:
+                                          position.inMilliseconds
+                                              .clamp(0, total.inMilliseconds)
+                                              .toDouble(),
+                                      onChanged: (value) {
+                                        widget.audioHandler.seek(
+                                          Duration(milliseconds: value.toInt()),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 22.0,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          Player.formatDuration(
+                                            position,
+                                            false,
+                                          ),
+                                          style: TextStyle(
+                                            fontFamily: 'Default-Thin',
                                           ),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 22.0,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                Player.formatDuration(
-                                                  position,
-                                                  false,
-                                                ),
-                                              ),
-                                              Text(
-                                                Player.formatDuration(
-                                                  total,
-                                                  false,
-                                                ),
-                                              ),
-                                            ],
+                                        Text(
+                                          Player.formatDuration(total, false),
+                                          style: TextStyle(
+                                            fontFamily: 'Default-Thin',
                                           ),
                                         ),
                                       ],
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),

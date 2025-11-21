@@ -168,18 +168,36 @@ class Ekosystem {
     return null;
   }
 
-  Future<void> sendAudios(List<MediaItem> musicas, int indx) async {
+  Future<void> sendAudios(
+    List<MediaItem> musicas,
+    int indx,
+    List<String> idsJaBaixados,
+  ) async {
     List<MediaItem> mscs1 = musicas.sublist(indx);
     List<MediaItem> mscs2 = musicas.sublist(0, indx).reversed.toList();
 
     sendMessage({"action": "package_start", "count": musicas.length});
 
     for (final music in mscs1) {
+      if (idsJaBaixados.contains(music.id.split("/").last)) {
+        sendMessage({
+          'action': 'add_to_atual',
+          'data': music.id.split("/").last,
+        });
+        continue;
+      }
       indexSending = mscs1.indexOf(music);
       await sendFileInChunks(music, 1);
     }
 
     for (final music in mscs2) {
+      if (idsJaBaixados.contains(music.id.split("/").last)) {
+        sendMessage({
+          'action': 'add_to_atual',
+          'data': music.id.split("/").last,
+        });
+        continue;
+      }
       await sendFileInChunks(music, 2);
     }
 

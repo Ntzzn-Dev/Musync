@@ -51,7 +51,7 @@ class Playlists {
     );
   }
 
-  Future<List<MediaItem>?> findMusics() async {
+  Future<List<MediaItem>> findMusics() async {
     List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
 
     final futuros =
@@ -68,6 +68,10 @@ class Playlists {
     final resultadoTemp = await Future.wait(futuros);
 
     final musicas = resultadoTemp.whereType<MediaItem>().toList();
+
+    if (musicas.isEmpty) {
+      return [];
+    }
 
     final resultados = MusyncAudioHandler.reorder(
       ModeOrderEnumExt.convert(orderMode),

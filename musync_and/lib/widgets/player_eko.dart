@@ -101,8 +101,14 @@ class _EkoPlayerState extends State<EkoPlayer> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(Player.formatDuration(pos, false)),
-                              Text(Player.formatDuration(value.total, false)),
+                              Text(
+                                Player.formatDuration(pos, false),
+                                style: TextStyle(fontFamily: 'Default-Thin'),
+                              ),
+                              Text(
+                                Player.formatDuration(value.total, false),
+                                style: TextStyle(fontFamily: 'Default-Thin'),
+                              ),
                             ],
                           ),
                         ),
