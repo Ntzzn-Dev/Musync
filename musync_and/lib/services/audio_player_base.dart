@@ -302,7 +302,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     });
   }
 
-  Future<void> recreateQueue({required List<MediaItem> songs}) async {
+  Future<bool> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
 
     if (_equality.equals(
@@ -310,7 +310,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       currentQueue.map((e) => e.id).toList(),
     )) {
       log('Fila já está atualizada, não será recriada.');
-      return;
+      return false;
     }
 
     songsAtual = [...songs];
@@ -322,6 +322,8 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
+
+      queue.add(songs);
     } else {
       currentIndex.value = 0;
 
@@ -333,6 +335,7 @@ class MusyncAudioHandler extends BaseAudioHandler
         prepareShuffle();
       }
     }
+    return true;
   }
 
   void reorganizeQueue({required List<MediaItem> songs}) {
@@ -420,6 +423,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       if (Ekosystem.indexSending < index) return;
       int indexRelative = index - Ekosystem.indexInitial;
       eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
+      log('$indexRelative ${Ekosystem.indexInitial}');
     }
 
     //setMediaIndex(index);

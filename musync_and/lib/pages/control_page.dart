@@ -382,9 +382,7 @@ class _ControlPageState extends State<ControlPage> {
                               ),
                               elevation: 4,
                               child: Padding(
-                                padding: EdgeInsetsGeometry.symmetric(
-                                  vertical: 15,
-                                ),
+                                padding: EdgeInsets.symmetric(vertical: 15),
                                 child: Column(
                                   children: [
                                     Padding(

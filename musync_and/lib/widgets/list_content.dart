@@ -502,7 +502,7 @@ class _ListContentState extends State<ListContent> {
                     selecionada[index]
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
-                            widget.audioHandler.songsAtual.isNotEmpty &&
+                            value < widget.audioHandler.songsAtual.length &&
                             mutableSongs[index] ==
                                 widget.audioHandler.songsAtual[value] &&
                             listaEmUso

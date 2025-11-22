@@ -262,3 +262,16 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição de função superior para mais de uma seleção em playlists.  
 - Correção do clique no desktop mudar atual no mobile.  
 - Inicio da implementação do modo de união de musicas de mobile para desktop.
+
+### version 5.5  
+- Otimização em algumas partes do código.  
+- Correção da falta de mensagem de permissão de acesso aos arquivos.  
+- Verificação de ethernet adicionada para QRcode de conexão.  
+- Pequenas correções na união de musicas de mobile para desktop.
+
+### TO VERSION 5.6
++ Corrigir inicio de musica ao recriar lista no desktop.  
++ Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
++ Enviar junto o nome da playlist atual.  
++ Adicionar controle EKOSYSTEM no super controle.  
++ Corrigir substituição de Ekosystem.initialIndex quando aperto na lista todas.  

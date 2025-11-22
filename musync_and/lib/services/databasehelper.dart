@@ -1,7 +1,9 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
@@ -14,12 +16,33 @@ class DatabaseHelper {
     return _database!;
   }
 
+  Future<String> getExternalDBPath() async {
+    final dir = await getExternalStorageDirectory();
+    final dbDir = Directory("${dir!.path}/MusyncDB");
+
+    if (!dbDir.existsSync()) {
+      dbDir.createSync(recursive: true);
+    }
+
+    return "${dbDir.path}/musync.db";
+  }
+
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'musyncand.db');
+    final externalPath = await getExternalDBPath();
+    final dbFile = File(externalPath);
+
+    if (dbFile.existsSync()) {
+      return await openDatabase(
+        externalPath,
+        version: 1,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+        },
+      );
+    }
 
     return await openDatabase(
-      path,
+      externalPath,
       version: 1,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');

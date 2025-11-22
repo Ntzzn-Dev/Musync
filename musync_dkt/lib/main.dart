@@ -77,71 +77,83 @@ class _HomePageState extends State<HomePage> {
               final action = decoded['action'];
               print('Ação recebida: $action');
 
-              if (action == 'audio_start') {
-                final title = decoded['audio_title'];
-                fileBuffers[title] = [];
-                print("Iniciando recebimento: $title");
-                log(decoded['id']);
-              } else if (action == 'audio_chunk') {
-                final title = decoded['audio_title'];
-                final bytes = base64Decode(decoded['data']);
-                fileBuffers[title]?.addAll(bytes);
-              } else if (action == 'audio_end') {
-                final title = decoded['audio_title'];
-                final artist = decoded['audio_artist'];
+              switch (action) {
+                case 'audio_start':
+                  final title = decoded['audio_title'];
+                  fileBuffers[title] = [];
+                  print("Iniciando recebimento: $title");
+                  break;
+                case 'audio_chunk':
+                  final title = decoded['audio_title'];
+                  final bytes = base64Decode(decoded['data']);
+                  fileBuffers[title]?.addAll(bytes);
+                  break;
+                case 'audio_end':
+                  final title = decoded['audio_title'];
+                  final artist = decoded['audio_artist'];
 
-                if (fileBuffers.containsKey(title)) {
-                  final fullBytes = Uint8List.fromList(fileBuffers[title]!);
-                  fileBuffers.remove(title);
+                  if (fileBuffers.containsKey(title)) {
+                    final fullBytes = Uint8List.fromList(fileBuffers[title]!);
+                    fileBuffers.remove(title);
 
-                  await player.tocarMusic({
-                    'audio_title': title,
-                    'audio_artist': artist,
-                    'data': fullBytes,
-                    'id': int.parse(decoded['id'].split("/").last),
-                    'part': decoded['parte'],
-                    'art': decoded['artUri'],
-                  }, musicsLoaded.split('/').first == '0');
+                    await player.tocarMusic({
+                      'audio_title': title,
+                      'audio_artist': artist,
+                      'data': fullBytes,
+                      'id': int.parse(decoded['id'].split("/").last),
+                      'part': decoded['parte'],
+                      'art': decoded['artUri'],
+                    }, musicsLoaded.split('/').first == '0');
 
-                  addLoaded();
+                    addLoaded();
 
-                  print("Música recebida: $title");
-                }
-              } else if (action == 'add_to_atual') {
-                player.songsAtual.value.add(
-                  player.songsAll.firstWhere(
-                    (msc) => msc.id == decoded['data'],
-                  ),
-                );
-              } else if (action == 'package_start') {
-                log("Iniciando pacote de músicas...");
-                player.songsAtual.value.clear();
-                musicsLoaded = '0/${decoded['count']}';
-              } else if (action == 'package_end') {
-                log("Fim da primeira parte");
-                enviarParaAndroid(socket, "package_end", 0);
-              } else if (action == 'request_data') {
-                enviarParaAndroid(
-                  socket,
-                  'verify_data',
-                  player.songsAtual.value.map((msc) => msc.id).join(','),
-                );
-              } else if (action == 'toggle_play') {
-                if (decoded['data']) {
-                  player.resume();
-                } else {
-                  player.pause();
-                }
-              } else if (action == 'position') {
-                final pos = Duration(milliseconds: decoded['data'].toInt());
-                player.seek(pos);
-              } else if (action == 'volume') {
-                double vol = decoded['data'].toDouble();
-                player.setVolume(vol);
-              } else if (action == 'newindex') {
-                int newindex = decoded['data'].toInt();
-                log(newindex.toString());
-                player.setIndex(newindex);
+                    print("Música recebida: $title");
+                  }
+                  break;
+                case 'add_to_atual':
+                  player.songsAtual.value = [
+                    ...player.songsAtual.value,
+                    player.songsAll.firstWhere(
+                      (msc) => msc.id == int.parse(decoded['data']),
+                    ),
+                  ];
+                  break;
+                case 'package_start':
+                  log("Iniciando pacote de músicas...");
+                  player.songsAtual.value.clear();
+                  musicsLoaded = '0/${decoded['count']}';
+                  break;
+                case 'package_end':
+                  log("Fim da primeira parte");
+                  enviarParaAndroid(socket, "package_end", 0);
+                  break;
+                case 'request_data':
+                  enviarParaAndroid(
+                    socket,
+                    'verify_data',
+                    player.songsAll.map((msc) => msc.id).join(','),
+                  );
+                  break;
+                case 'toggle_play':
+                  if (decoded['data']) {
+                    player.resume();
+                  } else {
+                    player.pause();
+                  }
+                  break;
+                case 'position':
+                  final pos = Duration(milliseconds: decoded['data'].toInt());
+                  player.seek(pos);
+                  break;
+                case 'volume':
+                  double vol = decoded['data'].toDouble();
+                  player.setVolume(vol);
+                  break;
+                case 'newindex':
+                  int newindex = decoded['data'].toInt();
+                  log(newindex.toString());
+                  player.setIndex(newindex);
+                  break;
               }
             } catch (e) {
               print(
@@ -177,14 +189,48 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<String?> getLocalIp() async {
-    final info = NetworkInfo();
-    final ip = await info.getWifiIP();
-    return ip;
+  Future<String?> getLocalIPAddress() async {
+    try {
+      final info = NetworkInfo();
+      final wifiIp = await info.getWifiIP();
+      if (wifiIp != null && wifiIp.isNotEmpty) {
+        return wifiIp;
+      }
+    } catch (_) {}
+
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+
+      for (var interface in interfaces) {
+        final name = interface.name.toLowerCase();
+
+        if (name.toLowerCase().contains("virtual") ||
+            name.toLowerCase().contains("vbox") ||
+            name.toLowerCase().contains("radmin") ||
+            name.toLowerCase().contains("vpn") ||
+            name.toLowerCase().contains("vm")) {
+          continue;
+        }
+
+        for (var addr in interface.addresses) {
+          final ip = addr.address;
+
+          if (!ip.startsWith("127.") && !ip.startsWith("169.")) {
+            return ip;
+          }
+        }
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   void enableQRCode() async {
-    final ip = await getLocalIp();
+    final ip = await getLocalIPAddress();
+
     showDialog(
       context: context,
       builder: (context) {

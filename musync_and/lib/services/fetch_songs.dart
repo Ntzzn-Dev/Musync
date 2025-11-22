@@ -8,15 +8,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 OnAudioQuery onAudioQuery = OnAudioQuery();
 
-Future<void> accessStorage() async =>
-    await Permission.storage.status.isGranted.then((granted) async {
-      if (granted == false) {
-        PermissionStatus permissionStatus = await Permission.storage.request();
-        if (permissionStatus == PermissionStatus.permanentlyDenied) {
-          await openAppSettings();
-        }
-      }
-    });
+Future<void> accessStorage() async {
+  final status = await Permission.audio.status;
+
+  if (!status.isGranted) {
+    final result = await Permission.audio.request();
+
+    if (result.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+  }
+}
 
 Future<Uri?> _getArtUri(SongModel song) async {
   final artwork = await onAudioQuery.queryArtwork(song.id, ArtworkType.AUDIO);

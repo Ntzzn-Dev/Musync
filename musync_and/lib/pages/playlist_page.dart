@@ -465,7 +465,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   idPlaylist: widget.pl?.id ?? 0,
                   withReorder: true,
                   aposClique: (item) async {
-                    await widget.audioHandler.recreateQueue(
+                    bool recriou = await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,
                     );
                     widget.audioHandler.savePl(
@@ -477,6 +477,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,
                     );
+                    if ((widget.ekosystem?.conected.value ?? false) &&
+                        recriou) {
+                      Ekosystem.indexInitial = indiceCerto;
+                    }
                     await widget.audioHandler.skipToQueueItem(indiceCerto);
                   },
                   selecaoDeMusicas: (indexMsc) {

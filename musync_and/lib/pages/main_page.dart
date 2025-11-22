@@ -129,7 +129,7 @@ class _MusicPageState extends State<MusicPage> {
 
   Future<String?> openQrScanner() async {
     String? codeFinal;
-
+    log('1');
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -148,10 +148,12 @@ class _MusicPageState extends State<MusicPage> {
                   children: [
                     MobileScanner(
                       onDetect: (capture) {
+                        log('2');
                         final barcode = capture.barcodes.first;
                         final String? code = barcode.rawValue;
 
                         if (code != null) {
+                          log('lido');
                           Navigator.pop(context);
                           codeFinal = code;
                         }
@@ -200,6 +202,9 @@ class _MusicPageState extends State<MusicPage> {
             int indiceCerto = MusyncAudioHandler.songsAll.indexWhere(
               (t) => t == item,
             );
+            if (ekosystem?.conected.value ?? false) {
+              Ekosystem.indexInitial = indiceCerto;
+            }
             await widget.audioHandler.skipToQueueItem(indiceCerto);
           },
           selecaoDeMusicas: (indexMsc) {
@@ -288,6 +293,7 @@ class _MusicPageState extends State<MusicPage> {
               audioHandler: widget.audioHandler,
               songsPL: songsPl,
               pl: pl,
+              ekosystem: ekosystem,
             ),
         settings: const RouteSettings(name: 'playlistOpened'),
       ),
