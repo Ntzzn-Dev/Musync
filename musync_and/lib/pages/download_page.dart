@@ -7,6 +7,7 @@ import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:youtube_explode_webview/youtube_explode_webview.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -17,7 +18,7 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   String url = '';
-  var yt = YoutubeExplode();
+  late YoutubeExplode yt;
 
   bool _btnDownloadActv = true;
 
@@ -42,6 +43,10 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   void initAsync() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    final solver = await WebviewEJSSolver.init();
+    yt = YoutubeExplode(jsSolver: solver);
+
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('playlist_principal') ?? '';
     String directory = prefs.getString('dir_download') ?? '';

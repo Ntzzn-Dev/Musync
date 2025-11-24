@@ -257,8 +257,6 @@ class MusyncAudioHandler extends AudioPlayer {
 
     if (currentIndex.value + 1 < songsAtual.value.length) {
       setIndex(currentIndex.value + 1);
-
-      enviarParaAndroid(socket, 'newindex', currentIndex.value);
     }
 
     if (shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
@@ -274,7 +272,6 @@ class MusyncAudioHandler extends AudioPlayer {
     if (currentIndex.value > 0) {
       currentIndex.value--;
       setIndex(currentIndex.value);
-      enviarParaAndroid(socket, 'newindex', currentIndex.value);
     }
   }
 

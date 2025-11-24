@@ -8,6 +8,7 @@ import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:http/http.dart' as http;
 
@@ -80,81 +81,107 @@ class DownloadSpecs {
     p.value = p.value + incremento;
   }
 
+  Future<void> accessStorage() async {
+    var status = await Permission.manageExternalStorage.request();
+
+    if (!status.isGranted) {
+      await openAppSettings();
+    }
+  }
+
   Future<void> baixarAudio(Video video, String title, String artist) async {
-    progressAtual.value = 0.1;
-    var manifest = await yt.videos.streamsClient.getManifest(video.id);
-    progressAtual.value = 0;
-    atualizarProgresso(progressAtual);
+    await accessStorage().then((_) async {
+      progressAtual.value = 0.1;
+      var manifest = await yt.videos.streamsClient.getManifest(video.id);
+      progressAtual.value = 0;
+      atualizarProgresso(progressAtual);
+      log('1');
 
-    var audio = manifest.audioOnly.withHighestBitrate();
-    var stream = yt.videos.streamsClient.get(audio);
+      var audio = manifest.audioOnly.withHighestBitrate();
+      var stream = yt.videos.streamsClient.get(audio);
 
-    String webmpath =
-        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.webm';
+      log('1.1 $directory');
 
-    String mp3path =
-        '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.mp3';
+      if (!directory.endsWith('/')) directory += '/';
 
-    var file = File(webmpath);
-    var fileStream = file.openWrite();
+      await Directory(directory).create(recursive: true);
 
-    final totalBytes = audio.size.totalBytes;
-    int downloadedBytes = 0;
+      String webmpath =
+          '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.webm';
 
-    await for (final data in stream) {
-      downloadedBytes += data.length;
-      fileStream.add(data);
+      String mp3path =
+          '$directory${title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')}.mp3';
 
-      progressAtual.value = (downloadedBytes / totalBytes) * incremento * 2;
-    }
-    await fileStream.flush();
-    await fileStream.close();
+      log('1.2');
+      var file = File(webmpath);
+      log('1.3 $directory');
+      var fileStream = file.openWrite();
 
-    await convertWebmToMp3(webmpath, mp3path);
-    atualizarProgresso(progressAtual);
+      final totalBytes = audio.size.totalBytes;
+      int downloadedBytes = 0;
 
-    final thumbUrl =
-        'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg';
-    final response = await http.get(Uri.parse(thumbUrl));
-    final thumbBytes = response.bodyBytes;
+      log('1.4');
+      await for (final data in stream) {
+        downloadedBytes += data.length;
+        fileStream.add(data);
+        log('1.4.1');
 
-    List<Picture> img = [];
-    if (response.statusCode == 200) {
-      img = [
-        Picture(
-          bytes: thumbBytes,
-          mimeType: MimeType.jpeg,
-          pictureType: PictureType.coverFront,
-        ),
-      ];
-    }
-    atualizarProgresso(progressAtual);
+        progressAtual.value = (downloadedBytes / totalBytes) * incremento * 2;
+      }
+      log('1.5');
+      await fileStream.flush();
+      await fileStream.close();
 
-    await Playlists.editarTags(mp3path, {
-      'title': title,
-      'trackArtist': artist,
-      'year': video.uploadDate?.year,
-      'pictures': img,
+      await convertWebmToMp3(webmpath, mp3path);
+      atualizarProgresso(progressAtual);
+      log('2');
+
+      final thumbUrl =
+          'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg';
+      final response = await http.get(Uri.parse(thumbUrl));
+      final thumbBytes = response.bodyBytes;
+
+      List<Picture> img = [];
+      if (response.statusCode == 200) {
+        img = [
+          Picture(
+            bytes: thumbBytes,
+            mimeType: MimeType.jpeg,
+            pictureType: PictureType.coverFront,
+          ),
+        ];
+      }
+      atualizarProgresso(progressAtual);
+      log('3');
+
+      await Playlists.editarTags(mp3path, {
+        'title': title,
+        'trackArtist': artist,
+        'year': video.uploadDate?.year,
+        'pictures': img,
+      });
+      atualizarProgresso(progressAtual);
+      log('4');
+
+      final fileStat = await File(mp3path).stat();
+      final lastModified = fileStat.modified.toIso8601String();
+      final uri = Uri.file(mp3path).toString();
+
+      MediaItem musicBaixada = MediaItem(
+        id: uri,
+        title: title,
+        artist: artist,
+        duration: video.duration ?? Duration.zero,
+        extras: {'lastModified': lastModified, 'path': mp3path},
+        artUri: Uri.parse(thumbUrl),
+      );
+
+      MusyncAudioHandler.songsAll.add(musicBaixada);
+
+      await Playlists.atualizarNoMediaStore(mp3path);
+      atualizarProgresso(progressAtual);
+      log('5');
     });
-    atualizarProgresso(progressAtual);
-
-    final fileStat = await File(mp3path).stat();
-    final lastModified = fileStat.modified.toIso8601String();
-    final uri = Uri.file(mp3path).toString();
-
-    MediaItem musicBaixada = MediaItem(
-      id: uri,
-      title: title,
-      artist: artist,
-      duration: video.duration ?? Duration.zero,
-      extras: {'lastModified': lastModified, 'path': mp3path},
-      artUri: Uri.parse(thumbUrl),
-    );
-
-    MusyncAudioHandler.songsAll.add(musicBaixada);
-
-    await Playlists.atualizarNoMediaStore(mp3path);
-    atualizarProgresso(progressAtual);
   }
 
   Future<void> convertWebmToMp3(String webmpath, String mp3path) async {

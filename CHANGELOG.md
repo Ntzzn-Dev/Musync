@@ -269,9 +269,14 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Verificação de ethernet adicionada para QRcode de conexão.  
 - Pequenas correções na união de musicas de mobile para desktop.
 
-### TO VERSION 5.6
+### verion 5.6  
+- Otimização no superControl e implementação do modo Ekosystem.  
+- Tentativa de correção do download.  
+- Alteração do slider de audio no player_Eko.  
+
+### TO VERSION 5.7
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
 + Enviar junto o nome da playlist atual.  
-+ Adicionar controle EKOSYSTEM no super controle.  
 + Corrigir substituição de Ekosystem.initialIndex quando aperto na lista todas.  
++ Dividir lista de ids de musicas ja baixadas no desktop para não ocupar toda a memoria do socket

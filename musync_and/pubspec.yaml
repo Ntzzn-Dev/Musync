@@ -45,10 +45,6 @@ dependencies:
   sqflite: ^2.4.2
   path: ^1.9.1
   scrollable_positioned_list: ^0.3.8
-  youtube_explode_dart:
-    git:
-      url: https://github.com/Hexer10/youtube_explode_dart
-      ref: master
   audiotags: ^1.4.5
   ffmpeg_kit_flutter_new: ^3.2.0
   share_plus: ^11.0.0
@@ -56,6 +52,8 @@ dependencies:
   volume_controller: ^2.0.5
   mobile_scanner: ^7.1.3
   diacritic: ^0.1.3
+  youtube_explode_dart: ^3.0.5
+  youtube_explode_webview: ^0.0.2
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -87,7 +85,7 @@ flutter:
 
   assets:
     - assets/dice.png
-    
+
   fonts:
     - family: Digital
       fonts:

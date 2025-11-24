@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/widgets/player.dart';
+import 'package:musync_and/widgets/sound_control.dart';
 
 class EkoPlayer extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -246,57 +247,7 @@ class _EkoPlayerState extends State<EkoPlayer> {
             SizedBox(height: 10),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
-              child: ValueListenableBuilder<double>(
-                valueListenable: MediaAtual.volume,
-                builder: (context, value, child) {
-                  return Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          value <= 0
-                              ? Icons.volume_mute_rounded
-                              : value > 0 && value <= 49
-                              ? Icons.volume_down_rounded
-                              : Icons.volume_up_rounded,
-                        ),
-                        onPressed:
-                            () =>
-                                MusyncAudioHandler.mediaAtual.value
-                                    .toggleMute(),
-                        color: Theme.of(context).focusColor,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 2,
-                                thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 6,
-                                ),
-                                overlayShape: const RoundSliderOverlayShape(
-                                  overlayRadius: 12,
-                                ),
-                              ),
-                              child: Slider(
-                                min: 0,
-                                max: 100,
-                                value: value.toDouble(),
-                                onChanged: (v) {
-                                  MusyncAudioHandler.mediaAtual.value.setVolume(
-                                    v,
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+              child: SoundControl(ekoConnected: true, height: 30),
             ),
           ],
         ),

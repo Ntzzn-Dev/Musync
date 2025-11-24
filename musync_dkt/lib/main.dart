@@ -117,6 +117,7 @@ class _HomePageState extends State<HomePage> {
                       (msc) => msc.id == int.parse(decoded['data']),
                     ),
                   ];
+                  addLoaded();
                   break;
                 case 'package_start':
                   log("Iniciando pacote de músicas...");
