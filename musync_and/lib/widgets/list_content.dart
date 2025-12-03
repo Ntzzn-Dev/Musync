@@ -22,7 +22,7 @@ class ListContent extends StatefulWidget {
   final int? idPlaylist;
   final bool? withReorder;
   final void Function(MediaItem)? aposClique;
-  final void Function(List<int>)? selecaoDeMusicas;
+  final Future<bool> Function(List<int>)? selecaoDeMusicas;
 
   const ListContent({
     super.key,
@@ -43,6 +43,7 @@ class _ListContentState extends State<ListContent> {
   late final ScrollController _scrollController;
   late bool listaEmUso;
   late List<int> idsSelecoes;
+  late ValueNotifier<List<bool>> musicasSelecionadas;
 
   late List<MediaItem> mutableSongs;
   late ModeOrderEnum mode;
@@ -58,6 +59,9 @@ class _ListContentState extends State<ListContent> {
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
     mode = widget.modeReorder;
+    musicasSelecionadas = ValueNotifier(
+      List.filled(mutableSongs.length, false),
+    );
   }
 
   @override
@@ -65,8 +69,11 @@ class _ListContentState extends State<ListContent> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.songsNow != widget.songsNow) {
-      mutableSongs = List.from(widget.songsNow);
-      mode = widget.modeReorder;
+      setState(() {
+        mutableSongs = List.from(widget.songsNow);
+        mode = widget.modeReorder;
+        musicasSelecionadas.value = List.filled(widget.songsNow.length, false);
+      });
     }
   }
 
@@ -411,7 +418,10 @@ class _ListContentState extends State<ListContent> {
     );
   }
 
-  void toggleSelecao(ValueNotifier<List<bool>> musicasSelecionadas, int index) {
+  void toggleSelecao(
+    ValueNotifier<List<bool>> musicasSelecionadas,
+    int index,
+  ) async {
     final novaLista = List<bool>.from(musicasSelecionadas.value);
     novaLista[index] = !novaLista[index];
     musicasSelecionadas.value = novaLista;
@@ -422,15 +432,18 @@ class _ListContentState extends State<ListContent> {
       idsSelecoes.remove(index);
     }
 
-    widget.selecaoDeMusicas?.call(idsSelecoes);
+    if (await widget.selecaoDeMusicas?.call(idsSelecoes) ?? false) {
+      idsSelecoes = [];
+      musicasSelecionadas.value = List.filled(mutableSongs.length, false);
+      widget.selecaoDeMusicas?.call(idsSelecoes);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final musicasSelecionadas = ValueNotifier(
-      List.filled(mutableSongs.length, false),
-    );
     bool selecionando = false;
+
+    musicasSelecionadas.value = List.filled(mutableSongs.length, false);
 
     void onReorder(int oldIndex, int newIndex) async {
       setState(() {
@@ -499,7 +512,7 @@ class _ListContentState extends State<ListContent> {
               itemBuilder: (context, index) {
                 MediaItem item = mutableSongs[index];
                 final corFundo =
-                    selecionada[index]
+                    index < selecionada.length && selecionada[index]
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
                             value < widget.audioHandler.songsAtual.length &&

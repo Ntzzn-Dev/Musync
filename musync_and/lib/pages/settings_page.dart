@@ -45,6 +45,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('playlist_principal', _playlistDefault.text);
     prefs.setString('dir_download', _dirDownload.text);
+    //prefs.setString('playlist_main', 'Todas');
     prefs.setStringList(
       'directorys',
       dirControllers.map((item) => item.text).toList(),

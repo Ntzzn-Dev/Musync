@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
@@ -103,7 +104,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
     }
   }
 
-  void moreOptionsSelected(List<int> indexMsc) async {
+  Future<bool> moreOptionsSelected(List<int> indexMsc) async {
+    final completer = Completer<bool>();
     if (indexMsc.isNotEmpty) {
       List<String> idsMscs =
           indexMsc.map((i) => songsNowTranslated[i].id).toList();
@@ -136,7 +138,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
                             itemCount: playlists.length,
                             itemBuilder: (context, index) {
                               final playlist = playlists[index];
-                              log(playlist.haveMusic.toString());
                               return Container(
                                 color:
                                     playlist.haveMusic ?? false
@@ -219,12 +220,15 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     },
                   );
                 },
-              );
+              ).then((_) {
+                completer.complete(true);
+              });
               break;
             case 'delete':
               deletarMusicas(
                 indexMsc.map((i) => songsNowTranslated[i]).toList(),
               );
+              completer.complete(true);
               break;
           }
         },
@@ -255,6 +259,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     } else {
       funcSuperior.value = SizedBox.shrink();
     }
+    return completer.future;
   }
 
   @override
@@ -483,8 +488,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     }
                     await widget.audioHandler.skipToQueueItem(indiceCerto);
                   },
-                  selecaoDeMusicas: (indexMsc) {
-                    moreOptionsSelected(indexMsc);
+                  selecaoDeMusicas: (indexMsc) async {
+                    return await moreOptionsSelected(indexMsc);
                   },
                 ),
               ),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
@@ -5,18 +6,36 @@ import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ListPlaylist extends StatefulWidget {
+  final MusyncAudioHandler audioHandler;
   final void Function(Playlists)? escolhaDePlaylist;
   final void Function(String)? escolhaDeArtista;
+  final void Function(String)? escolhaDePasta;
+  final void Function(String)? trocaDeMain;
   final TextEditingController? searchController;
 
   const ListPlaylist({
     super.key,
+    required this.audioHandler,
     this.escolhaDePlaylist,
     this.escolhaDeArtista,
+    this.escolhaDePasta,
+    this.trocaDeMain,
     this.searchController,
   });
+
+  static String getFolderName(String fullPath) {
+    final folderPath = File(fullPath).parent.path;
+    return '/${folderPath.split('/').last}';
+  }
+
+  static Future<String> getMainPlaylist() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('playlist_main') ?? '';
+  }
+
   @override
   State<ListPlaylist> createState() => _ListPlaylistState();
 }
@@ -24,14 +43,23 @@ class ListPlaylist extends StatefulWidget {
 class _ListPlaylistState extends State<ListPlaylist> {
   List<Playlists> plsBase = [];
   List<String> artsBase = [];
+  List<String> foldsBase = [];
 
   List<Playlists> pls = [];
   List<String> arts = [];
+  List<String> folds = [];
+
+  String mainPlaylist = '';
 
   @override
   void initState() {
     super.initState();
     widget.searchController?.addListener(_onSearchChanged);
+    ListPlaylist.getMainPlaylist().then((value) {
+      setState(() {
+        mainPlaylist = value;
+      });
+    });
     carregarPlaylists();
   }
 
@@ -52,6 +80,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
                   (art) => art.toLowerCase().trim().contains(valueSearch ?? ''),
                 )
                 .toList();
+        //folders =
       } else {
         pls = plsBase;
         arts = artsBase;
@@ -69,27 +98,36 @@ class _ListPlaylistState extends State<ListPlaylist> {
     final playlists = await DatabaseHelper().loadPlaylists();
     final allSongs = MusyncAudioHandler.songsAll;
 
-    List<List<String>> artists =
-        allSongs.map((song) {
-          final artists =
-              (song.artist ?? '')
-                  .split(',')
-                  .map((e) => e.trim())
-                  .where((e) => e.isNotEmpty)
-                  .toList();
-          artists.sort();
-          return artists;
-        }).toList();
+    List<List<String>> artists = [];
+    List<String> folders = ['/Todas'];
+
+    for (var song in allSongs) {
+      final artistList =
+          (song.artist ?? '')
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+      artistList.sort();
+      artists.add(artistList);
+
+      final rawPath = "${song.extras?['path'] ?? ""}";
+
+      final folderList = ListPlaylist.getFolderName(rawPath);
+      if (!folders.contains(folderList)) {
+        folders.add(folderList);
+      }
+    }
 
     Map<String, int> artistCount = {};
     for (var artist in artists) {
       final uniqueArtists = artist.toSet();
-      for (var artist in uniqueArtists) {
-        artistCount[artist] = (artistCount[artist] ?? 0) + 1;
+      for (var art in uniqueArtists) {
+        artistCount[art] = (artistCount[art] ?? 0) + 1;
       }
     }
 
-    List<List<String>> groupedPlaylists = [];
+    List<List<String>> groupedArtists = [];
     Set<String> artistsAlreadyGrouped = {};
 
     for (var artist in artists) {
@@ -97,49 +135,39 @@ class _ListPlaylistState extends State<ListPlaylist> {
         continue;
       }
 
-      bool allUnique = artist.every((artist) => artistCount[artist] == 1);
+      bool allUnique = artist.every((a) => artistCount[a] == 1);
 
       if (allUnique && artist.length > 1) {
-        groupedPlaylists.add(artist);
+        groupedArtists.add(artist);
         artistsAlreadyGrouped.addAll(artist);
       } else {
         for (var art in artist) {
           if (!artistsAlreadyGrouped.contains(art)) {
-            groupedPlaylists.add([art]);
+            groupedArtists.add([art]);
             artistsAlreadyGrouped.add(art);
           }
         }
       }
     }
 
+    List<String> foldersBase = folders;
+
     setState(() {
       plsBase = playlists;
       pls = plsBase;
 
       artsBase =
-          groupedPlaylists.map((group) => group.join(', ')).toList()
+          groupedArtists.map((group) => group.join(', ')).toList()
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       arts = artsBase;
+
+      foldsBase = foldersBase;
+      folds = foldsBase;
     });
   }
 
   List<Map<String, dynamic>> moreOptions(BuildContext context, Playlists item) {
     return [
-      {
-        'opt': 'Apagar Playlist',
-        'icon': Icons.delete_forever,
-        'funct': () async {
-          if (await showPopupAdd(context, 'Deletar playlist?', [])) {
-            await DatabaseHelper().removePlaylist(item.id);
-
-            pls = await DatabaseHelper().loadPlaylists();
-
-            setState(() {});
-
-            Navigator.of(context).pop();
-          }
-        },
-      },
       {
         'opt': 'Editar Playlist',
         'icon': Icons.edit,
@@ -172,6 +200,41 @@ class _ListPlaylistState extends State<ListPlaylist> {
           Navigator.of(context).pop();
         },
       },
+      {
+        'opt': 'Tornar principal',
+        'icon': Icons.emoji_events,
+        'funct': () async {
+          final turnMain = await showPopupAdd(
+            context,
+            'Tornar ${item.title} a playlist principal?',
+            [],
+          );
+
+          if (turnMain) {
+            final prefs = await SharedPreferences.getInstance();
+            setState(() {
+              mainPlaylist = '${item.id}';
+              prefs.setString('playlist_main', '${item.id}');
+              widget.trocaDeMain?.call('${item.id}');
+            });
+          }
+        },
+      },
+      {
+        'opt': 'Apagar Playlist',
+        'icon': Icons.delete_forever,
+        'funct': () async {
+          if (await showPopupAdd(context, 'Deletar playlist?', [])) {
+            await DatabaseHelper().removePlaylist(item.id);
+
+            pls = await DatabaseHelper().loadPlaylists();
+
+            setState(() {});
+
+            Navigator.of(context).pop();
+          }
+        },
+      },
     ];
   }
 
@@ -191,6 +254,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               onConfirm: (valores) async {
                 DatabaseHelper().insertPlaylist(valores[0], valores[1], 1);
 
+                widget.audioHandler.searchPlaylists();
                 carregarPlaylists();
               },
             );
@@ -204,6 +268,10 @@ class _ListPlaylistState extends State<ListPlaylist> {
               ...pls.map(
                 (item) => ListTile(
                   contentPadding: EdgeInsets.only(left: 16, right: 8),
+                  tileColor:
+                      mainPlaylist == '${item.id}'
+                          ? baseAppColor
+                          : Color.fromARGB(0, 0, 0, 0),
                   title: Text(
                     item.title,
                     style: TextStyle(
@@ -257,6 +325,76 @@ class _ListPlaylistState extends State<ListPlaylist> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.centerLeft,
                 child: Text(
+                  'Pastas',
+                  style: const TextStyle(
+                    color: Color.fromARGB(255, 243, 160, 34),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+
+              ...folds.map(
+                (folder) => Container(
+                  color:
+                      mainPlaylist == folder
+                          ? baseAppColor
+                          : Color.fromARGB(0, 0, 0, 0),
+                  height: 78,
+                  child: InkWell(
+                    onTap: () => widget.escolhaDePasta?.call(folder),
+                    onLongPress: () async {
+                      final turnMain = await showPopupAdd(
+                        context,
+                        'Tornar $folder a playlist principal?',
+                        [],
+                      );
+
+                      if (turnMain) {
+                        final prefs = await SharedPreferences.getInstance();
+                        setState(() {
+                          mainPlaylist = folder;
+                          prefs.setString('playlist_main', folder);
+                          widget.trocaDeMain?.call(folder);
+                        });
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              folder,
+                              style: TextStyle(
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).extension<CustomColors>()!.textForce,
+                              ),
+                              softWrap: true,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              Container(
+                height: 30,
+                width: double.infinity,
+                color: baseFundoDark,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.centerLeft,
+                child: Text(
                   'Artistas',
                   style: const TextStyle(
                     color: Color.fromARGB(255, 243, 160, 34),
@@ -267,10 +405,30 @@ class _ListPlaylistState extends State<ListPlaylist> {
               ),
 
               ...arts.map(
-                (artist) => SizedBox(
+                (artist) => Container(
+                  color:
+                      mainPlaylist == artist
+                          ? baseAppColor
+                          : Color.fromARGB(0, 0, 0, 0),
                   height: 78,
                   child: InkWell(
                     onTap: () => widget.escolhaDeArtista?.call(artist),
+                    onLongPress: () async {
+                      final turnMain = await showPopupAdd(
+                        context,
+                        'Tornar todas as musicas de $artist a playlist principal?',
+                        [],
+                      );
+
+                      if (turnMain) {
+                        final prefs = await SharedPreferences.getInstance();
+                        setState(() {
+                          mainPlaylist = artist;
+                          prefs.setString('playlist_main', artist);
+                          widget.trocaDeMain?.call(artist);
+                        });
+                      }
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

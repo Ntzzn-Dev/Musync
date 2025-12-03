@@ -69,17 +69,25 @@ class MusyncAudioHandler extends BaseAudioHandler
   final _equality = const DeepCollectionEquality();
 
   static List<MediaItem> songsAll = [];
+  static List<MediaItem> songsAllPlaylist = [];
   List<MediaItem> songsAtual = [];
 
   ValueNotifier<Map<String, dynamic>> atualPlaylist = ValueNotifier({
     'id': 0,
-    'title': 'Todas',
+    'title': 'Main Playlist',
     'subtitle': '=---=',
     'qntTotal': 1,
     'nowPlaying': 0,
   });
 
   late List<Playlists> playlists;
+
+  static Map<String, dynamic> mainPlaylist = {
+    'title': 'Todas',
+    'tag': '/Todas',
+    'subtitle': '-=+=-',
+    'id': 0,
+  };
 
   static Ekosystem? eko;
   static late ValueNotifier<MediaAtual> mediaAtual;
@@ -169,6 +177,14 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
+  MediaControl get upButton {
+    return MediaControl.custom(
+      androidIcon: 'drawable/ic_random_off',
+      label: 'Upar',
+      name: 'up',
+    );
+  }
+
   void _broadcastState([PlaybackEvent? event]) {
     playbackState.add(
       playbackState.value.copyWith(
@@ -177,6 +193,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           MediaControl.skipToPrevious,
           if (audPl.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
+          upButton,
         ],
         systemActions: const {
           MediaAction.seek,
@@ -209,9 +226,16 @@ class MusyncAudioHandler extends BaseAudioHandler
         prepareShuffle();
         _broadcastState();
         break;
+      case 'up':
+        log('Upado');
+        break;
       default:
         log('Ação customizada desconhecida: $name');
     }
+  }
+
+  Future<void> searchPlaylists() async {
+    playlists = await DatabaseHelper().loadPlaylists();
   }
 
   void savePl(String plDynamic, {String? subt, String? title, int? id}) async {
@@ -245,7 +269,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     List<MediaItem> newsongs = await nextPlaylist.findMusics();
 
-    if (newsongs.isEmpty) newsongs = songsAll;
+    if (newsongs.isEmpty) newsongs = songsAllPlaylist;
 
     await recreateQueue(songs: newsongs);
   }
@@ -261,6 +285,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       index = 0;
     }
+    if (songsAtual.isEmpty) return;
     currentIndex.value = index;
     atualPlaylist.value = {...atualPlaylist.value, 'nowPlaying': index};
     final item = songsAtual[index];
@@ -270,17 +295,27 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> initSongs({required List<MediaItem> songs}) async {
-    playlists = await DatabaseHelper().loadPlaylists();
-    playlists.insert(
-      0,
-      Playlists(
-        id: 0,
-        title: atualPlaylist.value['title'],
-        subtitle: atualPlaylist.value['subtitle'],
-        ordem: 0,
-        orderMode: 0,
-      ),
-    );
+    await searchPlaylists();
+
+    atualPlaylist.value = {
+      ...atualPlaylist.value,
+      'id': mainPlaylist['id'],
+      'title': mainPlaylist['title'],
+      'subtitle': mainPlaylist['subtitle'],
+    };
+
+    if (!playlists.any((pl) => pl.title == mainPlaylist['title'])) {
+      playlists.insert(
+        0,
+        Playlists(
+          id: atualPlaylist.value['id'],
+          title: atualPlaylist.value['title'],
+          subtitle: atualPlaylist.value['subtitle'],
+          ordem: 0,
+          orderMode: 0,
+        ),
+      );
+    }
 
     audPl.playbackEventStream.listen(_broadcastState);
 

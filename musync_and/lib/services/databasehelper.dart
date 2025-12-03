@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
@@ -16,15 +16,28 @@ class DatabaseHelper {
     return _database!;
   }
 
-  Future<String> getExternalDBPath() async {
-    final dir = await getExternalStorageDirectory();
-    final dbDir = Directory("${dir!.path}/MusyncDB");
+  Future<void> accessStorage() async {
+    final status = await Permission.manageExternalStorage.status;
 
-    if (!dbDir.existsSync()) {
-      dbDir.createSync(recursive: true);
+    if (!status.isGranted) {
+      final result = await Permission.manageExternalStorage.request();
+
+      if (result.isPermanentlyDenied) {
+        await openAppSettings();
+      }
     }
+  }
 
-    return "${dbDir.path}/musync.db";
+  Future<String> getExternalDBPath() async {
+    final directory = Directory("/storage/emulated/0/MuSyncDB");
+
+    await accessStorage().then((_) async {
+      if (!directory.existsSync()) {
+        directory.createSync(recursive: true);
+      }
+    });
+
+    return "${directory.path}/musync.db";
   }
 
   Future<Database> _initDatabase() async {

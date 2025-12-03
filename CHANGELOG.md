@@ -274,7 +274,15 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Tentativa de correção do download.  
 - Alteração do slider de audio no player_Eko.  
 
-### TO VERSION 5.7
+### version 5.7
+- Adição do botão de up.  
+- Adição da separação por pastas na aba playlists.  
+- Troca de playlist onde era a aba Todas.  
+- Correção no supercontrol, para que tenha acesso a novas playlists, incluindo a playlist principal.  
+- Adição de um número que indica quantas faixas estão selecionadas atualmente.  
+- Ao fazer alguma ação com as musicas selecionadas, a seleção é retirada.  
+
+### TO FUTURE VERSIONS
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
 + Enviar junto o nome da playlist atual.  
