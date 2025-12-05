@@ -1,10 +1,12 @@
 import 'dart:async';
+
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 
-class MediaAtual {
-  Duration total;
-  ValueNotifier<Duration> position;
+class MediaAtual extends MediaItem {
+  final Duration total;
+  final ValueNotifier<Duration> position;
   static ValueNotifier<double> volume = ValueNotifier(50);
   double volumeatual = volume.value;
   bool muted = false;
@@ -12,11 +14,49 @@ class MediaAtual {
   Timer? _timer;
   ValueNotifier<bool> isPlaying;
 
-  MediaAtual({required this.total, Duration? start})
-    : position = ValueNotifier(start ?? Duration.zero),
-      isPlaying = ValueNotifier(true) {
+  MediaAtual({
+    required this.total,
+    Duration? start,
+    required String id,
+    required String title,
+    String? album,
+    String? artist,
+    String? genre,
+    Uri? artUri,
+    Duration? duration,
+    Map<String, dynamic>? extras,
+  })  :
+        position = ValueNotifier(start ?? Duration.zero),
+        isPlaying = ValueNotifier(true),
+        super(
+          id: id,
+          title: title,
+          album: album,
+          artist: artist,
+          genre: genre,
+          artUri: artUri,
+          duration: duration ?? total,
+          extras: extras,
+        ) {
     _startTimer();
   }
+
+  MediaAtual.fromMediaItem(
+    MediaItem item, {
+    Duration? start,
+  }) : this(
+          total: item.duration ?? Duration.zero,
+          id: item.id,
+          title: item.title,
+          album: item.album,
+          artist: item.artist,
+          genre: item.genre,
+          artUri: item.artUri,
+          duration: item.duration,
+          extras: item.extras,
+          start: start,
+        );
+
 
   void pauseAndPlay(bool playing) {
     isPlaying.value = playing;
@@ -73,7 +113,7 @@ class MediaAtual {
     if (MusyncAudioHandler.eko?.conected.value ?? false) {
       MusyncAudioHandler.eko?.sendMessage({
         "action": 'position',
-        "data": position.value.inMilliseconds.toDouble(),
+        "data": pos.inMilliseconds.toDouble(),
       });
     }
   }

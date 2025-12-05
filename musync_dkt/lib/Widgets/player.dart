@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
 import 'package:musync_dkt/Services/media_music.dart';
 import 'package:musync_dkt/main.dart';
-import 'package:musync_dkt/widgets/letreiro.dart';
+import 'package:musync_dkt/Widgets/letreiro.dart';
 
 class Player extends StatefulWidget {
   final MusyncAudioHandler player;

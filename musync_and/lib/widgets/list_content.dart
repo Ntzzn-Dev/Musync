@@ -19,7 +19,7 @@ class ListContent extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
-  final int? idPlaylist;
+  final String idPlaylist;
   final bool? withReorder;
   final void Function(MediaItem)? aposClique;
   final Future<bool> Function(List<int>)? selecaoDeMusicas;
@@ -29,7 +29,7 @@ class ListContent extends StatefulWidget {
     required this.audioHandler,
     required this.songsNow,
     required this.modeReorder,
-    this.idPlaylist,
+    required this.idPlaylist,
     this.withReorder,
     this.aposClique,
     this.selecaoDeMusicas,
@@ -59,6 +59,7 @@ class _ListContentState extends State<ListContent> {
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
     mode = widget.modeReorder;
+
     musicasSelecionadas = ValueNotifier(
       List.filled(mutableSongs.length, false),
     );
@@ -72,7 +73,7 @@ class _ListContentState extends State<ListContent> {
       setState(() {
         mutableSongs = List.from(widget.songsNow);
         mode = widget.modeReorder;
-        musicasSelecionadas.value = List.filled(widget.songsNow.length, false);
+        musicasSelecionadas.value = List.filled(mutableSongs.length, false);
       });
     }
   }
@@ -85,6 +86,27 @@ class _ListContentState extends State<ListContent> {
 
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
+      {
+        'opt': 'Up',
+        'icon': Icons.favorite,
+        'funct': () async {
+          await DatabaseHelper().upInPlaylist(
+            widget.audioHandler.atualPlaylist.value['id'].toString(),
+            item.id,
+            item.title,
+          );
+
+          MusyncAudioHandler.songsAllPlaylist = List.from(
+            await DatabaseHelper().reorderToUp(
+              widget.audioHandler.atualPlaylist.value['id'].toString(),
+            ),
+          );
+
+          setState(() {
+            mutableSongs = MusyncAudioHandler.songsAllPlaylist;
+          });
+        },
+      },
       {
         'opt': 'Adicionar a Playlist',
         'icon': Icons.playlist_add,
@@ -443,8 +465,6 @@ class _ListContentState extends State<ListContent> {
   Widget build(BuildContext context) {
     bool selecionando = false;
 
-    musicasSelecionadas.value = List.filled(mutableSongs.length, false);
-
     void onReorder(int oldIndex, int newIndex) async {
       setState(() {
         if (mode != ModeOrderEnum.manual) {
@@ -455,15 +475,11 @@ class _ListContentState extends State<ListContent> {
         mutableSongs.insert(newIndex, item);
       });
 
-      await DatabaseHelper().updatePlaylist(
-        widget.idPlaylist!,
-        orderMode: mode.disconvert(),
-      );
+      int id = int.tryParse(widget.idPlaylist.toString()) ?? 0;
 
-      await DatabaseHelper().updateOrderMusics(
-        mutableSongs,
-        widget.idPlaylist ?? 0,
-      );
+      await DatabaseHelper().updatePlaylist(id, orderMode: mode.disconvert());
+
+      await DatabaseHelper().updateOrderMusics(mutableSongs, id);
 
       widget.audioHandler.reorganizeQueue(songs: mutableSongs);
     }
@@ -656,7 +672,7 @@ class _ListContentState extends State<ListContent> {
                                             color: Colors.grey,
                                           ),
                                           overflow: TextOverflow.ellipsis,
-                                          maxLines: 3,
+                                          maxLines: 1,
                                         ),
                                       ],
                                     ),

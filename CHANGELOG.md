@@ -282,7 +282,14 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição de um número que indica quantas faixas estão selecionadas atualmente.  
 - Ao fazer alguma ação com as musicas selecionadas, a seleção é retirada.  
 
+### version 5.8  
+- Adicionado suporte para linux.  
+- Correção de máximo de linhas para os artistas.
+- Adição da função de up para músicas, onde um up faz ela subir na ordem.  
+- Alterações na mediaAtual.
+
 ### TO FUTURE VERSIONS
++ Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
 + Enviar junto o nome da playlist atual.  

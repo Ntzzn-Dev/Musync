@@ -103,6 +103,11 @@ class MusyncAudioHandler extends BaseAudioHandler
     mediaAtual = ValueNotifier(
       MediaAtual(
         total: songsAtual[currentIndex.value].duration ?? Duration.zero,
+        id: songsAtual[currentIndex.value].id,
+        title: songsAtual[currentIndex.value].title,
+        artist: songsAtual[currentIndex.value].artist,
+        album: songsAtual[currentIndex.value].album,
+        artUri: songsAtual[currentIndex.value].artUri,
       ),
     );
 
@@ -179,7 +184,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   MediaControl get upButton {
     return MediaControl.custom(
-      androidIcon: 'drawable/ic_random_off',
+      androidIcon: 'drawable/ic_random_off', //MUDAR ICON
       label: 'Upar',
       name: 'up',
     );
@@ -193,7 +198,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           MediaControl.skipToPrevious,
           if (audPl.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
-          upButton,
+          //upButton,
         ],
         systemActions: const {
           MediaAction.seek,
@@ -227,7 +232,9 @@ class MusyncAudioHandler extends BaseAudioHandler
         _broadcastState();
         break;
       case 'up':
-        log('Upado');
+        songsAllPlaylist = await DatabaseHelper().reorderToUp(
+          atualPlaylist.value['id'].toString(),
+        ); //CRIAR UM NOTIFICADOR PARA SEMPRE QUE USAR ESSE REORDER
         break;
       default:
         log('Ação customizada desconhecida: $name');
@@ -238,7 +245,12 @@ class MusyncAudioHandler extends BaseAudioHandler
     playlists = await DatabaseHelper().loadPlaylists();
   }
 
-  void savePl(String plDynamic, {String? subt, String? title, int? id}) async {
+  void savePl(
+    String plDynamic, {
+    String? subt,
+    String? title,
+    String? id,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('pl_last', plDynamic.toString());
     atualPlaylist.value = {
@@ -305,10 +317,12 @@ class MusyncAudioHandler extends BaseAudioHandler
     };
 
     if (!playlists.any((pl) => pl.title == mainPlaylist['title'])) {
+      int id = int.tryParse(atualPlaylist.value['id'].toString()) ?? 0;
+
       playlists.insert(
         0,
         Playlists(
-          id: atualPlaylist.value['id'],
+          id: id,
           title: atualPlaylist.value['title'],
           subtitle: atualPlaylist.value['subtitle'],
           ordem: 0,
@@ -318,7 +332,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
 
     audPl.playbackEventStream.listen(_broadcastState);
-
+    log(songs.length.toString());
     songsAtual = [...songs];
 
     atualPlaylist.value = {

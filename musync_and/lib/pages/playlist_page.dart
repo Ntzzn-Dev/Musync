@@ -467,7 +467,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   audioHandler: widget.audioHandler,
                   songsNow: songsPlaylist,
                   modeReorder: modeAtual,
-                  idPlaylist: widget.pl?.id ?? 0,
+                  idPlaylist: widget.pl?.id.toString() ?? MusyncAudioHandler.mainPlaylist['id'].toString(),
                   withReorder: true,
                   aposClique: (item) async {
                     bool recriou = await widget.audioHandler.recreateQueue(
@@ -477,7 +477,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       (widget.pl?.id ?? widget.plTitle).toString(),
                       subt: widget.pl?.subtitle ?? 'Artist',
                       title: widget.pl?.title,
-                      id: widget.pl?.id,
+                      id: widget.pl?.id.toString() ?? MusyncAudioHandler.mainPlaylist['id'].toString(),
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,

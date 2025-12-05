@@ -116,6 +116,8 @@ class _MusicPageState extends State<MusicPage> {
     } else if (MusyncAudioHandler.mainPlaylist['tag'].contains('/')) {
       if (MusyncAudioHandler.mainPlaylist['tag'] == '/Todas') {
         songsNow = MusyncAudioHandler.songsAll;
+        MusyncAudioHandler.mainPlaylist['id'] =
+            MusyncAudioHandler.mainPlaylist['tag'];
       } else {
         final newsongs =
             MusyncAudioHandler.songsAll.where((item) {
@@ -126,6 +128,8 @@ class _MusicPageState extends State<MusicPage> {
               return songFolders == MusyncAudioHandler.mainPlaylist['tag'];
             }).toList();
 
+        MusyncAudioHandler.mainPlaylist['id'] =
+            MusyncAudioHandler.mainPlaylist['tag'];
         songsNow = newsongs;
       }
     } else {
@@ -146,9 +150,11 @@ class _MusicPageState extends State<MusicPage> {
             return artistList.every((artist) => songArtists.contains(artist));
           }).toList();
 
+      MusyncAudioHandler.mainPlaylist['id'] =
+          MusyncAudioHandler.mainPlaylist['tag'];
+
       songsNow = newsongs;
     }
-
     setState(() {
       MusyncAudioHandler.songsAllPlaylist = songsNow;
     });
@@ -186,7 +192,6 @@ class _MusicPageState extends State<MusicPage> {
 
   Future<String?> openQrScanner() async {
     String? codeFinal;
-    log('1');
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -246,6 +251,7 @@ class _MusicPageState extends State<MusicPage> {
           audioHandler: widget.audioHandler,
           songsNow: songsNow,
           modeReorder: modeAtual,
+          idPlaylist: MusyncAudioHandler.mainPlaylist['id'].toString(),
           aposClique: (item) async {
             await widget.audioHandler.recreateQueue(
               songs: MusyncAudioHandler.songsAllPlaylist,
@@ -254,7 +260,6 @@ class _MusicPageState extends State<MusicPage> {
               MusyncAudioHandler.mainPlaylist['tag'],
               subt: MusyncAudioHandler.mainPlaylist['subtitle'],
               title: MusyncAudioHandler.mainPlaylist['title'],
-              id: MusyncAudioHandler.mainPlaylist['id'],
             );
             int indiceCerto = MusyncAudioHandler.songsAllPlaylist.indexWhere(
               (t) => t == item,
@@ -803,6 +808,39 @@ class _MusicPageState extends State<MusicPage> {
                       });
                     },
                   ),
+                  MenuItemButton(
+                    style:
+                        modeAtual == ModeOrderEnum.manual
+                            ? ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                baseAppColor,
+                              ),
+                            )
+                            : null,
+                    child: Text(
+                      'Up',
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                    ),
+                    onPressed: () async {
+                      modeAtual = ModeOrderEnum.manual;
+
+                      songsNow = await DatabaseHelper().reorderToUp(
+                        widget.audioHandler.atualPlaylist.value['id']
+                            .toString(),
+                      );
+
+                      setState(() {
+                        MusyncAudioHandler.songsAllPlaylist = songsNow;
+                      });
+
+                      await widget.audioHandler.recreateQueue(songs: songsNow);
+                    },
+                  ),
                 ],
               ),
               MenuItemButton(
@@ -917,8 +955,8 @@ class _MusicPageState extends State<MusicPage> {
                         onTap: () {
                           setState(() {
                             abaSelect = 0;
+                            songsNow = MusyncAudioHandler.songsAllPlaylist;
                           });
-                          songsNow = MusyncAudioHandler.songsAllPlaylist;
                         },
                         child: Container(
                           padding: const EdgeInsets.all(16.0),

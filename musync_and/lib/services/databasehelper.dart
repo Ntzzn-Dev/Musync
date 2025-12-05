@@ -1,8 +1,8 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
+import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/playlists.dart';
-import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -80,14 +80,23 @@ class DatabaseHelper {
             PRIMARY KEY (id_playlist, id_music)
           )
         ''');
+        
+        await db.execute('''
+          CREATE TABLE up_musics (
+            id_playlist TEXT,
+            id_music TEXT,
+            added_at INTEGER,
+            title TEXT,
+            PRIMARY KEY (id_playlist, id_music)
+          )
+        ''');
       },
     );
   }
 
   Future<void> deleteDatabaseFile() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'musyncand.db');
-    await deleteDatabase(path);
+    final dbPath = await getExternalDBPath();
+    await deleteDatabase(dbPath);
     log('Banco de dados deletado com sucesso.');
   }
 
@@ -284,5 +293,71 @@ class DatabaseHelper {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  Future<void> upInPlaylist(String idplaylist, String idMusic, String title) async {
+    final db = await database;
+    await db.delete(
+      'up_musics',
+      where: 'id_music = ? AND id_playlist = ?',
+      whereArgs: [idMusic, idplaylist],
+    );
+    
+    await db.insert(
+      'up_musics',
+      {
+        'id_playlist': idplaylist,
+        'id_music': idMusic,
+        'added_at': DateTime.now().millisecondsSinceEpoch,
+        'title' : title
+      },
+    );
+  }
+
+  Future<void> printDatabase() async {
+    final db = await database;
+
+    print('======== ESTADO ATUAL DO BANCO ========');
+
+    final result = await db.query('up_musics',
+    orderBy: 'added_at ASC');
+
+    for (final row in result) {
+      print(row['title']);
+    }
+
+    print('========================================');
+  }
+
+  Future<List<String>> loadUpMusics(String idplaylist) async {
+    final db = await database;
+    final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
+      'up_musics',
+      where: 'id_playlist = ?',
+      whereArgs: [idplaylist],
+      orderBy: 'added_at DESC'
+    );
+
+    return List.generate(idsFromPlaylists.length, (i) {
+      return idsFromPlaylists[i]['id_music'];
+    });
+  }
+
+  Future<List<MediaItem>> reorderToUp(String idPlAtual)async{
+    List<String> ordemDasUps = await DatabaseHelper()
+        .loadUpMusics(idPlAtual);
+
+    List<MediaItem> resultadoUps = ordemDasUps.map((id) {
+      return MusyncAudioHandler.songsAllPlaylist.firstWhere((x) => x.id == id);
+    }).toList();
+
+    List<MediaItem> resultadoResto = MusyncAudioHandler.songsAllPlaylist.where((x) => !resultadoUps.contains(x)).toList();
+
+    List<MediaItem> restoReordenado = MusyncAudioHandler.reorder(
+      ModeOrderEnum.dataZA,
+      resultadoResto,
+    );
+
+    return [...resultadoUps, ...restoReordenado];
   }
 }

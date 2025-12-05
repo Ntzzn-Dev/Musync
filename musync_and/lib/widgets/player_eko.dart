@@ -28,10 +28,11 @@ class _EkoPlayerState extends State<EkoPlayer> {
   }
 
   void _onMediaChanged() {
-    MusyncAudioHandler.mediaAtual.value = MediaAtual(
-      total: musyncMediaUpdateNotifier.lastUpdate.duration ?? Duration.zero,
-    );
+    final item = musyncMediaUpdateNotifier.lastUpdate;
+
+    MusyncAudioHandler.mediaAtual.value = MediaAtual.fromMediaItem(item);
   }
+
 
   @override
   Widget build(BuildContext context) {
