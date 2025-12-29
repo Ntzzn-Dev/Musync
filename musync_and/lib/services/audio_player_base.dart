@@ -9,11 +9,12 @@ import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:musync_and/services/setlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
-enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual }
+enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual, up }
 
 enum ModeLoopEnum { off, all, one }
 
@@ -72,22 +73,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   static List<MediaItem> songsAllPlaylist = [];
   List<MediaItem> songsAtual = [];
 
-  ValueNotifier<Map<String, dynamic>> atualPlaylist = ValueNotifier({
-    'id': 0,
-    'title': 'Main Playlist',
-    'subtitle': '=---=',
-    'qntTotal': 1,
-    'nowPlaying': 0,
-  });
+  ValueNotifier<Setlist> atualPlaylist = ValueNotifier(Setlist());
 
   late List<Playlists> playlists;
 
-  static Map<String, dynamic> mainPlaylist = {
-    'title': 'Todas',
-    'tag': '/Todas',
-    'subtitle': '-=+=-',
-    'id': 0,
-  };
+  static Setlist mainPlaylist = Setlist();
 
   static Ekosystem? eko;
   static late ValueNotifier<MediaAtual> mediaAtual;
@@ -233,7 +223,7 @@ class MusyncAudioHandler extends BaseAudioHandler
         break;
       case 'up':
         songsAllPlaylist = await DatabaseHelper().reorderToUp(
-          atualPlaylist.value['id'].toString(),
+          atualPlaylist.value.tag,
         ); //CRIAR UM NOTIFICADOR PARA SEMPRE QUE USAR ESSE REORDER
         break;
       default:
@@ -245,6 +235,10 @@ class MusyncAudioHandler extends BaseAudioHandler
     playlists = await DatabaseHelper().loadPlaylists();
   }
 
+  void alterSetList(Setlist ss) {
+    atualPlaylist.value = ss;
+  }
+
   void savePl(
     String plDynamic, {
     String? subt,
@@ -253,18 +247,19 @@ class MusyncAudioHandler extends BaseAudioHandler
   }) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('pl_last', plDynamic.toString());
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'subtitle': subt ?? '',
-      'title': title,
-      'id': id,
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      subtitle: subt ?? '',
+      title: title,
+      tag: id,
+    );
   }
 
   Future<void> skipPlaylist(bool next) async {
     List<int> idsPls = playlists.map((pl) => pl.id).toList();
 
-    final currentIndex = idsPls.indexOf(atualPlaylist.value['id']);
+    final currentIndex = idsPls.indexOf(
+      int.tryParse(atualPlaylist.value.tag) ?? -1,
+    );
     if (currentIndex == -1) return;
 
     final nextIndex = (currentIndex + (next ? 1 : -1)) % idsPls.length;
@@ -272,12 +267,11 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     final nextPlaylist = playlists.firstWhere((pl) => pl.id == idNext);
 
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'id': nextPlaylist.id,
-      'title': nextPlaylist.title,
-      'subtitle': nextPlaylist.subtitle,
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      subtitle: nextPlaylist.subtitle,
+      title: nextPlaylist.title,
+      tag: nextPlaylist.id.toString(),
+    );
 
     List<MediaItem> newsongs = await nextPlaylist.findMusics();
 
@@ -299,7 +293,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
     if (songsAtual.isEmpty) return;
     currentIndex.value = index;
-    atualPlaylist.value = {...atualPlaylist.value, 'nowPlaying': index};
+    atualPlaylist.value = atualPlaylist.value.copyWith(nowPlaying: index);
     final item = songsAtual[index];
     final src = ProgressiveAudioSource(Uri.parse(item.id));
     await audPl.setAudioSource(src);
@@ -309,22 +303,21 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<void> initSongs({required List<MediaItem> songs}) async {
     await searchPlaylists();
 
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'id': mainPlaylist['id'],
-      'title': mainPlaylist['title'],
-      'subtitle': mainPlaylist['subtitle'],
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      subtitle: mainPlaylist.subtitle,
+      title: mainPlaylist.title,
+      tag: mainPlaylist.tag,
+    );
 
-    if (!playlists.any((pl) => pl.title == mainPlaylist['title'])) {
-      int id = int.tryParse(atualPlaylist.value['id'].toString()) ?? 0;
+    if (!playlists.any((pl) => pl.title == mainPlaylist.title)) {
+      int id = int.tryParse(atualPlaylist.value.tag) ?? 0;
 
       playlists.insert(
         0,
         Playlists(
           id: id,
-          title: atualPlaylist.value['title'],
-          subtitle: atualPlaylist.value['subtitle'],
+          title: atualPlaylist.value.title,
+          subtitle: atualPlaylist.value.subtitle,
           ordem: 0,
           orderMode: 0,
         ),
@@ -335,10 +328,9 @@ class MusyncAudioHandler extends BaseAudioHandler
     log(songs.length.toString());
     songsAtual = [...songs];
 
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'qntTotal': songsAtual.length,
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      qntTotal: songsAtual.length,
+    );
 
     await setCurrentTrack();
 
@@ -364,10 +356,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     songsAtual = [...songs];
 
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'qntTotal': songsAtual.length,
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      qntTotal: songsAtual.length,
+    );
 
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
@@ -393,10 +384,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     songsAtual = [...songs];
 
-    atualPlaylist.value = {
-      ...atualPlaylist.value,
-      'qntTotal': songsAtual.length,
-    };
+    atualPlaylist.value = atualPlaylist.value.copyWith(
+      qntTotal: songsAtual.length,
+    );
 
     currentIndex.value = songs.indexOf(songAtual);
 
@@ -630,11 +620,11 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   /* REORDER */
 
-  static List<MediaItem> reorder(
+  static Future<List<MediaItem>> reorder(
     ModeOrderEnum modeAtual,
     List<MediaItem> songs, {
     List<int>? order,
-  }) {
+  }) async {
     List<MediaItem> ordenadas = [];
     switch (modeAtual) {
       case ModeOrderEnum.titleAZ:
@@ -701,6 +691,11 @@ class MusyncAudioHandler extends BaseAudioHandler
         } else {
           ordenadas = [...songs];
         }
+        break;
+      case ModeOrderEnum.up:
+        ordenadas = await DatabaseHelper().reorderToUp(
+          mainPlaylist.tag.toString(),
+        );
         break;
     }
     return ordenadas;

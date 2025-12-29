@@ -54,8 +54,8 @@ class _MusicPageState extends State<MusicPage> {
     super.initState();
     ListPlaylist.getMainPlaylist().then((value) {
       setState(() {
-        MusyncAudioHandler.mainPlaylist['title'] = value.replaceAll('/', '');
-        MusyncAudioHandler.mainPlaylist['tag'] = value;
+        MusyncAudioHandler.mainPlaylist.title = value.replaceAll('/', '');
+        MusyncAudioHandler.mainPlaylist.tag = value;
       });
     });
     _initFetchSongs();
@@ -84,12 +84,9 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> _initFetchSongs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final dirStrings = prefs.getStringList('directorys') ?? [];
+    final fetchedSongs = await FetchSongs.execute();
 
-    final fetchedSongs = await FetchSongs.execute(paths: dirStrings);
-
-    final reordered = MusyncAudioHandler.reorder(modeAtual, fetchedSongs);
+    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs);
 
     MusyncAudioHandler.songsAll = reordered;
 
@@ -99,25 +96,22 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> loadSongsNow() async {
-    int idpl = int.tryParse(MusyncAudioHandler.mainPlaylist['tag']) ?? -1;
+    await widget.audioHandler.searchPlaylists();
+    int idpl = int.tryParse(MusyncAudioHandler.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
-      log(idpl.toString());
       final pl = await DatabaseHelper().loadPlaylist(idpl);
       if (pl != null) {
-        log(pl.title);
         final newsongs = await pl.findMusics();
         if (newsongs.isNotEmpty) {
           songsNow = newsongs;
-          MusyncAudioHandler.mainPlaylist['title'] = pl.title;
-          MusyncAudioHandler.mainPlaylist['subtitle'] = pl.subtitle;
-          MusyncAudioHandler.mainPlaylist['id'] = pl.id;
+          MusyncAudioHandler.mainPlaylist.title = pl.title;
+          MusyncAudioHandler.mainPlaylist.subtitle = pl.subtitle;
+          MusyncAudioHandler.mainPlaylist.tag = pl.id.toString();
         }
       }
-    } else if (MusyncAudioHandler.mainPlaylist['tag'].contains('/')) {
-      if (MusyncAudioHandler.mainPlaylist['tag'] == '/Todas') {
+    } else if (MusyncAudioHandler.mainPlaylist.tag.contains('/')) {
+      if (MusyncAudioHandler.mainPlaylist.tag == '/Todas') {
         songsNow = MusyncAudioHandler.songsAll;
-        MusyncAudioHandler.mainPlaylist['id'] =
-            MusyncAudioHandler.mainPlaylist['tag'];
       } else {
         final newsongs =
             MusyncAudioHandler.songsAll.where((item) {
@@ -125,16 +119,14 @@ class _MusicPageState extends State<MusicPage> {
                 item.extras?['path'],
               );
 
-              return songFolders == MusyncAudioHandler.mainPlaylist['tag'];
+              return songFolders == MusyncAudioHandler.mainPlaylist.tag;
             }).toList();
 
-        MusyncAudioHandler.mainPlaylist['id'] =
-            MusyncAudioHandler.mainPlaylist['tag'];
         songsNow = newsongs;
       }
     } else {
       final artistList =
-          MusyncAudioHandler.mainPlaylist['tag']
+          MusyncAudioHandler.mainPlaylist.tag
               .split(',')
               .map((a) => a.trim().toLowerCase())
               .toList();
@@ -150,13 +142,21 @@ class _MusicPageState extends State<MusicPage> {
             return artistList.every((artist) => songArtists.contains(artist));
           }).toList();
 
-      MusyncAudioHandler.mainPlaylist['id'] =
-          MusyncAudioHandler.mainPlaylist['tag'];
-
       songsNow = newsongs;
     }
     setState(() {
       MusyncAudioHandler.songsAllPlaylist = songsNow;
+    });
+  }
+
+  void switchOrder(ModeOrderEnum mod) async {
+    modeAtual = mod;
+    MusyncAudioHandler.songsAllPlaylist = await MusyncAudioHandler.reorder(
+      modeAtual,
+      MusyncAudioHandler.songsAllPlaylist,
+    );
+    setState(() {
+      songsNow = MusyncAudioHandler.songsAllPlaylist;
     });
   }
 
@@ -251,15 +251,15 @@ class _MusicPageState extends State<MusicPage> {
           audioHandler: widget.audioHandler,
           songsNow: songsNow,
           modeReorder: modeAtual,
-          idPlaylist: MusyncAudioHandler.mainPlaylist['id'].toString(),
+          idPlaylist: MusyncAudioHandler.mainPlaylist.tag.toString(),
           aposClique: (item) async {
             await widget.audioHandler.recreateQueue(
               songs: MusyncAudioHandler.songsAllPlaylist,
             );
             widget.audioHandler.savePl(
-              MusyncAudioHandler.mainPlaylist['tag'],
-              subt: MusyncAudioHandler.mainPlaylist['subtitle'],
-              title: MusyncAudioHandler.mainPlaylist['title'],
+              MusyncAudioHandler.mainPlaylist.tag,
+              subt: MusyncAudioHandler.mainPlaylist.subtitle,
+              title: MusyncAudioHandler.mainPlaylist.title,
             );
             int indiceCerto = MusyncAudioHandler.songsAllPlaylist.indexWhere(
               (t) => t == item,
@@ -328,15 +328,15 @@ class _MusicPageState extends State<MusicPage> {
           },
           trocaDeMain: (newMain) {
             setState(() {
-              MusyncAudioHandler.mainPlaylist['tag'] = newMain;
-              MusyncAudioHandler.mainPlaylist['title'] = newMain.replaceAll(
+              MusyncAudioHandler.mainPlaylist.tag = newMain;
+              MusyncAudioHandler.mainPlaylist.title = newMain.replaceAll(
                 '/',
                 '',
               );
+              widget.audioHandler.alterSetList(MusyncAudioHandler.mainPlaylist);
               loadSongsNow();
+              modeAtual = ModeOrderEnum.dataZA;
             });
-
-            widget.audioHandler.searchPlaylists();
           },
         );
       default:
@@ -606,14 +606,7 @@ class _MusicPageState extends State<MusicPage> {
                   onPressed: () async {
                     if (await showPopupAdd(context, 'Finalizados', [])) {
                       DownloadSpecs().finish();
-                      setState(() {
-                        MusyncAudioHandler
-                            .songsAll = MusyncAudioHandler.reorder(
-                          modeAtual,
-                          MusyncAudioHandler.songsAll,
-                        );
-                        songsNow = MusyncAudioHandler.songsAll;
-                      });
+                      switchOrder(modeAtual);
                     }
                   },
                   style: ButtonStyle(
@@ -707,15 +700,7 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onPressed: () {
-                      modeAtual = ModeOrderEnum.titleAZ;
-                      setState(() {
-                        MusyncAudioHandler
-                            .songsAllPlaylist = MusyncAudioHandler.reorder(
-                          modeAtual,
-                          MusyncAudioHandler.songsAllPlaylist,
-                        );
-                        songsNow = MusyncAudioHandler.songsAllPlaylist;
-                      });
+                      switchOrder(ModeOrderEnum.titleAZ);
                     },
                   ),
                   MenuItemButton(
@@ -737,15 +722,7 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onPressed: () {
-                      modeAtual = ModeOrderEnum.titleZA;
-                      setState(() {
-                        MusyncAudioHandler
-                            .songsAllPlaylist = MusyncAudioHandler.reorder(
-                          modeAtual,
-                          MusyncAudioHandler.songsAllPlaylist,
-                        );
-                        songsNow = MusyncAudioHandler.songsAllPlaylist;
-                      });
+                      switchOrder(ModeOrderEnum.titleZA);
                     },
                   ),
                   MenuItemButton(
@@ -767,15 +744,7 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onPressed: () {
-                      modeAtual = ModeOrderEnum.dataAZ;
-                      setState(() {
-                        MusyncAudioHandler
-                            .songsAllPlaylist = MusyncAudioHandler.reorder(
-                          modeAtual,
-                          MusyncAudioHandler.songsAllPlaylist,
-                        );
-                        songsNow = MusyncAudioHandler.songsAllPlaylist;
-                      });
+                      switchOrder(ModeOrderEnum.dataAZ);
                     },
                   ),
                   MenuItemButton(
@@ -797,20 +766,12 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onPressed: () {
-                      modeAtual = ModeOrderEnum.dataZA;
-                      setState(() {
-                        MusyncAudioHandler
-                            .songsAllPlaylist = MusyncAudioHandler.reorder(
-                          modeAtual,
-                          MusyncAudioHandler.songsAllPlaylist,
-                        );
-                        songsNow = MusyncAudioHandler.songsAllPlaylist;
-                      });
+                      switchOrder(ModeOrderEnum.dataZA);
                     },
                   ),
                   MenuItemButton(
                     style:
-                        modeAtual == ModeOrderEnum.manual
+                        modeAtual == ModeOrderEnum.up
                             ? ButtonStyle(
                               backgroundColor: WidgetStatePropertyAll(
                                 baseAppColor,
@@ -827,18 +788,7 @@ class _MusicPageState extends State<MusicPage> {
                       ),
                     ),
                     onPressed: () async {
-                      modeAtual = ModeOrderEnum.manual;
-
-                      songsNow = await DatabaseHelper().reorderToUp(
-                        widget.audioHandler.atualPlaylist.value['id']
-                            .toString(),
-                      );
-
-                      setState(() {
-                        MusyncAudioHandler.songsAllPlaylist = songsNow;
-                      });
-
-                      await widget.audioHandler.recreateQueue(songs: songsNow);
+                      switchOrder(ModeOrderEnum.up);
                     },
                   ),
                 ],
@@ -881,7 +831,9 @@ class _MusicPageState extends State<MusicPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsPage(),
+                      builder:
+                          (context) =>
+                              SettingsPage(audioHandler: widget.audioHandler),
                       settings: RouteSettings(name: 'settings'),
                     ),
                   );
@@ -954,6 +906,7 @@ class _MusicPageState extends State<MusicPage> {
                       child: InkWell(
                         onTap: () {
                           setState(() {
+                            DatabaseHelper().printDatabase();
                             abaSelect = 0;
                             songsNow = MusyncAudioHandler.songsAllPlaylist;
                           });
@@ -973,7 +926,7 @@ class _MusicPageState extends State<MusicPage> {
                             ),
                           ),
                           child: Text(
-                            MusyncAudioHandler.mainPlaylist['title'],
+                            MusyncAudioHandler.mainPlaylist.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,

@@ -91,17 +91,16 @@ class _ListContentState extends State<ListContent> {
         'icon': Icons.favorite,
         'funct': () async {
           await DatabaseHelper().upInPlaylist(
-            widget.audioHandler.atualPlaylist.value['id'].toString(),
+            widget.audioHandler.atualPlaylist.value.tag,
             item.id,
             item.title,
           );
 
-          MusyncAudioHandler.songsAllPlaylist = List.from(
-            await DatabaseHelper().reorderToUp(
-              widget.audioHandler.atualPlaylist.value['id'].toString(),
-            ),
+          MusyncAudioHandler
+              .songsAllPlaylist = await MusyncAudioHandler.reorder(
+            ModeOrderEnum.up,
+            MusyncAudioHandler.songsAllPlaylist,
           );
-
           setState(() {
             mutableSongs = MusyncAudioHandler.songsAllPlaylist;
           });

@@ -4,7 +4,6 @@ import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 OnAudioQuery onAudioQuery = OnAudioQuery();
 
@@ -32,25 +31,11 @@ Future<Uri?> _getArtUri(SongModel song) async {
 }
 
 class FetchSongs {
-  static Future<List<MediaItem>> execute({List<String>? paths}) async {
+  static Future<List<MediaItem>> execute() async {
     List<MediaItem> items = [];
 
     await accessStorage().then((_) async {
       List<SongModel> songs = await onAudioQuery.querySongs();
-
-      if (paths != null && paths.isNotEmpty) {
-        songs =
-            songs.where((song) {
-              return paths.any((path) => song.data.startsWith(path));
-            }).toList();
-      }
-
-      final prefs = await SharedPreferences.getInstance();
-      final dirStrings =
-          (prefs.getStringList('directorys') ?? []).map((path) {
-            final parts = path.split('/').where((e) => e.isNotEmpty).toList();
-            return parts.isNotEmpty ? parts.last : '';
-          }).toList();
 
       final futures =
           songs.map((song) async {
@@ -66,10 +51,7 @@ class FetchSongs {
                 id: song.uri!,
                 title: song.title,
                 artist: song.artist,
-                album:
-                    (album.isEmpty || dirStrings.contains(album))
-                        ? ''
-                        : song.album,
+                album: (album.isEmpty) ? '' : song.album,
                 genre: song.genre,
                 duration: Duration(milliseconds: song.duration!),
                 artUri: await _getArtUri(song),

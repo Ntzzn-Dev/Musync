@@ -71,16 +71,21 @@ class _PlaylistPageState extends State<PlaylistPage> {
     toDown.value = !toDown.value;
   }
 
-  void reorganizar() {
+  void reorganizar() async {
+    final novaLista = await MusyncAudioHandler.reorder(
+      modeAtual,
+      songsNowTranslated,
+    );
+
     setState(() {
-      songsPlaylist = MusyncAudioHandler.reorder(modeAtual, songsNowTranslated);
+      songsPlaylist = novaLista;
     });
+
     if (widget.pl != null) {
       DatabaseHelper().updatePlaylist(
         widget.pl!.id,
         orderMode: modeAtual.disconvert(),
       );
-      log(modeAtual.disconvert().toString());
     }
   }
 
@@ -224,7 +229,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                 completer.complete(true);
               });
               break;
-            case 'delete':
+            case 'delete': //Consertar esse delete esta apagando, mas altera a musica atual, e trava quando tento reproduzir, não altera quando tem apenas uma selecionada, provavelmente ao apagar uma pula para a seguinte
               deletarMusicas(
                 indexMsc.map((i) => songsNowTranslated[i]).toList(),
               );
@@ -467,7 +472,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   audioHandler: widget.audioHandler,
                   songsNow: songsPlaylist,
                   modeReorder: modeAtual,
-                  idPlaylist: widget.pl?.id.toString() ?? MusyncAudioHandler.mainPlaylist['id'].toString(),
+                  idPlaylist:
+                      widget.pl?.id.toString() ??
+                      MusyncAudioHandler.mainPlaylist.tag,
                   withReorder: true,
                   aposClique: (item) async {
                     bool recriou = await widget.audioHandler.recreateQueue(
@@ -477,7 +484,9 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       (widget.pl?.id ?? widget.plTitle).toString(),
                       subt: widget.pl?.subtitle ?? 'Artist',
                       title: widget.pl?.title,
-                      id: widget.pl?.id.toString() ?? MusyncAudioHandler.mainPlaylist['id'].toString(),
+                      id:
+                          widget.pl?.id.toString() ??
+                          MusyncAudioHandler.mainPlaylist.tag,
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,

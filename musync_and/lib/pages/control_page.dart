@@ -410,12 +410,9 @@ class _ControlPageState extends State<ControlPage> {
                                       ),
                                       child: Column(
                                         children: [
+                                          Player.titleText(playlist.tag, 20),
                                           Player.titleText(
-                                            playlist['title'],
-                                            20,
-                                          ),
-                                          Player.titleText(
-                                            playlist['subtitle'],
+                                            playlist.subtitle,
                                             13,
                                           ),
                                         ],
@@ -457,7 +454,7 @@ class _ControlPageState extends State<ControlPage> {
                                                       alignment:
                                                           Alignment.bottomRight,
                                                       child: Text(
-                                                        '${playlist['qntTotal']}',
+                                                        '${playlist.qntTotal}',
                                                         style: TextStyle(
                                                           fontSize: 15,
                                                           fontWeight:
@@ -478,7 +475,7 @@ class _ControlPageState extends State<ControlPage> {
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Text(
-                                                  '${playlist['nowPlaying'] + 1}',
+                                                  '${playlist.nowPlaying + 1}',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.black,

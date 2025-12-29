@@ -33,7 +33,7 @@ class ListPlaylist extends StatefulWidget {
 
   static Future<String> getMainPlaylist() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('playlist_main') ?? '';
+    return prefs.getString('playlist_main') ?? '/Todas';
   }
 
   @override
