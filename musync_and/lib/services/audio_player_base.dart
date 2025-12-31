@@ -73,11 +73,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   static List<MediaItem> songsAllPlaylist = [];
   List<MediaItem> songsAtual = [];
 
+  static Setlist mainPlaylist = Setlist();
+  static Setlist viewingPlaylist = Setlist();
   ValueNotifier<Setlist> atualPlaylist = ValueNotifier(Setlist());
 
   late List<Playlists> playlists;
-
-  static Setlist mainPlaylist = Setlist();
 
   static Ekosystem? eko;
   static late ValueNotifier<MediaAtual> mediaAtual;
@@ -188,7 +188,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           MediaControl.skipToPrevious,
           if (audPl.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
-          //upButton,
+          upButton,
         ],
         systemActions: const {
           MediaAction.seek,
@@ -222,13 +222,36 @@ class MusyncAudioHandler extends BaseAudioHandler
         _broadcastState();
         break;
       case 'up':
-        songsAllPlaylist = await DatabaseHelper().reorderToUp(
-          atualPlaylist.value.tag,
-        ); //CRIAR UM NOTIFICADOR PARA SEMPRE QUE USAR ESSE REORDER
+        upNotification();
+        _broadcastState();
         break;
       default:
         log('Ação customizada desconhecida: $name');
     }
+  }
+
+  void upNotification()async {
+    await DatabaseHelper().upInPlaylist(
+      atualPlaylist.value.title,
+      songsAtual[currentIndex.value].id,
+      songsAtual[currentIndex.value].title,
+    );
+
+    MusyncAudioHandler
+        .songsAllPlaylist = await MusyncAudioHandler.reorder(
+      ModeOrderEnum.up,
+      songsAtual,
+    );
+    songsAtual = MusyncAudioHandler.songsAllPlaylist;
+
+    setCurrentTrack(index: 0); //CORRIGIR ORDEM QUE FICA TODA ERRADA QUANDO UM ITEM É UPADO PELA NOTIFICAÇÃO. 
+    //EM ALGUM MOMENTO AS MUSICAS DA VIEW VAO PARA A MAIN PAGE, VERIFICAR O PQ
+  }
+
+  void setViewPlaylist(String title, String subtitle, String tag){
+    viewingPlaylist.tag = tag; 
+    viewingPlaylist.subtitle = subtitle;
+    viewingPlaylist.title = title;
   }
 
   Future<void> searchPlaylists() async {
@@ -247,6 +270,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('pl_last', plDynamic.toString());
+    
     atualPlaylist.value = atualPlaylist.value.copyWith(
       subtitle: subt ?? '',
       title: title,
@@ -694,7 +718,8 @@ class MusyncAudioHandler extends BaseAudioHandler
         break;
       case ModeOrderEnum.up:
         ordenadas = await DatabaseHelper().reorderToUp(
-          mainPlaylist.tag.toString(),
+          viewingPlaylist.tag.toString(),
+          songs
         );
         break;
     }

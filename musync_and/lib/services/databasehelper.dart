@@ -90,6 +90,16 @@ class DatabaseHelper {
             PRIMARY KEY (id_playlist, id_music)
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE desup_musics (
+            id_playlist TEXT,
+            id_music TEXT,
+            added_at INTEGER,
+            title TEXT,
+            PRIMARY KEY (id_playlist, id_music)
+          )
+        ''');
       },
     );
   }
@@ -296,19 +306,26 @@ class DatabaseHelper {
   }
 
   Future<void> upInPlaylist(
-    String idplaylist,
+    String idPlaylist,
     String idMusic,
     String title,
   ) async {
     final db = await database;
-    await db.delete(
-      'up_musics',
-      where: 'id_music = ? AND id_playlist = ?',
-      whereArgs: [idMusic, idplaylist],
-    );
+    await db.transaction((txn) async {
+      await txn.delete(
+        'up_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: [idMusic, idPlaylist],
+      );
+      await txn.delete(
+        'desup_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: [idMusic, idPlaylist],
+      );
+    });
 
     await db.insert('up_musics', {
-      'id_playlist': idplaylist,
+      'id_playlist': idPlaylist,
       'id_music': idMusic,
       'added_at': DateTime.now().millisecondsSinceEpoch,
       'title': title,
@@ -330,20 +347,6 @@ class DatabaseHelper {
     await db.delete('up_musics');
   }
 
-  Future<void> printDatabase() async {
-    final db = await database;
-
-    log('======== ESTADO ATUAL DO BANCO ========');
-
-    final result = await db.query('up_musics', orderBy: 'added_at ASC');
-
-    for (final row in result) {
-      log(row['title'].toString() + ' ' + row['id_playlist'].toString());
-    }
-
-    log('========================================');
-  }
-
   Future<List<String>> loadUpMusics(String idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
@@ -358,26 +361,105 @@ class DatabaseHelper {
     });
   }
 
-  Future<List<MediaItem>> reorderToUp(String idPlAtual) async {
+    Future<void> desupInPlaylist(
+    String idPlaylist,
+    String idMusic,
+    String title,
+  ) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'up_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: [idMusic, idPlaylist],
+      );
+      await txn.delete(
+        'desup_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: [idMusic, idPlaylist],
+      );
+    });
+
+    await db.insert('desup_musics', {
+      'id_playlist': idPlaylist,
+      'id_music': idMusic,
+      'added_at': DateTime.now().millisecondsSinceEpoch,
+      'title': title,
+    });
+  }
+
+  Future<void> undesupInPlaylist(String idplaylist) async {
+    log(idplaylist);
+    final db = await database;
+    await db.delete(
+      'desup_musics',
+      where: 'id_playlist = ?',
+      whereArgs: [idplaylist],
+    );
+  }
+
+  Future<void> undesupInAllPlaylists() async {
+    final db = await database;
+    await db.delete('desup_musics');
+  }
+
+  Future<List<String>> loadDesupMusics(String idplaylist) async {
+    final db = await database;
+    final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
+      'desup_musics',
+      where: 'id_playlist = ?',
+      whereArgs: [idplaylist],
+      orderBy: 'added_at ASC',
+    );
+
+    return List.generate(idsFromPlaylists.length, (i) {
+      return idsFromPlaylists[i]['id_music'];
+    });
+  }
+
+  Future<List<MediaItem>> reorderToUp(String idPlAtual, List<MediaItem> setList) async {
+    log(idPlAtual);
     List<String> ordemDasUps = await DatabaseHelper().loadUpMusics(idPlAtual);
+    List<String> ordemDasDesups = await DatabaseHelper().loadDesupMusics(idPlAtual);
 
-    List<MediaItem> resultadoUps =
-        ordemDasUps.map((id) {
-          return MusyncAudioHandler.songsAllPlaylist.firstWhere(
-            (x) => x.id == id,
-          );
-        }).toList();
+    final mapById = {
+      for (var item in setList)
+        item.id: item
+    };
 
-    List<MediaItem> resultadoResto =
-        MusyncAudioHandler.songsAllPlaylist
-            .where((x) => !resultadoUps.contains(x))
-            .toList();
+    log(setList.length.toString());
+    
+    List<MediaItem> resultadoUps = ordemDasUps.asMap().entries.map((entry) {
+      final index = ordemDasUps.length - (entry.key);
+      final id = entry.value;
+
+      final mediaItem = mapById[id]!;
+
+      mediaItem.extras!['prioridade'] = index;
+
+      return mediaItem;
+    }).toList();
+
+    List<MediaItem> resultadoDesups = ordemDasDesups.asMap().entries.map((entry) {
+      final index = (entry.key) + 1;
+      final id = entry.value;
+
+      final mediaItem = mapById[id]!;
+
+      mediaItem.extras!['prioridade'] = -index;
+
+      return mediaItem;
+    }).toList();
+
+    List<MediaItem> resultadoResto = setList
+        .where((x) => !resultadoUps.contains(x) && !resultadoDesups.contains(x))
+        .toList();
 
     List<MediaItem> restoReordenado = await MusyncAudioHandler.reorder(
       ModeOrderEnum.dataZA,
       resultadoResto,
     );
 
-    return [...resultadoUps, ...restoReordenado];
+    return [...resultadoUps, ...restoReordenado, ...resultadoDesups];
   }
 }

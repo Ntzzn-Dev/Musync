@@ -288,16 +288,20 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da função de up para músicas, onde um up faz ela subir na ordem.  
 - Alterações na mediaAtual.
 
-### version 5.9  
+### version 5.8.1   
 - Ao iniciar o app pela primeira vez, todas as músicas serão exibidas na tela inicial.  
 - Correção no up para seu uso ser apenas local.  
 - Alterações feitas no UP para que seja mais estável.
 - Possibilidade de apagar todos os UPs de uma ou todas as playlists.  
 
+### version 5.9  
+- Correção de Slices no topo das listas de conteudo quando organização em UP.  
+- DESUP adicionado, com reorganização (UP - DataAZ - DESUP).  
+- UP e DESUP funcionando em todas as setlists, sem necessidade de torna-la principal.  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
-+ Criar o DESUP.
-+ Mesclagem de uma ou mais SetLists.  
++ Criar formato de fila dinamica, para guardar musicas, organização, tipo de reprodução de stack [aleatorio/repetir], agrupamento de musicas iguais / semelhantes [slowed/spedup] TO v6.0
 + Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  

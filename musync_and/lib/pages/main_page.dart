@@ -86,7 +86,7 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> _initFetchSongs() async {
     final fetchedSongs = await FetchSongs.execute();
 
-    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs);
+    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs,);
 
     MusyncAudioHandler.songsAll = reordered;
 
@@ -96,6 +96,7 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> loadSongsNow() async {
+    print('metodo loadSongsNow');
     await widget.audioHandler.searchPlaylists();
     int idpl = int.tryParse(MusyncAudioHandler.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
@@ -147,6 +148,8 @@ class _MusicPageState extends State<MusicPage> {
     setState(() {
       MusyncAudioHandler.songsAllPlaylist = songsNow;
     });
+
+    widget.audioHandler.setViewPlaylist(MusyncAudioHandler.mainPlaylist.title,MusyncAudioHandler.mainPlaylist.subtitle,MusyncAudioHandler.mainPlaylist.tag);
   }
 
   void switchOrder(ModeOrderEnum mod) async {
@@ -391,6 +394,8 @@ class _MusicPageState extends State<MusicPage> {
             ),
         settings: const RouteSettings(name: 'playlistOpened'),
       ),
+    ).then((_) {
+      widget.audioHandler.setViewPlaylist(MusyncAudioHandler.mainPlaylist.title,MusyncAudioHandler.mainPlaylist.subtitle,MusyncAudioHandler.mainPlaylist.tag);}
     );
   }
 
@@ -906,7 +911,6 @@ class _MusicPageState extends State<MusicPage> {
                       child: InkWell(
                         onTap: () {
                           setState(() {
-                            DatabaseHelper().printDatabase();
                             abaSelect = 0;
                             songsNow = MusyncAudioHandler.songsAllPlaylist;
                           });

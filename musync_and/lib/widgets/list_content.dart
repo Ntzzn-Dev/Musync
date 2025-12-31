@@ -87,24 +87,46 @@ class _ListContentState extends State<ListContent> {
   List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
     return [
       {
-        'opt': 'Up',
-        'icon': Icons.favorite,
-        'funct': () async {
-          await DatabaseHelper().upInPlaylist(
-            widget.audioHandler.atualPlaylist.value.tag,
-            item.id,
-            item.title,
-          );
+        'opts': ['Up', 'Desup'],
+        'icons': [Icons.favorite, Icons.heart_broken],
+        'functs': [
+          () async {
+            await DatabaseHelper().upInPlaylist(
+              MusyncAudioHandler.viewingPlaylist.tag,
+              item.id,
+              item.title,
+            );
 
-          MusyncAudioHandler
-              .songsAllPlaylist = await MusyncAudioHandler.reorder(
-            ModeOrderEnum.up,
-            MusyncAudioHandler.songsAllPlaylist,
-          );
-          setState(() {
-            mutableSongs = MusyncAudioHandler.songsAllPlaylist;
-          });
-        },
+            mode = ModeOrderEnum.up;
+
+            MusyncAudioHandler
+                .songsAllPlaylist = await MusyncAudioHandler.reorder(
+              mode,
+              mutableSongs,
+            );
+            setState(() {
+              mutableSongs = MusyncAudioHandler.songsAllPlaylist;
+            });
+          },
+          () async {
+            await DatabaseHelper().desupInPlaylist(
+              MusyncAudioHandler.viewingPlaylist.tag,
+              item.id,
+              item.title,
+            );
+
+            mode = ModeOrderEnum.up;
+            
+            MusyncAudioHandler
+                .songsAllPlaylist = await MusyncAudioHandler.reorder(
+              mode,
+              mutableSongs,
+            );
+            setState(() {
+              mutableSongs = MusyncAudioHandler.songsAllPlaylist;
+            });
+          }
+        ]
       },
       {
         'opt': 'Adicionar a Playlist',
@@ -567,11 +589,7 @@ class _ListContentState extends State<ListContent> {
                 }
 
                 bool showSliceHeader =
-                    index == 0 || currentSlice != previousSlice;
-
-                if (mode == ModeOrderEnum.manual) {
-                  showSliceHeader = false;
-                }
+                    (index == 0 || currentSlice != previousSlice) && (mode != ModeOrderEnum.manual && mode != ModeOrderEnum.up);
 
                 List<Widget> children = [];
 

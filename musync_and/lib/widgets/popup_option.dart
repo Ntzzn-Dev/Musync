@@ -26,43 +26,127 @@ Future<void> showPopupOptions(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: List.generate(options.length, (index) {
-                  final IconData? iconData =
-                      options[index]['icon'] as IconData?;
-                  final String? label = options[index]['opt'] as String?;
+                  if (options[index].containsKey('opts')) {
+                    final IconData? iconDataLeft =
+                        options[index]['icons'][0] as IconData?;
+                    final IconData? iconDataRight =
+                        options[index]['icons'][1] as IconData?;
+                    final String? labelLeft = options[index]['opts'][0] as String?;
+                    final String? labelRight = options[index]['opts'][1] as String?;
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: InkWell(
-                      onTap: () {
-                        options[index]['funct']?.call();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            if (iconData != null)
-                              Icon(
-                                iconData,
-                                size: 18,
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium?.color,
-                              ),
-                            if (iconData != null) const SizedBox(width: 16),
-                            if (label != null)
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row (
+                        children: [ 
+                          Expanded(
+                          child:
+                            InkWell(
+                              onTap: () {
+                                options[index]['functs'][0]?.call();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: [
+                                    if (iconDataLeft != null)
+                                      Icon(
+                                        iconDataLeft,
+                                        size: 18,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium?.color,
+                                      ),
+                                    if (iconDataLeft != null) const SizedBox(width: 16),
+                                    if (labelLeft != null)
+                                      Text(
+                                        labelLeft,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
-                          ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                options[index]['functs'][1]?.call();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: [
+                                    if (labelRight != null)
+                                      Text(
+                                        labelRight,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    if (iconDataRight != null) const SizedBox(width: 16),
+                                    if (iconDataRight != null)
+                                      Icon(
+                                        iconDataRight,
+                                        size: 18,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium?.color,
+                                      ),
+                                    
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        ],
+                      )
+                    );
+                  } else {
+                    final IconData? iconData =
+                        options[index]['icon'] as IconData?;
+                    final String? label = options[index]['opt'] as String?;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: InkWell(
+                        onTap: () {
+                          options[index]['funct']?.call();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              if (iconData != null)
+                                Icon(
+                                  iconData,
+                                  size: 18,
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium?.color,
+                                ),
+                              if (iconData != null) const SizedBox(width: 16),
+                              if (label != null)
+                                Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }),
               ),
             ),

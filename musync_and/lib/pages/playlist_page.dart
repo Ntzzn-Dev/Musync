@@ -52,6 +52,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
     modeAtual = ModeOrderEnumExt.convert(widget.pl?.orderMode ?? 4);
 
     playlistUpdateNotifier.addListener(_onPlaylistChanged);
+
+    widget.audioHandler.setViewPlaylist(widget.pl?.title ?? widget.plTitle.replaceAll('/', ''), widget.pl?.subtitle ?? '', widget.pl?.id.toString() ?? widget.plTitle);
   }
 
   void _onPlaylistChanged() async {
@@ -402,6 +404,25 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   reorganizar();
                 },
               ),
+              MenuItemButton(
+                style:
+                    modeAtual == ModeOrderEnum.up
+                        ? ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
+                        )
+                        : null,
+                child: Text(
+                  'Ups',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
+                onPressed: () {
+                  modeAtual = ModeOrderEnum.up;
+                  reorganizar();
+                },
+              ),
             ],
           ),
         ],
@@ -480,13 +501,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     bool recriou = await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,
                     );
+                    
                     widget.audioHandler.savePl(
-                      (widget.pl?.id ?? widget.plTitle).toString(),
-                      subt: widget.pl?.subtitle ?? 'Artist',
-                      title: widget.pl?.title,
-                      id:
-                          widget.pl?.id.toString() ??
-                          MusyncAudioHandler.mainPlaylist.tag,
+                      (widget.pl?.id ?? widget.plTitle).toString() ,
+                      subt: widget.pl?.subtitle ?? '',
+                      title: widget.pl?.title ?? widget.plTitle,
+                      id: widget.pl?.id.toString() ?? widget.plTitle,
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,

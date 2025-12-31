@@ -55,6 +55,9 @@ Na notificação estão as ações mais importantes, incluindo controle de aleat
 
 <img src="assets/notify_bar.jpg" width="300"/>  
 
+### Up / Desup
+Agora é possível Upar músicas ou Desupar, onde a música fica com prioridade máxima ou em último da lista respectivamente.
+
 ## Desktop  
 Para conectar, primeiramente é necessário digitar manualmente o IP local do desktop nas configurações do mobile.  
 ### Conexão
