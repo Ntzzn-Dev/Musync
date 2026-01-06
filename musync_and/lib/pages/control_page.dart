@@ -339,7 +339,7 @@ class _ControlPageState extends State<ControlPage> {
                 SoundControl(ekoConnected: ekoConnected),
                 const SizedBox(height: 10),
                 ValueListenableBuilder(
-                  valueListenable: widget.audioHandler.atualPlaylist,
+                  valueListenable: MusyncAudioHandler.actlist.atualPlaylist,
                   builder: (context, playlist, _) {
                     return SizedBox(
                       height: 130,
@@ -475,7 +475,7 @@ class _ControlPageState extends State<ControlPage> {
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Text(
-                                                  '${playlist.nowPlaying + 1}',
+                                                  '${playlist.indexPlaying + 1}',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.black,

@@ -299,8 +299,14 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - DESUP adicionado, com reorganização (UP - DataAZ - DESUP).  
 - UP e DESUP funcionando em todas as setlists, sem necessidade de torna-la principal.  
 
+### verion 5.10
+- Otimização de código e inicio de controle de fila dinâmica.  
+- Correção do travamento por conta de troca abrupta de faixas consecutivamente.
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
++ Criar checkpoint para reiniciar músicas.  
++ Atualizar o README para explicar novas adições.  
 + Criar formato de fila dinamica, para guardar musicas, organização, tipo de reprodução de stack [aleatorio/repetir], agrupamento de musicas iguais / semelhantes [slowed/spedup] TO v6.0
 + Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  

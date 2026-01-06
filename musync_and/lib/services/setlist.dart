@@ -3,14 +3,14 @@ class Setlist {
   String title;
   String subtitle;
   int qntTotal;
-  int nowPlaying;
+  int indexPlaying;
 
   Setlist({
     this.tag = '/Todas',
     this.title = 'Todas',
     this.subtitle = '=---=',
     this.qntTotal = 0,
-    this.nowPlaying = 0,
+    this.indexPlaying = 0,
   });
 
   Setlist copyWith({
@@ -18,14 +18,14 @@ class Setlist {
     String? title,
     String? subtitle,
     int? qntTotal,
-    int? nowPlaying,
+    int? indexPlaying,
   }) {
     return Setlist(
       tag: tag ?? this.tag,
       title: title ?? this.title,
       subtitle: subtitle ?? this.subtitle,
       qntTotal: qntTotal ?? this.qntTotal,
-      nowPlaying: nowPlaying ?? this.nowPlaying,
+      indexPlaying: indexPlaying ?? this.indexPlaying,
     );
   }
 
@@ -35,7 +35,7 @@ class Setlist {
       title: map['title'],
       subtitle: map['subtitle'],
       qntTotal: map['qntTotal'],
-      nowPlaying: map['nowPlaying'],
+      indexPlaying: map['indexPlaying'],
     );
   }
 }

@@ -57,7 +57,7 @@ class Playlists {
     final futuros =
         idsAlvo.map((id) async {
           try {
-            return MusyncAudioHandler.songsAll.firstWhere(
+            return MusyncAudioHandler.actlist.songsAll.firstWhere(
               (mediaItem) => mediaItem.id == id,
             );
           } catch (e) {
@@ -74,7 +74,7 @@ class Playlists {
     }
 
     final resultados = MusyncAudioHandler.reorder(
-      ModeOrderEnumExt.convert(orderMode),
+      enumFromInt(orderMode, ModeOrderEnum.values),
       musicas,
     );
 

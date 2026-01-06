@@ -54,7 +54,7 @@ class _ListContentState extends State<ListContent> {
     _scrollController = ScrollController();
     listaEmUso = const ListEquality().equals(
       widget.songsNow,
-      widget.audioHandler.songsAtual,
+      MusyncAudioHandler.actlist.getMediaItemsFromQueue(),
     );
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
@@ -92,41 +92,35 @@ class _ListContentState extends State<ListContent> {
         'functs': [
           () async {
             await DatabaseHelper().upInPlaylist(
-              MusyncAudioHandler.viewingPlaylist.tag,
+              MusyncAudioHandler.actlist.viewingPlaylist.tag,
               item.id,
               item.title,
             );
 
             mode = ModeOrderEnum.up;
 
-            MusyncAudioHandler
-                .songsAllPlaylist = await MusyncAudioHandler.reorder(
-              mode,
-              mutableSongs,
-            );
+            MusyncAudioHandler.actlist.songsAllPlaylist =
+                await MusyncAudioHandler.reorder(mode, mutableSongs);
             setState(() {
-              mutableSongs = MusyncAudioHandler.songsAllPlaylist;
+              mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
             });
           },
           () async {
             await DatabaseHelper().desupInPlaylist(
-              MusyncAudioHandler.viewingPlaylist.tag,
+              MusyncAudioHandler.actlist.viewingPlaylist.tag,
               item.id,
               item.title,
             );
 
             mode = ModeOrderEnum.up;
-            
-            MusyncAudioHandler
-                .songsAllPlaylist = await MusyncAudioHandler.reorder(
-              mode,
-              mutableSongs,
-            );
+
+            MusyncAudioHandler.actlist.songsAllPlaylist =
+                await MusyncAudioHandler.reorder(mode, mutableSongs);
             setState(() {
-              mutableSongs = MusyncAudioHandler.songsAllPlaylist;
+              mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
             });
-          }
-        ]
+          },
+        ],
       },
       {
         'opt': 'Adicionar a Playlist',
@@ -323,7 +317,7 @@ class _ListContentState extends State<ListContent> {
                 'genre': valores[3],
               });
 
-              int indexSongAll = MusyncAudioHandler.songsAll.indexWhere(
+              int indexSongAll = MusyncAudioHandler.actlist.songsAll.indexWhere(
                 (e) => e.id == item.id,
               );
 
@@ -332,7 +326,8 @@ class _ListContentState extends State<ListContent> {
               );
 
               if (indexSongAll != -1) {
-                final antigo = MusyncAudioHandler.songsAll[indexSongAll];
+                final antigo =
+                    MusyncAudioHandler.actlist.songsAll[indexSongAll];
 
                 final musicEditada = antigo.copyWith(
                   title: valores[0],
@@ -346,7 +341,8 @@ class _ListContentState extends State<ListContent> {
                   },
                 );
 
-                MusyncAudioHandler.songsAll[indexSongAll] = musicEditada;
+                MusyncAudioHandler.actlist.songsAll[indexSongAll] =
+                    musicEditada;
                 mutableSongs[indexSongNow] = musicEditada;
 
                 setState(() {});
@@ -412,7 +408,7 @@ class _ListContentState extends State<ListContent> {
       try {
         setState(() {
           mutableSongs.remove(item);
-          MusyncAudioHandler.songsAll.remove(item);
+          MusyncAudioHandler.actlist.songsAll.remove(item);
         });
         await widget.audioHandler.recreateQueue(songs: mutableSongs);
         await file.delete();
@@ -498,7 +494,7 @@ class _ListContentState extends State<ListContent> {
 
       int id = int.tryParse(widget.idPlaylist.toString()) ?? 0;
 
-      await DatabaseHelper().updatePlaylist(id, orderMode: mode.disconvert());
+      await DatabaseHelper().updatePlaylist(id, orderMode: enumToInt(mode));
 
       await DatabaseHelper().updateOrderMusics(mutableSongs, id);
 
@@ -552,9 +548,13 @@ class _ListContentState extends State<ListContent> {
                     index < selecionada.length && selecionada[index]
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
-                            value < widget.audioHandler.songsAtual.length &&
+                            value <
+                                MusyncAudioHandler.actlist
+                                    .getLengthMusicListAtual() &&
                             mutableSongs[index] ==
-                                widget.audioHandler.songsAtual[value] &&
+                                MusyncAudioHandler.actlist.getMusicAtual(
+                                  value,
+                                ) &&
                             listaEmUso
                         ? Color.fromARGB(96, 243, 159, 34)
                         : null;
@@ -589,7 +589,8 @@ class _ListContentState extends State<ListContent> {
                 }
 
                 bool showSliceHeader =
-                    (index == 0 || currentSlice != previousSlice) && (mode != ModeOrderEnum.manual && mode != ModeOrderEnum.up);
+                    (index == 0 || currentSlice != previousSlice) &&
+                    (mode != ModeOrderEnum.manual && mode != ModeOrderEnum.up);
 
                 List<Widget> children = [];
 

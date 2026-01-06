@@ -96,7 +96,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
 
   void carregarPlaylists() async {
     final playlists = await DatabaseHelper().loadPlaylists();
-    final allSongs = MusyncAudioHandler.songsAll;
+    final allSongs = MusyncAudioHandler.actlist.songsAll;
 
     List<List<String>> artists = [];
     List<String> folders = ['/Todas'];

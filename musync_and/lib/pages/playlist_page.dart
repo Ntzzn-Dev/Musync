@@ -4,10 +4,12 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:musync_and/services/setlist.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/player.dart';
@@ -49,11 +51,18 @@ class _PlaylistPageState extends State<PlaylistPage> {
     super.initState();
     songsNowTranslated = [...widget.songsPL];
     songsPlaylist = [...songsNowTranslated];
-    modeAtual = ModeOrderEnumExt.convert(widget.pl?.orderMode ?? 4);
+    modeAtual = enumFromInt(widget.pl?.orderMode ?? 4, ModeOrderEnum.values);
 
     playlistUpdateNotifier.addListener(_onPlaylistChanged);
 
-    widget.audioHandler.setViewPlaylist(widget.pl?.title ?? widget.plTitle.replaceAll('/', ''), widget.pl?.subtitle ?? '', widget.pl?.id.toString() ?? widget.plTitle);
+    MusyncAudioHandler.actlist.setSetList(
+      SetListType.view,
+      Setlist(
+        title: widget.pl?.title ?? widget.plTitle.replaceAll('/', ''),
+        subtitle: widget.pl?.subtitle ?? '',
+        tag: widget.pl?.id.toString() ?? widget.plTitle,
+      ),
+    );
   }
 
   void _onPlaylistChanged() async {
@@ -86,7 +95,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     if (widget.pl != null) {
       DatabaseHelper().updatePlaylist(
         widget.pl!.id,
-        orderMode: modeAtual.disconvert(),
+        orderMode: enumToInt(modeAtual),
       );
     }
   }
@@ -98,7 +107,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
         try {
           setState(() {
             songsNowTranslated.remove(item);
-            MusyncAudioHandler.songsAll.remove(item);
+            MusyncAudioHandler.actlist.songsAll.remove(item);
           });
           await widget.audioHandler.recreateQueue(songs: songsNowTranslated);
           await file.delete();
@@ -495,18 +504,19 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   modeReorder: modeAtual,
                   idPlaylist:
                       widget.pl?.id.toString() ??
-                      MusyncAudioHandler.mainPlaylist.tag,
+                      MusyncAudioHandler.actlist.mainPlaylist.tag,
                   withReorder: true,
                   aposClique: (item) async {
                     bool recriou = await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,
                     );
-                    
+
                     widget.audioHandler.savePl(
-                      (widget.pl?.id ?? widget.plTitle).toString() ,
-                      subt: widget.pl?.subtitle ?? '',
-                      title: widget.pl?.title ?? widget.plTitle,
-                      id: widget.pl?.id.toString() ?? widget.plTitle,
+                      Setlist(
+                        title: widget.pl?.title ?? widget.plTitle,
+                        subtitle: widget.pl?.subtitle ?? '',
+                        tag: (widget.pl?.id ?? widget.plTitle).toString(),
+                      ),
                     );
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,

@@ -164,12 +164,16 @@ class _SettingsPageState extends State<SettingsPage> {
                               onPressed: () async {
                                 bool pode = await showPopupAdd(
                                   context,
-                                  "Deseja remover todos os ups de \"${widget.audioHandler.atualPlaylist.value.title}\"",
+                                  "Deseja remover todos os ups de \"${MusyncAudioHandler.actlist.atualPlaylist.value.title}\"",
                                   [],
                                 );
                                 if (pode) {
                                   await DatabaseHelper().unupInPlaylist(
-                                    widget.audioHandler.atualPlaylist.value.tag,
+                                    MusyncAudioHandler
+                                        .actlist
+                                        .atualPlaylist
+                                        .value
+                                        .tag,
                                   );
                                 }
                               },

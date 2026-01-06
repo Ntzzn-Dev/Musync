@@ -24,7 +24,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   List<Map<String, dynamic>> videos = [];
   final List<String> caminhos =
-      MusyncAudioHandler.songsAll
+      MusyncAudioHandler.actlist.songsAll
           .map((item) => item.extras?['path'] as String?)
           .where((path) => path != null)
           .cast<String>()

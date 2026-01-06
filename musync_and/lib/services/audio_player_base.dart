@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
@@ -18,49 +19,18 @@ enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual, up }
 
 enum ModeLoopEnum { off, all, one }
 
-extension ModeShuffleEnumExt on ModeShuffleEnum {
-  ModeShuffleEnum next() {
-    final nextIndex = (index + 1) % ModeShuffleEnum.values.length;
-    return ModeShuffleEnum.values[nextIndex];
-  }
-
-  static ModeShuffleEnum convert(int i) {
-    return ModeShuffleEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+T enumNext<T extends Enum>(T value, List<T> values) {
+  final limit = values.length;
+  final nextIndex = (value.index + 1) % limit;
+  return values[nextIndex];
 }
 
-extension ModeOrderEnumExt on ModeOrderEnum {
-  ModeOrderEnum next() {
-    int nextIndex = (index + 1) % 4;
-    return ModeOrderEnum.values[nextIndex];
-  }
-
-  static ModeOrderEnum convert(int i) {
-    return ModeOrderEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+T enumFromInt<T extends Enum>(int i, List<T> values) {
+  return values[i - 1];
 }
 
-extension ModeLoopEnumExt on ModeLoopEnum {
-  ModeLoopEnum next() {
-    final nextIndex = (index + 1) % ModeLoopEnum.values.length;
-    return ModeLoopEnum.values[nextIndex];
-  }
-
-  static ModeLoopEnum convert(int i) {
-    return ModeLoopEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+int enumToInt<T extends Enum>(T value) {
+  return value.index + 1;
 }
 
 class MusyncAudioHandler extends BaseAudioHandler
@@ -69,13 +39,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   ValueNotifier<int> currentIndex = ValueNotifier(0);
   final _equality = const DeepCollectionEquality();
 
-  static List<MediaItem> songsAll = [];
-  static List<MediaItem> songsAllPlaylist = [];
-  List<MediaItem> songsAtual = [];
-
-  static Setlist mainPlaylist = Setlist();
-  static Setlist viewingPlaylist = Setlist();
-  ValueNotifier<Setlist> atualPlaylist = ValueNotifier(Setlist());
+  static ActionList actlist = ActionList();
 
   late List<Playlists> playlists;
 
@@ -89,6 +53,8 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
     }
+
+    final songsAtual = actlist.getMediaItemsFromQueue();
 
     mediaAtual = ValueNotifier(
       MediaAtual(
@@ -108,7 +74,11 @@ class MusyncAudioHandler extends BaseAudioHandler
           String allIds = msg?['data'];
           final listIds = allIds.split(',');
 
-          eko?.sendAudios(songsAtual, currentIndex.value, listIds);
+          eko?.sendAudios(
+            actlist.getMediaItemsFromQueue(),
+            currentIndex.value,
+            listIds,
+          );
           Ekosystem.indexInitial = currentIndex.value;
           break;
         case 'position':
@@ -122,10 +92,10 @@ class MusyncAudioHandler extends BaseAudioHandler
           MediaAtual.volume.value = msg?['data'].toDouble();
           break;
         case 'newloop':
-          loopMode.value = ModeLoopEnumExt.convert(msg?['data']);
+          loopMode.value = enumFromInt(msg?['data'], ModeLoopEnum.values);
           break;
         case 'newshuffle':
-          shuffleMode.value = ModeShuffleEnumExt.convert(msg?['data']);
+          shuffleMode.value = enumFromInt(msg?['data'], ModeShuffleEnum.values);
           break;
         case 'newindex':
           int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
@@ -142,11 +112,11 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void reorganizeSongsAtual(Map<String, dynamic> ordem) {
-    songsAtual.sort((a, b) {
-      final posA = ordem[a.id.split('/').last] ?? 0;
-      final posB = ordem[b.id.split('/').last] ?? 0;
-      return posA.compareTo(posB);
-    });
+    //songsAtual.sort((a, b) {
+    //  final posA = ordem[a.id.split('/').last] ?? 0;
+    //  final posB = ordem[b.id.split('/').last] ?? 0;
+    //  return posA.compareTo(posB);
+    //});
   }
 
   MediaControl get shuffleButton {
@@ -217,7 +187,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
     switch (name) {
       case 'random':
-        shuffleMode.value = shuffleMode.value.next();
+        shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
         prepareShuffle();
         _broadcastState();
         break;
@@ -230,59 +200,39 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void upNotification()async {
+  void upNotification() async {
+    MediaItem song = actlist.getMusicAtual(currentIndex.value);
     await DatabaseHelper().upInPlaylist(
-      atualPlaylist.value.title,
-      songsAtual[currentIndex.value].id,
-      songsAtual[currentIndex.value].title,
+      actlist.atualPlaylist.value.title,
+      song.id,
+      song.title,
     );
 
-    MusyncAudioHandler
-        .songsAllPlaylist = await MusyncAudioHandler.reorder(
+    actlist.songsAllPlaylist = await MusyncAudioHandler.reorder(
       ModeOrderEnum.up,
-      songsAtual,
+      actlist.getMediaItemsFromQueue(),
     );
-    songsAtual = MusyncAudioHandler.songsAllPlaylist;
+    actlist.setMusicListAtual(actlist.songsAllPlaylist, this);
 
-    setCurrentTrack(index: 0); //CORRIGIR ORDEM QUE FICA TODA ERRADA QUANDO UM ITEM É UPADO PELA NOTIFICAÇÃO. 
-    //EM ALGUM MOMENTO AS MUSICAS DA VIEW VAO PARA A MAIN PAGE, VERIFICAR O PQ
-  }
-
-  void setViewPlaylist(String title, String subtitle, String tag){
-    viewingPlaylist.tag = tag; 
-    viewingPlaylist.subtitle = subtitle;
-    viewingPlaylist.title = title;
+    setCurrentTrack(index: 0);
   }
 
   Future<void> searchPlaylists() async {
     playlists = await DatabaseHelper().loadPlaylists();
   }
 
-  void alterSetList(Setlist ss) {
-    atualPlaylist.value = ss;
-  }
-
-  void savePl(
-    String plDynamic, {
-    String? subt,
-    String? title,
-    String? id,
-  }) async {
+  void savePl(Setlist setlist) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('pl_last', plDynamic.toString());
-    
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      subtitle: subt ?? '',
-      title: title,
-      tag: id,
-    );
+    prefs.setString('pl_last', setlist.tag);
+
+    actlist.setSetList(SetListType.atual, setlist);
   }
 
   Future<void> skipPlaylist(bool next) async {
     List<int> idsPls = playlists.map((pl) => pl.id).toList();
 
     final currentIndex = idsPls.indexOf(
-      int.tryParse(atualPlaylist.value.tag) ?? -1,
+      int.tryParse(actlist.atualPlaylist.value.tag) ?? -1,
     );
     if (currentIndex == -1) return;
 
@@ -291,15 +241,18 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     final nextPlaylist = playlists.firstWhere((pl) => pl.id == idNext);
 
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      subtitle: nextPlaylist.subtitle,
-      title: nextPlaylist.title,
-      tag: nextPlaylist.id.toString(),
+    actlist.setSetList(
+      SetListType.atual,
+      Setlist(
+        title: nextPlaylist.title,
+        subtitle: nextPlaylist.subtitle,
+        tag: nextPlaylist.id.toString(),
+      ),
     );
 
     List<MediaItem> newsongs = await nextPlaylist.findMusics();
 
-    if (newsongs.isEmpty) newsongs = songsAllPlaylist;
+    if (newsongs.isEmpty) newsongs = actlist.songsAllPlaylist;
 
     await recreateQueue(songs: newsongs);
   }
@@ -315,33 +268,47 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       index = 0;
     }
-    if (songsAtual.isEmpty) return;
+    if (actlist.queueIsEmpty()) return;
     currentIndex.value = index;
-    atualPlaylist.value = atualPlaylist.value.copyWith(nowPlaying: index);
-    final item = songsAtual[index];
-    final src = ProgressiveAudioSource(Uri.parse(item.id));
-    await audPl.setAudioSource(src);
-    mediaItem.add(item);
+    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
+      indexPlaying: index,
+    );
+    final item = actlist.queueList[index];
+    item.execute(this);
+  }
+
+  bool _executando = false;
+  Future<void> executeMusic(ProgressiveAudioSource src, MediaItem item) async {
+    if (!_executando) {
+      _executando = true;
+      await audPl.pause();
+      await audPl.setAudioSource(src);
+      mediaItem.add(item);
+      _executando = false;
+
+      if (item.id != actlist.getMusicAtual(currentIndex.value).id) {
+        log("executando correção");
+        final item = actlist.queueList[currentIndex.value];
+        item.execute(this);
+        play();
+      }
+    }
   }
 
   Future<void> initSongs({required List<MediaItem> songs}) async {
     await searchPlaylists();
 
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      subtitle: mainPlaylist.subtitle,
-      title: mainPlaylist.title,
-      tag: mainPlaylist.tag,
-    );
+    actlist.setSetList(SetListType.atual, actlist.mainPlaylist);
 
-    if (!playlists.any((pl) => pl.title == mainPlaylist.title)) {
-      int id = int.tryParse(atualPlaylist.value.tag) ?? 0;
+    if (!playlists.any((pl) => pl.title == actlist.mainPlaylist.title)) {
+      int id = int.tryParse(actlist.atualPlaylist.value.tag) ?? 0;
 
       playlists.insert(
         0,
         Playlists(
           id: id,
-          title: atualPlaylist.value.title,
-          subtitle: atualPlaylist.value.subtitle,
+          title: actlist.atualPlaylist.value.title,
+          subtitle: actlist.atualPlaylist.value.subtitle,
           ordem: 0,
           orderMode: 0,
         ),
@@ -350,15 +317,15 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     audPl.playbackEventStream.listen(_broadcastState);
     log(songs.length.toString());
-    songsAtual = [...songs];
+    actlist.setMusicListAtual(songs, this);
 
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      qntTotal: songsAtual.length,
+    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
+      qntTotal: actlist.getLengthMusicListAtual(),
     );
 
-    await setCurrentTrack();
+    setCurrentTrack();
 
-    queue.add(List.from(songsAtual));
+    queue.add(actlist.getMediaItemsFromQueue());
 
     audPl.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
@@ -378,10 +345,10 @@ class MusyncAudioHandler extends BaseAudioHandler
       return false;
     }
 
-    songsAtual = [...songs];
+    actlist.setMusicListAtual(songs, this);
 
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      qntTotal: songsAtual.length,
+    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
+      qntTotal: actlist.getLengthMusicListAtual(),
     );
 
     if (eko?.conected.value ?? false) {
@@ -391,7 +358,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       currentIndex.value = 0;
 
-      await setCurrentTrack(index: 0);
+      setCurrentTrack(index: 0);
 
       queue.add(songs);
 
@@ -403,13 +370,14 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void reorganizeQueue({required List<MediaItem> songs}) {
-    MediaItem songAtual =
-        songsAtual[currentIndex.value == -1 ? 0 : currentIndex.value];
+    MediaItem songAtual = actlist.getMusicAtual(
+      currentIndex.value == -1 ? 0 : currentIndex.value,
+    );
 
-    songsAtual = [...songs];
+    actlist.setMusicListAtual(songs, this);
 
-    atualPlaylist.value = atualPlaylist.value.copyWith(
-      qntTotal: songsAtual.length,
+    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
+      qntTotal: actlist.getLengthMusicListAtual(),
     );
 
     currentIndex.value = songs.indexOf(songAtual);
@@ -436,7 +404,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   );
 
   void setShuffleModeEnabled() {
-    shuffleMode.value = shuffleMode.value.next();
+    shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
     prepareShuffle();
     _broadcastState();
   }
@@ -446,7 +414,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void setLoopModeEnabled() {
-    loopMode.value = loopMode.value.next();
+    loopMode.value = enumNext(loopMode.value, ModeLoopEnum.values);
   }
 
   ModeLoopEnum isLoopEnabled() {
@@ -473,7 +441,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (eko?.conected.value ?? false) {
       sendMediaIndex(index);
     } else {
-      await setCurrentTrack(index: index);
+      setCurrentTrack(index: index);
       if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
         prepareShuffle();
       }
@@ -493,7 +461,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void setMediaIndex(int index) {
-    final item = songsAtual[index];
+    final item = actlist.getMusicAtual(index);
 
     musyncMediaUpdateNotifier.notifyMediaChanged(item);
 
@@ -533,7 +501,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     final shouldStop = await repeatNormal();
     if (shouldStop) return;
 
-    if (currentIndex.value + 1 < songsAtual.length) {
+    if (currentIndex.value + 1 < actlist.getLengthActionsListAtual()) {
       if (eko?.conected.value ?? false) {
         sendMediaIndex(currentIndex.value + 1);
       } else {
@@ -557,7 +525,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       if (eko?.conected.value ?? false) {
         sendMediaIndex(currentIndex.value);
       } else {
-        await setCurrentTrack(index: currentIndex.value);
+        setCurrentTrack(index: currentIndex.value);
         play();
       }
     }
@@ -569,7 +537,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       play();
       return true;
     } else if (loopMode.value == ModeLoopEnum.all &&
-        currentIndex.value + 1 >= songsAtual.length) {
+        currentIndex.value + 1 >= actlist.getLengthActionsListAtual()) {
       currentIndex.value = -1;
       return false;
     } else {
@@ -603,7 +571,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (eko?.conected.value ?? false) {
       sendMediaIndex(nextIndex);
     } else {
-      await setCurrentTrack(index: nextIndex);
+      setCurrentTrack(index: nextIndex);
       play();
     }
   }
@@ -621,7 +589,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (eko?.conected.value ?? false) {
       sendMediaIndex(prevIndex);
     } else {
-      await setCurrentTrack(index: prevIndex);
+      setCurrentTrack(index: prevIndex);
       play();
     }
   }
@@ -718,8 +686,8 @@ class MusyncAudioHandler extends BaseAudioHandler
         break;
       case ModeOrderEnum.up:
         ordenadas = await DatabaseHelper().reorderToUp(
-          viewingPlaylist.tag.toString(),
-          songs
+          actlist.viewingPlaylist.tag.toString(),
+          songs,
         );
         break;
     }

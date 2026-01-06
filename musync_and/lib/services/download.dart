@@ -176,7 +176,7 @@ class DownloadSpecs {
         artUri: Uri.parse(thumbUrl),
       );
 
-      MusyncAudioHandler.songsAll.add(musicBaixada);
+      MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
 
       await Playlists.atualizarNoMediaStore(mp3path);
       atualizarProgresso(progressAtual);

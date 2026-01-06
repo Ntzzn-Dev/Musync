@@ -8,12 +8,14 @@ import 'package:musync_and/pages/control_page.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
+import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player_base.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/download.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:musync_and/services/setlist.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
@@ -54,8 +56,10 @@ class _MusicPageState extends State<MusicPage> {
     super.initState();
     ListPlaylist.getMainPlaylist().then((value) {
       setState(() {
-        MusyncAudioHandler.mainPlaylist.title = value.replaceAll('/', '');
-        MusyncAudioHandler.mainPlaylist.tag = value;
+        MusyncAudioHandler.actlist.setSetList(
+          SetListType.main,
+          Setlist(title: value.replaceAll('/', ''), tag: value),
+        );
       });
     });
     _initFetchSongs();
@@ -86,9 +90,9 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> _initFetchSongs() async {
     final fetchedSongs = await FetchSongs.execute();
 
-    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs,);
+    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs);
 
-    MusyncAudioHandler.songsAll = reordered;
+    MusyncAudioHandler.actlist.songsAll = reordered;
 
     await loadSongsNow();
 
@@ -98,42 +102,47 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> loadSongsNow() async {
     print('metodo loadSongsNow');
     await widget.audioHandler.searchPlaylists();
-    int idpl = int.tryParse(MusyncAudioHandler.mainPlaylist.tag) ?? -1;
+    int idpl = int.tryParse(MusyncAudioHandler.actlist.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
       final pl = await DatabaseHelper().loadPlaylist(idpl);
       if (pl != null) {
         final newsongs = await pl.findMusics();
         if (newsongs.isNotEmpty) {
           songsNow = newsongs;
-          MusyncAudioHandler.mainPlaylist.title = pl.title;
-          MusyncAudioHandler.mainPlaylist.subtitle = pl.subtitle;
-          MusyncAudioHandler.mainPlaylist.tag = pl.id.toString();
+          MusyncAudioHandler.actlist.setSetList(
+            SetListType.main,
+            Setlist(
+              title: pl.title,
+              subtitle: pl.subtitle,
+              tag: pl.id.toString(),
+            ),
+          );
         }
       }
-    } else if (MusyncAudioHandler.mainPlaylist.tag.contains('/')) {
-      if (MusyncAudioHandler.mainPlaylist.tag == '/Todas') {
-        songsNow = MusyncAudioHandler.songsAll;
+    } else if (MusyncAudioHandler.actlist.mainPlaylist.tag.contains('/')) {
+      if (MusyncAudioHandler.actlist.mainPlaylist.tag == '/Todas') {
+        songsNow = MusyncAudioHandler.actlist.songsAll;
       } else {
         final newsongs =
-            MusyncAudioHandler.songsAll.where((item) {
+            MusyncAudioHandler.actlist.songsAll.where((item) {
               final songFolders = ListPlaylist.getFolderName(
                 item.extras?['path'],
               );
 
-              return songFolders == MusyncAudioHandler.mainPlaylist.tag;
+              return songFolders == MusyncAudioHandler.actlist.mainPlaylist.tag;
             }).toList();
 
         songsNow = newsongs;
       }
     } else {
       final artistList =
-          MusyncAudioHandler.mainPlaylist.tag
+          MusyncAudioHandler.actlist.mainPlaylist.tag
               .split(',')
               .map((a) => a.trim().toLowerCase())
               .toList();
 
       final newsongs =
-          MusyncAudioHandler.songsAll.where((item) {
+          MusyncAudioHandler.actlist.songsAll.where((item) {
             final songArtists =
                 (item.artist ?? '')
                     .split(',')
@@ -146,20 +155,25 @@ class _MusicPageState extends State<MusicPage> {
       songsNow = newsongs;
     }
     setState(() {
-      MusyncAudioHandler.songsAllPlaylist = songsNow;
+      MusyncAudioHandler.actlist.songsAllPlaylist = songsNow;
     });
 
-    widget.audioHandler.setViewPlaylist(MusyncAudioHandler.mainPlaylist.title,MusyncAudioHandler.mainPlaylist.subtitle,MusyncAudioHandler.mainPlaylist.tag);
+    MusyncAudioHandler.actlist.setSetList(
+      SetListType.view,
+      MusyncAudioHandler.actlist.mainPlaylist,
+    );
   }
 
   void switchOrder(ModeOrderEnum mod) async {
     modeAtual = mod;
-    MusyncAudioHandler.songsAllPlaylist = await MusyncAudioHandler.reorder(
+    MusyncAudioHandler
+        .actlist
+        .songsAllPlaylist = await MusyncAudioHandler.reorder(
       modeAtual,
-      MusyncAudioHandler.songsAllPlaylist,
+      MusyncAudioHandler.actlist.songsAllPlaylist,
     );
     setState(() {
-      songsNow = MusyncAudioHandler.songsAllPlaylist;
+      songsNow = MusyncAudioHandler.actlist.songsAllPlaylist;
     });
   }
 
@@ -178,10 +192,10 @@ class _MusicPageState extends State<MusicPage> {
       final pl = await DatabaseHelper().loadPlaylist(id);
       newsongs = await pl?.findMusics() ?? [];
     } else if (ultimaPlaylist == 'Todas') {
-      newsongs = MusyncAudioHandler.songsAll;
+      newsongs = MusyncAudioHandler.actlist.songsAll;
     } else {
       newsongs =
-          MusyncAudioHandler.songsAll
+          MusyncAudioHandler.actlist.songsAll
               .where(
                 (item) =>
                     (item.artist ?? '').trim().contains(ultimaPlaylist.trim()),
@@ -254,19 +268,14 @@ class _MusicPageState extends State<MusicPage> {
           audioHandler: widget.audioHandler,
           songsNow: songsNow,
           modeReorder: modeAtual,
-          idPlaylist: MusyncAudioHandler.mainPlaylist.tag.toString(),
+          idPlaylist: MusyncAudioHandler.actlist.mainPlaylist.tag.toString(),
           aposClique: (item) async {
             await widget.audioHandler.recreateQueue(
-              songs: MusyncAudioHandler.songsAllPlaylist,
+              songs: MusyncAudioHandler.actlist.songsAllPlaylist,
             );
-            widget.audioHandler.savePl(
-              MusyncAudioHandler.mainPlaylist.tag,
-              subt: MusyncAudioHandler.mainPlaylist.subtitle,
-              title: MusyncAudioHandler.mainPlaylist.title,
-            );
-            int indiceCerto = MusyncAudioHandler.songsAllPlaylist.indexWhere(
-              (t) => t == item,
-            );
+            widget.audioHandler.savePl(MusyncAudioHandler.actlist.mainPlaylist);
+            int indiceCerto = MusyncAudioHandler.actlist.songsAllPlaylist
+                .indexWhere((t) => t == item);
             if (ekosystem?.conected.value ?? false) {
               Ekosystem.indexInitial = indiceCerto;
             }
@@ -299,7 +308,7 @@ class _MusicPageState extends State<MusicPage> {
                 art.split(',').map((a) => a.trim().toLowerCase()).toList();
 
             final newsongs =
-                MusyncAudioHandler.songsAll.where((item) {
+                MusyncAudioHandler.actlist.songsAll.where((item) {
                   final songArtists =
                       (item.artist ?? '')
                           .split(',')
@@ -315,11 +324,14 @@ class _MusicPageState extends State<MusicPage> {
           },
           escolhaDePasta: (fold) {
             if (fold == '/Todas') {
-              _abrirPlaylist(title: fold, songs: MusyncAudioHandler.songsAll);
+              _abrirPlaylist(
+                title: fold,
+                songs: MusyncAudioHandler.actlist.songsAll,
+              );
               return;
             }
             final newsongs =
-                MusyncAudioHandler.songsAll.where((item) {
+                MusyncAudioHandler.actlist.songsAll.where((item) {
                   final songFolders = ListPlaylist.getFolderName(
                     item.extras?['path'],
                   );
@@ -331,12 +343,13 @@ class _MusicPageState extends State<MusicPage> {
           },
           trocaDeMain: (newMain) {
             setState(() {
-              MusyncAudioHandler.mainPlaylist.tag = newMain;
-              MusyncAudioHandler.mainPlaylist.title = newMain.replaceAll(
-                '/',
-                '',
+              MusyncAudioHandler.actlist.mainPlaylist.tag = newMain;
+              MusyncAudioHandler.actlist.mainPlaylist.title = newMain
+                  .replaceAll('/', '');
+              MusyncAudioHandler.actlist.setSetList(
+                SetListType.view,
+                MusyncAudioHandler.actlist.mainPlaylist,
               );
-              widget.audioHandler.alterSetList(MusyncAudioHandler.mainPlaylist);
               loadSongsNow();
               modeAtual = ModeOrderEnum.dataZA;
             });
@@ -354,9 +367,9 @@ class _MusicPageState extends State<MusicPage> {
         try {
           setState(() {
             songsNow.remove(item);
-            MusyncAudioHandler.songsAll.remove(item);
-            if (MusyncAudioHandler.songsAllPlaylist.contains(item)) {
-              MusyncAudioHandler.songsAllPlaylist.remove(item);
+            MusyncAudioHandler.actlist.songsAll.remove(item);
+            if (MusyncAudioHandler.actlist.songsAllPlaylist.contains(item)) {
+              MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
             }
           });
           await widget.audioHandler.recreateQueue(songs: songsNow);
@@ -395,8 +408,11 @@ class _MusicPageState extends State<MusicPage> {
         settings: const RouteSettings(name: 'playlistOpened'),
       ),
     ).then((_) {
-      widget.audioHandler.setViewPlaylist(MusyncAudioHandler.mainPlaylist.title,MusyncAudioHandler.mainPlaylist.subtitle,MusyncAudioHandler.mainPlaylist.tag);}
-    );
+      MusyncAudioHandler.actlist.setSetList(
+        SetListType.view,
+        MusyncAudioHandler.actlist.mainPlaylist,
+      );
+    });
   }
 
   Future<bool> moreOptionsSelected(List<int> indexMsc) async {
@@ -912,7 +928,8 @@ class _MusicPageState extends State<MusicPage> {
                         onTap: () {
                           setState(() {
                             abaSelect = 0;
-                            songsNow = MusyncAudioHandler.songsAllPlaylist;
+                            songsNow =
+                                MusyncAudioHandler.actlist.songsAllPlaylist;
                           });
                         },
                         child: Container(
@@ -930,7 +947,7 @@ class _MusicPageState extends State<MusicPage> {
                             ),
                           ),
                           child: Text(
-                            MusyncAudioHandler.mainPlaylist.title,
+                            MusyncAudioHandler.actlist.mainPlaylist.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
@@ -1059,7 +1076,7 @@ class _MusicPageState extends State<MusicPage> {
                             onChanged: (value) {
                               setState(() {
                                 songsNow =
-                                    MusyncAudioHandler.songsAllPlaylist
+                                    MusyncAudioHandler.actlist.songsAllPlaylist
                                         .where(
                                           (item) => removeDiacritics(item.title)
                                               .toLowerCase()
@@ -1077,7 +1094,8 @@ class _MusicPageState extends State<MusicPage> {
                             _searchController.clear();
 
                             setState(() {
-                              songsNow = MusyncAudioHandler.songsAllPlaylist;
+                              songsNow =
+                                  MusyncAudioHandler.actlist.songsAllPlaylist;
                             });
                             _toggleTop();
                           },
