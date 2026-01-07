@@ -303,14 +303,26 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Otimização de código e inicio de controle de fila dinâmica.  
 - Correção do travamento por conta de troca abrupta de faixas consecutivamente.
 
+### version 5.10.2
+- Mais otimizações de código.
+- Introdução de boas práticas de programação para evitar dados dynamics.
+- União do player_eko com o player normal.  
+- Otimização no código da edição desktop.  
+- Correção no desktop para não ficar acumulando músicas no temporário.  
+- Novas indentificações de conexão com o desktop.  
+- Correção das playlists no modo SuperControl.  
+- Adição do botão de up e checkpoint no SuperControl.  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
 + Criar checkpoint para reiniciar músicas.  
 + Atualizar o README para explicar novas adições.  
++ Fazer com que ao dar up em uma música a lista se mantenha intacta até que a faixa termine, e só depois a musica upada vai para o primeiro da lista, evitando que um up te tire do index em que estava.  
 + Criar formato de fila dinamica, para guardar musicas, organização, tipo de reprodução de stack [aleatorio/repetir], agrupamento de musicas iguais / semelhantes [slowed/spedup] TO v6.0
 + Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
++ Troca de informações dkt to and shuffle e repeat falha.  
 + Enviar junto o nome da playlist atual.  
 + Corrigir substituição de Ekosystem.initialIndex quando aperto na lista todas.  
 + Dividir lista de ids de musicas ja baixadas no desktop para não ocupar toda a memoria do socket

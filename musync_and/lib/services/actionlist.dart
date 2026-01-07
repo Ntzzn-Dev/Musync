@@ -65,8 +65,6 @@ class ActionList {
           subtitle: list.subtitle,
           title: list.title,
           tag: list.tag,
-          indexPlaying: list.indexPlaying,
-          qntTotal: list.qntTotal,
         );
         break;
     }

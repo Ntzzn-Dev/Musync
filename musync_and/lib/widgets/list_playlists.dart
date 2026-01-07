@@ -166,75 +166,87 @@ class _ListPlaylistState extends State<ListPlaylist> {
     });
   }
 
-  List<Map<String, dynamic>> moreOptions(BuildContext context, Playlists item) {
+  List<OptionItem> moreOptions(BuildContext context, Playlists item) {
     return [
-      {
-        'opt': 'Editar Playlist',
-        'icon': Icons.edit,
-        'funct': () async {
-          await showPopupAdd(
-            context,
-            'Editar Playlist',
-            [
-              {'value': 'Título', 'type': 'title'},
-              {'value': 'Subtitulo', 'type': 'text'},
-            ],
-            fieldValues: [item.title, item.subtitle],
-            onConfirm: (valores) async {
-              await DatabaseHelper().updatePlaylist(
-                item.id,
-                title: valores[0],
-                subtitle: valores[1],
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Tornar principal',
+            icon: Icons.emoji_events,
+            funct: () async {
+              await showPopupAdd(
+                context,
+                'Editar Playlist',
+                [
+                  ContentItem(value: 'Título', type: ContentTypeEnum.title),
+                  ContentItem(value: 'Subtulo', type: ContentTypeEnum.text),
+                ],
+                fieldValues: [item.title, item.subtitle],
+                onConfirm: (valores) async {
+                  await DatabaseHelper().updatePlaylist(
+                    item.id,
+                    title: valores[0],
+                    subtitle: valores[1],
+                  );
+
+                  plsBase = await DatabaseHelper().loadPlaylists();
+                  pls = plsBase;
+
+                  setState(() {});
+
+                  await ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Playlist Atualizada')),
+                  );
+                },
               );
-
-              plsBase = await DatabaseHelper().loadPlaylists();
-              pls = plsBase;
-
-              setState(() {});
-
-              await ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Playlist Atualizada')),
-              );
+              Navigator.of(context).pop();
             },
-          );
-          Navigator.of(context).pop();
-        },
-      },
-      {
-        'opt': 'Tornar principal',
-        'icon': Icons.emoji_events,
-        'funct': () async {
-          final turnMain = await showPopupAdd(
-            context,
-            'Tornar ${item.title} a playlist principal?',
-            [],
-          );
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Tornar principal',
+            icon: Icons.edit,
+            funct: () async {
+              final turnMain = await showPopupAdd(
+                context,
+                'Tornar ${item.title} a playlist principal?',
+                [],
+              );
 
-          if (turnMain) {
-            final prefs = await SharedPreferences.getInstance();
-            setState(() {
-              mainPlaylist = '${item.id}';
-              prefs.setString('playlist_main', '${item.id}');
-              widget.trocaDeMain?.call('${item.id}');
-            });
-          }
-        },
-      },
-      {
-        'opt': 'Apagar Playlist',
-        'icon': Icons.delete_forever,
-        'funct': () async {
-          if (await showPopupAdd(context, 'Deletar playlist?', [])) {
-            await DatabaseHelper().removePlaylist(item.id);
+              if (turnMain) {
+                final prefs = await SharedPreferences.getInstance();
+                setState(() {
+                  mainPlaylist = '${item.id}';
+                  prefs.setString('playlist_main', '${item.id}');
+                  widget.trocaDeMain?.call('${item.id}');
+                });
+              }
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Apagar Playlist',
+            icon: Icons.delete_forever,
+            funct: () async {
+              if (await showPopupAdd(context, 'Deletar playlist?', [])) {
+                await DatabaseHelper().removePlaylist(item.id);
 
-            pls = await DatabaseHelper().loadPlaylists();
+                pls = await DatabaseHelper().loadPlaylists();
 
-            setState(() {});
+                setState(() {});
 
-            Navigator.of(context).pop();
-          }
-        },
-      },
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+        ],
+      ),
     ];
   }
 
@@ -248,8 +260,8 @@ class _ListPlaylistState extends State<ListPlaylist> {
               context,
               'Adicionar Playlist',
               [
-                {'value': 'Título', 'type': 'title'},
-                {'value': 'Subtitulo', 'type': 'text'},
+                ContentItem(value: 'Título', type: ContentTypeEnum.title),
+                ContentItem(value: 'Subtitulo', type: ContentTypeEnum.text),
               ],
               onConfirm: (valores) async {
                 DatabaseHelper().insertPlaylist(valores[0], valores[1], 1);

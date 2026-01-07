@@ -7,6 +7,17 @@ import 'package:musync_and/widgets/sound_control.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/themes.dart';
 
+enum ButtonTypes {
+  prev,
+  next,
+  shuffle,
+  repeat,
+  up,
+  nextPlaylist,
+  prevPlaylist,
+  checkpoint,
+}
+
 class ControlPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
   const ControlPage({super.key, required this.audioHandler});
@@ -17,7 +28,6 @@ class ControlPage extends StatefulWidget {
 
 class _ControlPageState extends State<ControlPage> {
   final ekoConnected = MusyncAudioHandler.eko?.conected.value ?? false;
-  bool changingTrack = false;
   Stream<String> _timeStream() async* {
     yield* Stream.periodic(const Duration(seconds: 1), (_) {
       return DateFormat('HH:mm').format(DateTime.now());
@@ -97,6 +107,14 @@ class _ControlPageState extends State<ControlPage> {
                 Player.formatDuration(position, false),
                 style: const TextStyle(fontFamily: 'Default-Thin'),
               ),
+              if (ekoConnected)
+                Text(
+                  'CONECTADO AO DESKTOP',
+                  style: TextStyle(
+                    fontFamily: 'Default-Thin',
+                    color: baseAppColor,
+                  ),
+                ),
               Text(
                 Player.formatDuration(durationTotal, false),
                 style: const TextStyle(fontFamily: 'Default-Thin'),
@@ -125,6 +143,7 @@ class _ControlPageState extends State<ControlPage> {
                   mediaAtual.sendPauseAndPlay(!isPlaying);
                 },
                 1,
+                1,
               );
             },
           );
@@ -147,14 +166,15 @@ class _ControlPageState extends State<ControlPage> {
                 : widget.audioHandler.play();
           },
           1,
+          1,
         );
       },
     );
   }
 
-  Widget buildAudioHandlerButtons(String type) {
+  Widget buildAudioHandlerButtons(ButtonTypes type) {
     switch (type) {
-      case 'next':
+      case ButtonTypes.next:
         return ValueListenableBuilder<ModeShuffleEnum>(
           valueListenable: widget.audioHandler.shuffleMode,
           builder: (context, value, child) {
@@ -171,18 +191,20 @@ class _ControlPageState extends State<ControlPage> {
                 await widget.audioHandler.skipToNext();
               },
               1,
+              1,
             );
           },
         );
-      case 'prev':
+      case ButtonTypes.prev:
         return _buildButton(
           Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
           () async {
             await widget.audioHandler.skipToPrevious();
           },
           1,
+          1,
         );
-      case 'shuffle':
+      case ButtonTypes.shuffle:
         return ValueListenableBuilder<ModeShuffleEnum>(
           valueListenable: widget.audioHandler.shuffleMode,
           builder: (context, value, child) {
@@ -203,11 +225,12 @@ class _ControlPageState extends State<ControlPage> {
               () {
                 widget.audioHandler.setShuffleModeEnabled();
               },
-              3 / 2,
+              5 / 4,
+              2,
             );
           },
         );
-      case 'repeat':
+      case ButtonTypes.repeat:
         return ValueListenableBuilder<ModeLoopEnum>(
           valueListenable: widget.audioHandler.loopMode,
           builder: (context, value, child) {
@@ -223,33 +246,60 @@ class _ControlPageState extends State<ControlPage> {
               () {
                 widget.audioHandler.setLoopModeEnabled();
               },
-              3 / 2,
+              5 / 4,
+              2,
             );
           },
         );
-      case 'next_playlist':
+      case ButtonTypes.up:
+        return _buildButton(
+          Icon(Icons.favorite, size: 45),
+          () {
+            widget.audioHandler.upAtualMedia();
+          },
+          5 / 8,
+          1,
+        );
+      case ButtonTypes.nextPlaylist:
         return _buildButton(
           Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
           () async {
             await widget.audioHandler.skipPlaylist(true);
+            setState(() {});
           },
-          3 / 2,
+          2 / 2,
+          1,
         );
-      case 'prev_playlist':
+      case ButtonTypes.prevPlaylist:
         return _buildButton(
           Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
           () async {
             await widget.audioHandler.skipPlaylist(false);
+            setState(() {});
           },
-          3 / 2,
+          2 / 2,
+          1,
         );
-      default:
-        return SizedBox.shrink();
+      case ButtonTypes.checkpoint:
+        return _buildButton(
+          Icon(Icons.track_changes, size: 45),
+          () async {
+            widget.audioHandler.returnToCheckpoint();
+          },
+          2 / 2,
+          1,
+        );
     }
   }
 
-  Widget _buildButton(Widget icon, VoidCallback onPressed, double aspect) {
+  Widget _buildButton(
+    Widget icon,
+    VoidCallback onPressed,
+    double aspect,
+    int flex,
+  ) {
     return Expanded(
+      flex: flex,
       child: AspectRatio(
         aspectRatio: aspect,
         child: ElevatedButton(
@@ -319,20 +369,22 @@ class _ControlPageState extends State<ControlPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildAudioHandlerButtons('prev'),
+                    buildAudioHandlerButtons(ButtonTypes.prev),
                     const SizedBox(width: 10),
                     buildPlayPauseButton(),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons('next'),
+                    buildAudioHandlerButtons(ButtonTypes.next),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildAudioHandlerButtons('shuffle'),
+                    buildAudioHandlerButtons(ButtonTypes.shuffle),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons('repeat'),
+                    buildAudioHandlerButtons(ButtonTypes.up),
+                    const SizedBox(width: 10),
+                    buildAudioHandlerButtons(ButtonTypes.repeat),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -410,7 +462,7 @@ class _ControlPageState extends State<ControlPage> {
                                       ),
                                       child: Column(
                                         children: [
-                                          Player.titleText(playlist.tag, 20),
+                                          Player.titleText(playlist.title, 20),
                                           Player.titleText(
                                             playlist.subtitle,
                                             13,
@@ -454,7 +506,7 @@ class _ControlPageState extends State<ControlPage> {
                                                       alignment:
                                                           Alignment.bottomRight,
                                                       child: Text(
-                                                        '${playlist.qntTotal}',
+                                                        '${MusyncAudioHandler.actlist.getLengthMusicListAtual()}',
                                                         style: TextStyle(
                                                           fontSize: 15,
                                                           fontWeight:
@@ -475,7 +527,7 @@ class _ControlPageState extends State<ControlPage> {
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Text(
-                                                  '${playlist.indexPlaying + 1}',
+                                                  '${widget.audioHandler.currentIndex.value + 1}',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.black,
@@ -501,9 +553,11 @@ class _ControlPageState extends State<ControlPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildAudioHandlerButtons('prev_playlist'),
+                    buildAudioHandlerButtons(ButtonTypes.prevPlaylist),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons('next_playlist'),
+                    buildAudioHandlerButtons(ButtonTypes.nextPlaylist),
+                    const SizedBox(width: 10),
+                    buildAudioHandlerButtons(ButtonTypes.checkpoint),
                   ],
                 ),
               ],

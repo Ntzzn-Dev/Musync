@@ -11,53 +11,22 @@ import 'package:path/path.dart' as p;
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
 
-enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual }
+enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual, up }
 
 enum ModeLoopEnum { off, all, one }
 
-extension ModeShuffleEnumExt on ModeShuffleEnum {
-  ModeShuffleEnum next() {
-    final nextIndex = (index + 1) % ModeShuffleEnum.values.length;
-    return ModeShuffleEnum.values[nextIndex];
-  }
-
-  static ModeShuffleEnum convert(int i) {
-    return ModeShuffleEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+T enumNext<T extends Enum>(T value, List<T> values) {
+  final limit = values.length;
+  final nextIndex = (value.index + 1) % limit;
+  return values[nextIndex];
 }
 
-extension ModeOrderEnumExt on ModeOrderEnum {
-  ModeOrderEnum next() {
-    int nextIndex = (index + 1) % 4;
-    return ModeOrderEnum.values[nextIndex];
-  }
-
-  static ModeOrderEnum convert(int i) {
-    return ModeOrderEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+T enumFromInt<T extends Enum>(int i, List<T> values) {
+  return values[i - 1];
 }
 
-extension ModeLoopEnumExt on ModeLoopEnum {
-  ModeLoopEnum next() {
-    final nextIndex = (index + 1) % ModeLoopEnum.values.length;
-    return ModeLoopEnum.values[nextIndex];
-  }
-
-  static ModeLoopEnum convert(int i) {
-    return ModeLoopEnum.values[i - 1];
-  }
-
-  int disconvert() {
-    return index + 1;
-  }
+int enumToInt<T extends Enum>(T value) {
+  return value.index + 1;
 }
 
 class MusyncAudioHandler extends AudioPlayer {
@@ -111,6 +80,10 @@ class MusyncAudioHandler extends AudioPlayer {
 
     currentIndex.value = index;
     final tempDir = await getTemporaryDirectory();
+
+    if (tempFile != null && await tempFile!.exists()) {
+      await tempFile?.delete();
+    }
 
     tempFile = File(
       p.join(
@@ -206,9 +179,9 @@ class MusyncAudioHandler extends AudioPlayer {
   );
 
   void setShuffleModeEnabled() {
-    shuffleMode.value = shuffleMode.value.next();
+    shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
     prepareShuffle();
-    enviarParaAndroid(socket, 'newshuffle', shuffleMode.value.disconvert());
+    enviarParaAndroid(socket, 'newshuffle', enumToInt(shuffleMode.value));
   }
 
   ModeShuffleEnum isShuffleEnabled() {
@@ -216,8 +189,8 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void setLoopModeEnabled() {
-    loopMode.value = loopMode.value.next();
-    enviarParaAndroid(socket, 'newloop', loopMode.value.disconvert());
+    loopMode.value = enumNext(loopMode.value, ModeLoopEnum.values);
+    enviarParaAndroid(socket, 'newloop', enumToInt(loopMode.value));
   }
 
   ModeLoopEnum isLoopEnabled() {

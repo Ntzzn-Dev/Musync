@@ -20,7 +20,6 @@ import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
-import 'package:musync_and/widgets/player_eko.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
@@ -100,7 +99,7 @@ class _MusicPageState extends State<MusicPage> {
   }
 
   Future<void> loadSongsNow() async {
-    print('metodo loadSongsNow');
+    log('metodo loadSongsNow');
     await widget.audioHandler.searchPlaylists();
     int idpl = int.tryParse(MusyncAudioHandler.actlist.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
@@ -1025,10 +1024,7 @@ class _MusicPageState extends State<MusicPage> {
                     right: 0,
                     child: GestureDetector(
                       onTap: _toggleBottom,
-                      child:
-                          conected
-                              ? EkoPlayer(audioHandler: widget.audioHandler)
-                              : Player(audioHandler: widget.audioHandler),
+                      child: Player(audioHandler: widget.audioHandler),
                     ),
                   );
                 },

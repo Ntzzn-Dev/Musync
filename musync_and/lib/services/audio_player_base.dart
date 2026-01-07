@@ -192,7 +192,7 @@ class MusyncAudioHandler extends BaseAudioHandler
         _broadcastState();
         break;
       case 'up':
-        upNotification();
+        upAtualMedia();
         _broadcastState();
         break;
       default:
@@ -200,7 +200,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void upNotification() async {
+  void upAtualMedia() async {
     MediaItem song = actlist.getMusicAtual(currentIndex.value);
     await DatabaseHelper().upInPlaylist(
       actlist.atualPlaylist.value.title,
@@ -219,6 +219,36 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   Future<void> searchPlaylists() async {
     playlists = await DatabaseHelper().loadPlaylists();
+
+    if (!playlists.any((pl) => pl.title == actlist.mainPlaylist.title)) {
+      int id = int.tryParse(actlist.mainPlaylist.tag) ?? 0;
+
+      playlists.insert(
+        0,
+        Playlists(
+          id: id,
+          title: actlist.mainPlaylist.title,
+          subtitle: actlist.mainPlaylist.subtitle,
+          ordem: 0,
+          orderMode: 0,
+        ),
+      );
+    }
+
+    if (!playlists.any((pl) => pl.title == actlist.atualPlaylist.value.title)) {
+      int id = int.tryParse(actlist.atualPlaylist.value.tag) ?? -1;
+
+      playlists.insert(
+        0,
+        Playlists(
+          id: id,
+          title: actlist.atualPlaylist.value.title,
+          subtitle: actlist.atualPlaylist.value.subtitle,
+          ordem: 0,
+          orderMode: 0,
+        ),
+      );
+    }
   }
 
   void savePl(Setlist setlist) async {
@@ -228,13 +258,20 @@ class MusyncAudioHandler extends BaseAudioHandler
     actlist.setSetList(SetListType.atual, setlist);
   }
 
+  void returnToCheckpoint() {
+    log("has retornado al checkpoint");
+  }
+
   Future<void> skipPlaylist(bool next) async {
+    await searchPlaylists();
     List<int> idsPls = playlists.map((pl) => pl.id).toList();
 
-    final currentIndex = idsPls.indexOf(
-      int.tryParse(actlist.atualPlaylist.value.tag) ?? -1,
+    int currentIndex = idsPls.indexOf(
+      int.tryParse(actlist.atualPlaylist.value.tag) ?? 0,
     );
-    if (currentIndex == -1) return;
+    if (actlist.atualPlaylist.value.tag == actlist.mainPlaylist.tag) {
+      currentIndex = 1;
+    }
 
     final nextIndex = (currentIndex + (next ? 1 : -1)) % idsPls.length;
     final idNext = idsPls[nextIndex];
@@ -270,9 +307,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
     if (actlist.queueIsEmpty()) return;
     currentIndex.value = index;
-    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
-      indexPlaying: index,
-    );
     final item = actlist.queueList[index];
     item.execute(this);
   }
@@ -296,32 +330,12 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> initSongs({required List<MediaItem> songs}) async {
-    await searchPlaylists();
-
     actlist.setSetList(SetListType.atual, actlist.mainPlaylist);
-
-    if (!playlists.any((pl) => pl.title == actlist.mainPlaylist.title)) {
-      int id = int.tryParse(actlist.atualPlaylist.value.tag) ?? 0;
-
-      playlists.insert(
-        0,
-        Playlists(
-          id: id,
-          title: actlist.atualPlaylist.value.title,
-          subtitle: actlist.atualPlaylist.value.subtitle,
-          ordem: 0,
-          orderMode: 0,
-        ),
-      );
-    }
+    await searchPlaylists();
 
     audPl.playbackEventStream.listen(_broadcastState);
     log(songs.length.toString());
     actlist.setMusicListAtual(songs, this);
-
-    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
-      qntTotal: actlist.getLengthMusicListAtual(),
-    );
 
     setCurrentTrack();
 
@@ -347,10 +361,6 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     actlist.setMusicListAtual(songs, this);
 
-    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
-      qntTotal: actlist.getLengthMusicListAtual(),
-    );
-
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
 
@@ -375,10 +385,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     );
 
     actlist.setMusicListAtual(songs, this);
-
-    actlist.atualPlaylist.value = actlist.atualPlaylist.value.copyWith(
-      qntTotal: actlist.getLengthMusicListAtual(),
-    );
 
     currentIndex.value = songs.indexOf(songAtual);
 

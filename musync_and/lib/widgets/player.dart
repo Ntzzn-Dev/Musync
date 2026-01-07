@@ -1,7 +1,10 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/media_atual.dart';
+import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/letreiro.dart';
+import 'package:musync_and/widgets/sound_control.dart';
 
 class Player extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -32,6 +35,24 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
+  @override
+  void initState() {
+    super.initState();
+    musyncMediaUpdateNotifier.addListener(_onMediaChanged);
+  }
+
+  @override
+  void dispose() {
+    musyncMediaUpdateNotifier.removeListener(_onMediaChanged);
+    super.dispose();
+  }
+
+  void _onMediaChanged() {
+    final item = musyncMediaUpdateNotifier.lastUpdate;
+
+    MusyncAudioHandler.mediaAtual.value = MediaAtual.fromMediaItem(item);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -65,61 +86,128 @@ class _PlayerState extends State<Player> {
                 );
               },
             ),
-            StreamBuilder<Duration>(
-              stream: widget.audioHandler.positionStream,
-              builder: (context, snapshot) {
-                final position = snapshot.data ?? Duration.zero;
-                final total = widget.audioHandler.duration ?? Duration.zero;
+            MusyncAudioHandler.eko?.conected.value ?? false
+                ? ValueListenableBuilder<MediaAtual>(
+                  valueListenable: MusyncAudioHandler.mediaAtual,
+                  builder: (context, value, child) {
+                    return ValueListenableBuilder<Duration>(
+                      valueListenable: value.position,
+                      builder: (context, pos, child) {
+                        return Column(
+                          children: [
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 6,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 12,
+                                ),
+                              ),
+                              child: Slider(
+                                min: 0,
+                                max: value.total.inMilliseconds.toDouble(),
+                                value:
+                                    pos.inMilliseconds
+                                        .clamp(0, value.total.inMilliseconds)
+                                        .toDouble(),
+                                onChanged: (v) {
+                                  value.seek(Duration(milliseconds: v.toInt()));
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22.0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    Player.formatDuration(pos, false),
+                                    style: TextStyle(
+                                      fontFamily: 'Default-Thin',
+                                    ),
+                                  ),
+                                  Text(
+                                    'CONECTADO AO DESKTOP',
+                                    style: TextStyle(
+                                      fontFamily: 'Default-Thin',
+                                      color: baseAppColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    Player.formatDuration(value.total, false),
+                                    style: TextStyle(
+                                      fontFamily: 'Default-Thin',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                )
+                : StreamBuilder<Duration>(
+                  stream: widget.audioHandler.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    final total = widget.audioHandler.duration ?? Duration.zero;
 
-                return Column(
-                  children: [
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 6,
-                        ),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 12,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 0),
-                        child: Slider(
-                          min: 0,
-                          max: total.inMilliseconds.toDouble(),
-                          value:
-                              position.inMilliseconds
-                                  .clamp(0, total.inMilliseconds)
-                                  .toDouble(),
-                          onChanged: (value) {
-                            widget.audioHandler.seek(
-                              Duration(milliseconds: value.toInt()),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            Player.formatDuration(position, false),
-                            style: TextStyle(fontFamily: 'Default-Thin'),
+                    return Column(
+                      children: [
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 2,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 12,
+                            ),
                           ),
-                          Text(
-                            Player.formatDuration(total, false),
-                            style: TextStyle(fontFamily: 'Default-Thin'),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 0),
+                            child: Slider(
+                              min: 0,
+                              max: total.inMilliseconds.toDouble(),
+                              value:
+                                  position.inMilliseconds
+                                      .clamp(0, total.inMilliseconds)
+                                      .toDouble(),
+                              onChanged: (value) {
+                                widget.audioHandler.seek(
+                                  Duration(milliseconds: value.toInt()),
+                                );
+                              },
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 22.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                Player.formatDuration(position, false),
+                                style: TextStyle(fontFamily: 'Default-Thin'),
+                              ),
+                              Text(
+                                Player.formatDuration(total, false),
+                                style: TextStyle(fontFamily: 'Default-Thin'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -167,30 +255,57 @@ class _PlayerState extends State<Player> {
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
                 const SizedBox(width: 16),
-                StreamBuilder<bool>(
-                  stream: widget.audioHandler.playingStream,
-                  builder: (context, snapshot) {
-                    final isPlaying = snapshot.data ?? false;
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: EdgeInsets.all(15),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: () {
-                        isPlaying
-                            ? widget.audioHandler.pause()
-                            : widget.audioHandler.play();
+                MusyncAudioHandler.eko?.conected.value ?? false
+                    ? ValueListenableBuilder<MediaAtual>(
+                      valueListenable: MusyncAudioHandler.mediaAtual,
+                      builder: (context, value, child) {
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: value.isPlaying,
+                          builder: (context, playing, child) {
+                            return ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: Size.zero,
+                                padding: EdgeInsets.all(15),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: const CircleBorder(),
+                              ),
+                              onPressed: () {
+                                value.sendPauseAndPlay(!playing);
+                              },
+                              child: Icon(
+                                playing
+                                    ? Icons.pause_outlined
+                                    : Icons.play_arrow_outlined,
+                              ),
+                            );
+                          },
+                        );
                       },
-                      child: Icon(
-                        isPlaying
-                            ? Icons.pause_outlined
-                            : Icons.play_arrow_outlined,
-                      ),
-                    );
-                  },
-                ),
+                    )
+                    : StreamBuilder<bool>(
+                      stream: widget.audioHandler.playingStream,
+                      builder: (context, snapshot) {
+                        final isPlaying = snapshot.data ?? false;
+                        return ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: EdgeInsets.all(15),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: const CircleBorder(),
+                          ),
+                          onPressed: () {
+                            isPlaying
+                                ? widget.audioHandler.pause()
+                                : widget.audioHandler.play();
+                          },
+                          child: Icon(
+                            isPlaying
+                                ? Icons.pause_outlined
+                                : Icons.play_arrow_outlined,
+                          ),
+                        );
+                      },
+                    ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeShuffleEnum>(
                   valueListenable: widget.audioHandler.shuffleMode,
@@ -243,6 +358,13 @@ class _PlayerState extends State<Player> {
                 ),
               ],
             ),
+            if (MusyncAudioHandler.eko?.conected.value ?? false) ...[
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: SoundControl(ekoConnected: true, height: 30),
+              ),
+            ],
           ],
         ),
       ),

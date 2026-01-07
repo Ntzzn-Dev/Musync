@@ -84,295 +84,321 @@ class _ListContentState extends State<ListContent> {
     super.dispose();
   }
 
-  List<Map<String, dynamic>> moreOptions(BuildContext context, MediaItem item) {
+  List<OptionItem> moreOptions(BuildContext context, MediaItem item) {
     return [
-      {
-        'opts': ['Up', 'Desup'],
-        'icons': [Icons.favorite, Icons.heart_broken],
-        'functs': [
-          () async {
-            await DatabaseHelper().upInPlaylist(
-              MusyncAudioHandler.actlist.viewingPlaylist.tag,
-              item.id,
-              item.title,
-            );
-
-            mode = ModeOrderEnum.up;
-
-            MusyncAudioHandler.actlist.songsAllPlaylist =
-                await MusyncAudioHandler.reorder(mode, mutableSongs);
-            setState(() {
-              mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
-            });
-          },
-          () async {
-            await DatabaseHelper().desupInPlaylist(
-              MusyncAudioHandler.actlist.viewingPlaylist.tag,
-              item.id,
-              item.title,
-            );
-
-            mode = ModeOrderEnum.up;
-
-            MusyncAudioHandler.actlist.songsAllPlaylist =
-                await MusyncAudioHandler.reorder(mode, mutableSongs);
-            setState(() {
-              mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
-            });
-          },
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Up',
+            icon: Icons.favorite,
+            funct: () async {
+              await handlePlaylistAction(
+                itemId: item.id,
+                itemTitle: item.title,
+                action: DatabaseHelper().upInPlaylist,
+              );
+            },
+          ),
+          OptionAction(
+            label: 'Desup',
+            icon: Icons.heart_broken,
+            funct: () async {
+              await handlePlaylistAction(
+                itemId: item.id,
+                itemTitle: item.title,
+                action: DatabaseHelper().desupInPlaylist,
+              );
+            },
+          ),
         ],
-      },
-      {
-        'opt': 'Adicionar a Playlist',
-        'icon': Icons.playlist_add,
-        'funct': () async {
-          List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
-            idMusic: item.id,
-          );
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Adicionar a Playlist',
+            icon: Icons.playlist_add,
+            funct: () => addToPlaylist(item),
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Compartilhar',
+            icon: Icons.share,
+            funct: () async {
+              final file = File(item.extras?['path']);
 
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) {
-              return StatefulBuilder(
-                builder: (context, setModalState) {
-                  return FractionallySizedBox(
-                    heightFactor: 0.45,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
+              if (await file.exists()) {
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: item.title,
+                    title: item.title,
+                    files: [XFile(file.path)],
+                  ),
+                );
+              } else {
+                log('Arquivo não encontrado!');
+              }
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Editar Música',
+            icon: Icons.edit,
+            funct: () {
+              showPopupAdd(
+                context,
+                item.title,
+                [
+                  ContentItem(value: 'Título', type: ContentTypeEnum.title),
+                  ContentItem(value: 'Artista', type: ContentTypeEnum.text),
+                  ContentItem(value: 'Album', type: ContentTypeEnum.text),
+                  ContentItem(value: 'Gênero', type: ContentTypeEnum.text),
+                ],
+                fieldValues: [
+                  item.title,
+                  item.artist ?? '',
+                  item.album ?? '',
+                  item.genre ?? '',
+                ],
+                onConfirm: (valores) {
+                  Playlists.editarTags(item.extras?['path'], {
+                    'title': valores[0],
+                    'trackArtist': valores[1],
+                    'album': valores[2],
+                    'genre': valores[3],
+                  });
+
+                  int indexSongAll = MusyncAudioHandler.actlist.songsAll
+                      .indexWhere((e) => e.id == item.id);
+
+                  int indexSongNow = mutableSongs.indexWhere(
+                    (e) => e.id == item.id,
+                  );
+
+                  if (indexSongAll != -1) {
+                    final antigo =
+                        MusyncAudioHandler.actlist.songsAll[indexSongAll];
+
+                    final musicEditada = antigo.copyWith(
+                      title: valores[0],
+                      artist: valores[1],
+                      album: valores[2],
+                      genre: valores[3],
+                      extras: {
+                        ...?antigo.extras,
+                        'lastModified': antigo.extras?['lastModified'],
+                        'path': antigo.extras?['path'],
+                      },
+                    );
+
+                    MusyncAudioHandler.actlist.songsAll[indexSongAll] =
+                        musicEditada;
+                    mutableSongs[indexSongNow] = musicEditada;
+
+                    setState(() {});
+
+                    Navigator.of(context).pop();
+                  } else {
+                    log('Item não encontrado na lista para edição.');
+                  }
+                },
+              );
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Apagar Audio',
+            icon: Icons.delete_forever,
+            funct: () async {
+              if (await showPopupAdd(context, "Deletar Mídia?", [])) {
+                deletarMusica(item);
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Informações',
+            icon: Icons.info_outline,
+            funct: () => showSpec(item),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Future<void> handlePlaylistAction({
+    required String itemId,
+    required String itemTitle,
+    required Future<void> Function(String tag, String id, String title) action,
+  }) async {
+    final tag = MusyncAudioHandler.actlist.viewingPlaylist.tag;
+
+    await action(tag, itemId, itemTitle);
+
+    MusyncAudioHandler.actlist.songsAllPlaylist =
+        await MusyncAudioHandler.reorder(ModeOrderEnum.up, mutableSongs);
+
+    setState(() {
+      mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
+    });
+  }
+
+  void addToPlaylist(MediaItem item) async {
+    List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+      idMusic: item.id,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return FractionallySizedBox(
+              heightFactor: 0.45,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                showPopupAdd(
-                                  context,
-                                  'Adicionar Playlist',
-                                  [
-                                    {'value': 'Título', 'type': 'title'},
-                                    {'value': 'Subtitulo', 'type': 'text'},
-                                  ],
-                                  onConfirm: (valores) async {
-                                    DatabaseHelper().insertPlaylist(
-                                      valores[0],
-                                      valores[1],
-                                      1,
-                                    );
+                      child: ElevatedButton(
+                        onPressed: () {
+                          showPopupAdd(
+                            context,
+                            'Adicionar Playlist',
+                            [
+                              ContentItem(
+                                value: 'Título',
+                                type: ContentTypeEnum.title,
+                              ),
+                              ContentItem(
+                                value: 'Subtitulo',
+                                type: ContentTypeEnum.text,
+                              ),
+                            ],
+                            onConfirm: (valores) async {
+                              DatabaseHelper().insertPlaylist(
+                                valores[0],
+                                valores[1],
+                                1,
+                              );
 
-                                    playlists =
-                                        await DatabaseHelper().loadPlaylists();
-                                  },
-                                );
-                              },
-                              child: const Text("Adicionar playlist"),
-                            ),
-                          ),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: playlists.length,
-                              itemBuilder: (context, index) {
-                                final playlist = playlists[index];
-                                return Container(
-                                  color:
-                                      playlist.haveMusic ?? false
-                                          ? Color.fromARGB(255, 243, 160, 34)
-                                          : null,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () async {
-                                      if (playlist.haveMusic ?? false) {
-                                        await DatabaseHelper()
-                                            .removeFromPlaylist(
-                                              playlist.id,
-                                              item.id,
-                                            );
-                                      } else {
-                                        await DatabaseHelper().addToPlaylist(
-                                          playlist.id,
-                                          item.id,
-                                        );
-                                      }
+                              playlists =
+                                  await DatabaseHelper().loadPlaylists();
+                            },
+                          );
+                        },
+                        child: const Text("Adicionar playlist"),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: playlists.length,
+                        itemBuilder: (context, index) {
+                          final playlist = playlists[index];
+                          return Container(
+                            color:
+                                playlist.haveMusic ?? false
+                                    ? Color.fromARGB(255, 243, 160, 34)
+                                    : null,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () async {
+                                if (playlist.haveMusic ?? false) {
+                                  await DatabaseHelper().removeFromPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                } else {
+                                  await DatabaseHelper().addToPlaylist(
+                                    playlist.id,
+                                    item.id,
+                                  );
+                                }
 
-                                      setModalState(() {
-                                        playlists[index] = playlist.copyWith(
-                                          haveMusic:
-                                              !(playlist.haveMusic ?? false),
-                                        );
-                                      });
+                                setModalState(() {
+                                  playlists[index] = playlist.copyWith(
+                                    haveMusic: !(playlist.haveMusic ?? false),
+                                  );
+                                });
 
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            playlist.title,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            softWrap: true,
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 2,
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            playlist.subtitle,
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.grey,
-                                            ),
-                                            softWrap: true,
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 3,
-                                          ),
-                                        ],
-                                      ),
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
                                     ),
                                   ),
                                 );
                               },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      playlist.title,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      playlist.subtitle,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      },
-      {
-        'opt': 'Compartilhar',
-        'icon': Icons.share,
-        'funct': () async {
-          final file = File(item.extras?['path']);
-
-          if (await file.exists()) {
-            await SharePlus.instance.share(
-              ShareParams(
-                text: item.title,
-                title: item.title,
-                files: [XFile(file.path)],
+                  ],
+                ),
               ),
             );
-          } else {
-            log('Arquivo não encontrado!');
-          }
-        },
+          },
+        );
       },
-      {
-        'opt': 'Editar Música',
-        'icon': Icons.edit,
-        'funct': () {
-          showPopupAdd(
-            context,
-            item.title,
-            [
-              {'value': 'Título', 'type': 'title', 'id': 2},
-              {'value': 'Artista', 'type': 'text'},
-              {'value': 'Album', 'type': 'text'},
-              {'value': 'Gênero', 'type': 'text'},
-            ],
-            fieldValues: [
-              item.title,
-              item.artist ?? '',
-              item.album ?? '',
-              item.genre ?? '',
-            ],
-            onConfirm: (valores) {
-              Playlists.editarTags(item.extras?['path'], {
-                'title': valores[0],
-                'trackArtist': valores[1],
-                'album': valores[2],
-                'genre': valores[3],
-              });
-
-              int indexSongAll = MusyncAudioHandler.actlist.songsAll.indexWhere(
-                (e) => e.id == item.id,
-              );
-
-              int indexSongNow = mutableSongs.indexWhere(
-                (e) => e.id == item.id,
-              );
-
-              if (indexSongAll != -1) {
-                final antigo =
-                    MusyncAudioHandler.actlist.songsAll[indexSongAll];
-
-                final musicEditada = antigo.copyWith(
-                  title: valores[0],
-                  artist: valores[1],
-                  album: valores[2],
-                  genre: valores[3],
-                  extras: {
-                    ...?antigo.extras,
-                    'lastModified': antigo.extras?['lastModified'],
-                    'path': antigo.extras?['path'],
-                  },
-                );
-
-                MusyncAudioHandler.actlist.songsAll[indexSongAll] =
-                    musicEditada;
-                mutableSongs[indexSongNow] = musicEditada;
-
-                setState(() {});
-
-                Navigator.of(context).pop();
-              } else {
-                log('Item não encontrado na lista para edição.');
-              }
-            },
-          );
-        },
-      },
-      {
-        'opt': 'Apagar Audio',
-        'icon': Icons.delete_forever,
-        'funct': () async {
-          if (await showPopupAdd(context, "Deletar Mídia?", [])) {
-            deletarMusica(item);
-            Navigator.of(context).pop();
-          }
-        },
-      },
-      {
-        'opt': 'Informações',
-        'icon': Icons.info_outline,
-        'funct': () async {
-          showSpec(item);
-        },
-      },
-    ];
+    );
   }
 
   void showSpec(MediaItem item) {
@@ -380,25 +406,25 @@ class _ListContentState extends State<ListContent> {
       context,
       item.title,
       [
-        {'valor1': 'Nome', 'valor2': item.title},
-        {'valor1': 'Artista', 'valor2': item.artist},
-        {'valor1': 'Album', 'valor2': item.album},
-        {
-          'valor1': 'Duração',
-          'valor2': Player.formatDuration(item.duration!, true),
-        },
-        {'valor1': 'Caminho', 'valor2': item.extras?['path']},
-        {
-          'valor1': 'Data',
-          'valor2': DateFormat(
+        InfoItem(info: 'Nome', value: item.title),
+        InfoItem(info: 'Artista', value: item.artist ?? 'Artista desconhecido'),
+        InfoItem(info: 'Album', value: item.album ?? 'Sem album'),
+        InfoItem(
+          info: 'Duração',
+          value: Player.formatDuration(item.duration!, true),
+        ),
+        InfoItem(info: 'Caminho', value: item.extras?['path']),
+        InfoItem(
+          info: 'Data',
+          value: DateFormat(
             'HH:mm:ss dd/MM/yyyy',
           ).format(DateTime.parse(item.extras?['lastModified'])),
-        },
+        ),
       ],
-      [
-        {'name': 'Dado', 'flex': 1, 'centralize': true, 'bold': true},
-        {'name': 'Valor', 'flex': 3, 'centralize': true, 'bold': false},
-      ],
+      InfoLabelSpecs(
+        info: InfoLabel(name: 'Dado', flex: 1, centralize: true, bold: true),
+        value: InfoLabel(name: 'Valor', flex: 3, centralize: true, bold: false),
+      ),
     );
   }
 

@@ -2,10 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/databasehelper.dart';
 
+enum ContentTypeEnum { title, text, necessary }
+
+class ContentItem {
+  final String value;
+  final ContentTypeEnum type;
+
+  ContentItem({required this.value, required this.type});
+}
+
 Future<bool> showPopupAdd(
   BuildContext context,
   String label,
-  List<Map<String, dynamic>> fieldLabels, {
+  List<ContentItem> fieldLabels, {
   List<String>? fieldValues,
   void Function(List<String> values)? onConfirm,
 }) async {
@@ -52,7 +61,7 @@ Future<bool> showPopupAdd(
                             keyboardType: TextInputType.multiline,
                             textInputAction: TextInputAction.newline,
                             decoration: InputDecoration(
-                              labelText: fieldLabels[index]['value'],
+                              labelText: fieldLabels[index].value,
                               errorText:
                                   hasError[index] ? 'Campo inválido' : null,
                               enabledBorder: OutlineInputBorder(
@@ -103,12 +112,13 @@ Future<bool> showPopupAdd(
 
                       for (var entry in fieldLabels.asMap().entries) {
                         final index = entry.key;
-                        final type = entry.value['type'].toLowerCase();
+                        final item = entry.value;
 
-                        if (type.contains('title')) {
+                        if (item.type == ContentTypeEnum.title) {
                           matchingIndicesTitle.add(index);
                         }
-                        if (type.contains('necessary')) {
+
+                        if (item.type == ContentTypeEnum.necessary) {
                           matchingIndicesNecessarys.add(index);
                         }
                       }

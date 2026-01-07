@@ -13,7 +13,6 @@ import 'package:musync_and/services/setlist.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/player.dart';
-import 'package:musync_and/widgets/player_eko.dart';
 
 class PlaylistPage extends StatefulWidget {
   final String plTitle;
@@ -552,10 +551,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     right: 0,
                     child: GestureDetector(
                       onTap: _toggleBottom,
-                      child:
-                          conected
-                              ? EkoPlayer(audioHandler: widget.audioHandler)
-                              : Player(audioHandler: widget.audioHandler),
+                      child: Player(audioHandler: widget.audioHandler),
                     ),
                   );
                 },

@@ -1,23 +1,54 @@
 import 'package:flutter/material.dart';
 
+class InfoItem {
+  final String info;
+  final String value;
+
+  InfoItem({required this.info, required this.value});
+}
+
+class InfoLabel {
+  final String name;
+  final int flex;
+  final bool centralize;
+  final bool bold;
+
+  InfoLabel({
+    required this.name,
+    required this.flex,
+    required this.centralize,
+    required this.bold,
+  });
+}
+
+class InfoLabelSpecs {
+  InfoLabel info;
+  InfoLabel value;
+
+  InfoLabelSpecs({required this.info, required this.value});
+}
+
 Future<void> showPopupList(
   BuildContext context,
   String label,
-  List<Map<String, dynamic>> values,
-  List<Map<String, dynamic>> fieldLabels,
+  List<InfoItem> values,
+  InfoLabelSpecs fieldLabels,
 ) async {
-  Widget createOrdem(List<Map<String, dynamic>> dados) {
+  Widget createOrdem(List<InfoItem> dados) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            for (int i = 0; i < fieldLabels.length; i++) ...[
-              Expanded(
-                flex: fieldLabels[i]['flex'],
-                child: Center(child: Text(fieldLabels[i]['name'])),
-              ),
-            ],
+            Expanded(
+              flex: fieldLabels.info.flex,
+              child: Center(child: Text(fieldLabels.info.name)),
+            ),
+
+            Expanded(
+              flex: fieldLabels.value.flex,
+              child: Center(child: Text(fieldLabels.value.name)),
+            ),
           ],
         ),
 
@@ -32,34 +63,58 @@ Future<void> showPopupList(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
-                          for (int i = 0; i < item.length; i++) ...[
-                            Expanded(
-                              flex: fieldLabels[i]['flex'],
-                              child:
-                                  fieldLabels[i]['centralize']
-                                      ? Center(
-                                        child: Text(
-                                          item['valor${i + 1}'].toString(),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight:
-                                                fieldLabels[i]['bold']
-                                                    ? FontWeight.bold
-                                                    : null,
-                                          ),
-                                        ),
-                                      )
-                                      : Text(
-                                        item['valor${i + 1}'].toString(),
+                          Expanded(
+                            flex: fieldLabels.info.flex,
+                            child:
+                                fieldLabels.info.centralize
+                                    ? Center(
+                                      child: Text(
+                                        item.info.toString(),
+                                        textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontWeight:
-                                              fieldLabels[i]['bold']
+                                              fieldLabels.info.bold
                                                   ? FontWeight.bold
                                                   : null,
                                         ),
                                       ),
-                            ),
-                          ],
+                                    )
+                                    : Text(
+                                      item.info.toString(),
+                                      style: TextStyle(
+                                        fontWeight:
+                                            fieldLabels.info.bold
+                                                ? FontWeight.bold
+                                                : null,
+                                      ),
+                                    ),
+                          ),
+                          Expanded(
+                            flex: fieldLabels.value.flex,
+                            child:
+                                fieldLabels.value.centralize
+                                    ? Center(
+                                      child: Text(
+                                        item.info.toString(),
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontWeight:
+                                              fieldLabels.value.bold
+                                                  ? FontWeight.bold
+                                                  : null,
+                                        ),
+                                      ),
+                                    )
+                                    : Text(
+                                      item.info.toString(),
+                                      style: TextStyle(
+                                        fontWeight:
+                                            fieldLabels.value.bold
+                                                ? FontWeight.bold
+                                                : null,
+                                      ),
+                                    ),
+                          ),
                         ],
                       ),
                     );
