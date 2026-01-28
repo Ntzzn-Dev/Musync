@@ -49,6 +49,8 @@ class _ListContentState extends State<ListContent> {
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
     mode = widget.modeReorder;
+
+    widget.audioHandler.currentIndex.addListener(_onCurrentIndexChanged);
   }
 
   @override
@@ -88,6 +90,13 @@ class _ListContentState extends State<ListContent> {
     }
 
     widget.selecaoDeMusicas?.call(idsSelecoes);
+  }
+
+  void _onCurrentIndexChanged() {
+    if (listaEmUso && _scrollController.hasClients) {
+      log(widget.audioHandler.currentIndex.value.toString());
+      scrollToIndex(widget.audioHandler.currentIndex.value);
+    }
   }
 
   @override
@@ -135,12 +144,6 @@ class _ListContentState extends State<ListContent> {
     return ValueListenableBuilder<int>(
       valueListenable: widget.audioHandler.currentIndex,
       builder: (context, value, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients && listaEmUso) {
-            scrollToIndex(value);
-          }
-        });
-
         return ValueListenableBuilder<List<bool>>(
           valueListenable: musicasSelecionadas,
           builder: (context, selecionada, child) {

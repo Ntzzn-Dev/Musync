@@ -6,6 +6,7 @@ class MediaMusic {
   String artist;
   Uint8List bytes;
   Uint8List artUri;
+  String path;
 
   MediaMusic({
     required this.id,
@@ -13,5 +14,6 @@ class MediaMusic {
     required this.artist,
     required this.bytes,
     required this.artUri,
+    required this.path,
   });
 }

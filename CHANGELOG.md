@@ -313,6 +313,12 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção das playlists no modo SuperControl.  
 - Adição do botão de up e checkpoint no SuperControl.  
 
+### version 5.11
+- Correção da lista ficar sendo reindexada enquanto recebia novas midias, no desktop.
+- Otimização de codigo no desktop.  
+- Adição da tecla de atalho `espaço` para pausar a midia em reprodução.  
+- Relayout de desktop com versão horizontal e vertical.  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
 + Criar checkpoint para reiniciar músicas.  

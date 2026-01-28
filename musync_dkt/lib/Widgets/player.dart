@@ -1,8 +1,10 @@
+import 'dart:developer';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
 import 'package:musync_dkt/Services/media_music.dart';
-import 'package:musync_dkt/main.dart';
+import 'package:musync_dkt/Services/server_connect.dart';
 import 'package:musync_dkt/Widgets/letreiro.dart';
 
 class Player extends StatefulWidget {
@@ -36,7 +38,6 @@ class Player extends StatefulWidget {
 class _PlayerState extends State<Player> {
   Duration total = Duration.zero;
   Duration position = Duration.zero;
-  ValueNotifier<PlayerState> state = ValueNotifier(PlayerState.playing);
 
   @override
   void initState() {
@@ -55,7 +56,8 @@ class _PlayerState extends State<Player> {
     });
 
     widget.player.onPlayerStateChanged.listen((s) {
-      state.value = s;
+      widget.player.playstate.value = s;
+      enviarParaAndroid(socket, "toggle_play", s == PlayerState.playing);
     });
   }
 
@@ -176,7 +178,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<PlayerState>(
-                  valueListenable: state,
+                  valueListenable: widget.player.playstate,
                   builder: (context, value, child) {
                     final isPlaying = value == PlayerState.playing;
                     return ElevatedButton(
@@ -190,7 +192,6 @@ class _PlayerState extends State<Player> {
                         isPlaying
                             ? widget.player.pause()
                             : widget.player.resume();
-                        enviarParaAndroid(socket, "toggle_play", !isPlaying);
                       },
                       child: Icon(
                         isPlaying

@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/media_music.dart';
-import 'package:musync_dkt/main.dart';
+import 'package:musync_dkt/Services/server_connect.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -45,8 +45,11 @@ class MusyncAudioHandler extends AudioPlayer {
       artist: 'artist',
       bytes: Uint8List(0),
       artUri: Uint8List(0),
+      path: '',
     ),
   );
+
+  ValueNotifier<PlayerState> playstate = ValueNotifier(PlayerState.playing);
 
   void toggleMute() {
     muted = !muted;
@@ -96,6 +99,7 @@ class MusyncAudioHandler extends AudioPlayer {
       await tempFile?.writeAsBytes(songsAtual.value[index].bytes, flush: true);
     }
 
+    songsAtual.value[index].path = tempFile?.path ?? '';
     musicAtual.value = songsAtual.value[index];
 
     enviarParaAndroid(socket, 'newindex', currentIndex.value);
@@ -110,6 +114,7 @@ class MusyncAudioHandler extends AudioPlayer {
       artist: music['audio_artist'],
       bytes: Uint8List.fromList(List<int>.from(music['data'])),
       artUri: music['art'] != null ? base64Decode(music['art']) : Uint8List(0),
+      path: '',
     );
     final novaLista = List<MediaMusic>.from(songsAtual.value)
       ..insert(music['part'] == 2 ? 0 : songsAtual.value.length, newMsc);

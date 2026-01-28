@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/nathan/Projects/Musync/musync_dkt/linux/build/cmake_install.cmake",
+		"/home/nathan/Projects/Musync/musync_dkt/linux/build/flutter/cmake_install.cmake",
+		"/home/nathan/Projects/Musync/musync_dkt/linux/build/runner/cmake_install.cmake",
+		"/home/nathan/Projects/Musync/musync_dkt/linux/build/plugins/audioplayers_linux/cmake_install.cmake",
+		"/home/nathan/Projects/Musync/musync_dkt/linux/build/plugins/metadata_god/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
