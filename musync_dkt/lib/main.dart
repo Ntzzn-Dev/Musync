@@ -10,6 +10,7 @@ import 'package:musync_dkt/Widgets/list_content.dart';
 import 'package:musync_dkt/Widgets/player.dart';
 import 'package:musync_dkt/Widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
+import 'package:audiotags/audiotags.dart';
 
 final MusyncAudioHandler player = MusyncAudioHandler();
 
@@ -78,46 +79,28 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<Uint8List?> extractCoverWithProcess(String mp3Path) async {
+  Future<Uint8List?>? _artFuture;
+  String? _currentPath;
+
+  Future<Uint8List?> getTags(String path) async {
     try {
-      final args = [
-        '-i',
-        mp3Path,
-        '-an',
-        '-vcodec',
-        'mjpeg',
-        '-f',
-        'image2pipe',
-        'pipe:1',
-      ];
+      final tag = await AudioTags.read(path);
 
-      final process = await Process.run(
-        'ffmpeg',
-        args,
-        stdoutEncoding: null,
-        stderrEncoding: null,
-      );
-
-      if (process.exitCode != 0) {
-        final errorOutput = String.fromCharCodes(process.stderr as List<int>);
-        print('Erro FFmpeg: $errorOutput');
+      if (tag == null) {
         return null;
       }
 
-      final outputBytes = process.stdout as List<int>;
-      if (outputBytes.isEmpty) {
-        print('Nenhuma capa encontrada no MP3.');
+      if (tag.pictures.isEmpty) {
         return null;
       }
 
-      return Uint8List.fromList(outputBytes);
-    } catch (e) {
-      print('Erro ao executar FFmpeg: $e');
+      final bytes = tag.pictures.first.bytes;
+      return bytes;
+    } catch (e, s) {
+      log('ERRO ao ler tags Exception: $e Stack: $s');
       return null;
     }
   }
-
-  Future<Uint8List?>? coverFuture;
 
   Widget mainList(bool isLandscape) {
     return Row(
@@ -150,7 +133,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             flex: 1,
             child: Container(
-              color: Color(0xFF1B1A1A),
+              color: Color(0xFF242424),
               child: Stack(
                 children: [
                   Positioned(
@@ -169,11 +152,14 @@ class _HomePageState extends State<HomePage> {
                         }
 
                         final songPath = songs[index].path;
-                        log(songPath);
 
-                        coverFuture = extractCoverWithProcess(songPath);
+                        if (_currentPath != songPath) {
+                          _currentPath = songPath;
+                          _artFuture = getTags(songPath);
+                        }
+
                         return FutureBuilder<Uint8List?>(
-                          future: coverFuture,
+                          future: _artFuture,
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -181,7 +167,7 @@ class _HomePageState extends State<HomePage> {
                                 width: 100,
                                 height: 100,
                                 color: Colors.grey[900],
-                                child: Center(
+                                child: const Center(
                                   child: CircularProgressIndicator(
                                     color: Colors.white,
                                   ),
@@ -192,14 +178,20 @@ class _HomePageState extends State<HomePage> {
                             if (!snapshot.hasData || snapshot.data == null) {
                               return Image.memory(
                                 songs[index].artUri,
-                                fit: BoxFit.contain,
-                              );
-                            } else {
-                              return Image.memory(
-                                snapshot.data!,
                                 fit: BoxFit.cover,
                               );
                             }
+
+                            return Image.memory(
+                              snapshot.data!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                log('ART_DEBUG ❌ ERRO no Image.memory');
+                                log('ART_DEBUG ❌ error: $error');
+                                log('ART_DEBUG ❌ stack: $stackTrace');
+                                return const SizedBox.shrink();
+                              },
+                            );
                           },
                         );
                       },

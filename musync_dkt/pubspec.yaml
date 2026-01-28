@@ -41,6 +41,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   shelf: ^1.4.2
   audioplayers: ^6.5.0
+  audiotags: ^1.4.5
 
 dev_dependencies:
   flutter_test:

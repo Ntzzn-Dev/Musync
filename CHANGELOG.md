@@ -319,6 +319,10 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da tecla de atalho `espaço` para pausar a midia em reprodução.  
 - Relayout de desktop com versão horizontal e vertical.  
 
+### version 5.11.1
+- Troca de plugin do ffmpeg para audiotags.  
+- Correção da visualização da imagem.  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
 + Criar checkpoint para reiniciar músicas.  

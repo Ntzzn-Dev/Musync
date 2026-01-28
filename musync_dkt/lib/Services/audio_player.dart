@@ -81,7 +81,6 @@ class MusyncAudioHandler extends AudioPlayer {
       return;
     }
 
-    currentIndex.value = index;
     final tempDir = await getTemporaryDirectory();
 
     if (tempFile != null && await tempFile!.exists()) {
@@ -101,6 +100,8 @@ class MusyncAudioHandler extends AudioPlayer {
 
     songsAtual.value[index].path = tempFile?.path ?? '';
     musicAtual.value = songsAtual.value[index];
+
+    currentIndex.value = index;
 
     enviarParaAndroid(socket, 'newindex', currentIndex.value);
 
