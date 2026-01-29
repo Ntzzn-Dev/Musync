@@ -38,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: musync-windows-build
-          path: musync_dkt/build/windows/Release/
+          path: musync_dkt/build/windows/x64/runner/Release/
