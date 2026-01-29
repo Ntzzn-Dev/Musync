@@ -1,0 +1,39 @@
+name: Build Flutter Windows
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: musync_dkt
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "stable"
+          channel: "stable"
+
+      - name: Ativar suporte Windows
+        run: flutter config --enable-windows-desktop
+
+      - name: Instalar dependências
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Upload do build
+        uses: actions/upload-artifact@v4
+        with:
+          name: musync-windows-build
+          path: musync_dkt/build/windows/runner/Release/
