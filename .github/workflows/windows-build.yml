@@ -14,25 +14,27 @@ jobs:
         working-directory: musync_dkt
 
     steps:
-      - name: Checkout do código
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "stable"
-          channel: "stable"
+          flutter-version: "3.35.7"
 
-      - name: Ativar suporte Windows
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
-      - name: Instalar dependências
+      - name: Get dependencies
         run: flutter pub get
 
-      - name: Build Windows
+      - name: Build Windows (Release)
         run: flutter build windows --release
 
-      - name: Upload do build
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: musync-windows-build
