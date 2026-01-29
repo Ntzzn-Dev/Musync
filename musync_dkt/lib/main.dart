@@ -1,5 +1,4 @@
 import 'dart:developer';
-import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,7 @@ import 'package:musync_dkt/Widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:audiotags/audiotags.dart';
 
-final MusyncAudioHandler player = MusyncAudioHandler();
+final MusyncAudioHandler audPl = MusyncAudioHandler();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +49,9 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     startServer(connected, musicsPercent);
     _focusNode.requestFocus();
-    player.setVolume(50);
+    audPl.setVolume(50);
+
+    audPl.currentIndex.addListener(_onCurrentIndexChanged);
   }
 
   @override
@@ -65,7 +66,7 @@ class _HomePageState extends State<HomePage> {
 
   ValueNotifier<double> bottomPosition = ValueNotifier(0);
 
-  bool? isLandscape;
+  bool isLandscape = false;
 
   void checkOrientation(Size size) {
     bool landscape = size.width > size.height;
@@ -81,6 +82,22 @@ class _HomePageState extends State<HomePage> {
 
   Future<Uint8List?>? _artFuture;
   String? _currentPath;
+
+  void _onCurrentIndexChanged() {
+    final index = audPl.currentIndex.value;
+    final songs = audPl.songsAtual.value;
+
+    if (songs.isEmpty || index < 0) return;
+
+    final songPath = songs[index].path;
+
+    if (_currentPath != songPath) {
+      _currentPath = songPath;
+      setState(() {
+        _artFuture = getTags(songPath);
+      });
+    }
+  }
 
   Future<Uint8List?> getTags(String path) async {
     try {
@@ -102,7 +119,28 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget mainList(bool isLandscape) {
+  Widget buildPlayer() {
+    return ValueListenableBuilder<double>(
+      valueListenable: bottomPosition,
+      builder: (context, value, child) {
+        return AnimatedPositioned(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          bottom: value,
+          left: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: () {
+              _toggleBottom();
+            },
+            child: Player(audPl: audPl),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mainList() {
     return Row(
       children: [
         Expanded(
@@ -110,22 +148,22 @@ class _HomePageState extends State<HomePage> {
           child: Stack(
             children: [
               ValueListenableBuilder<List<MediaMusic>>(
-                valueListenable: player.songsAtual,
+                valueListenable: audPl.songsAtual,
                 builder: (context, value, child) {
                   return ListContent(
-                    audioHandler: player,
-                    songsNow: player.songsAtual.value,
+                    audioHandler: audPl,
+                    songsNow: audPl.songsAtual.value,
                     modeReorder: ModeOrderEnum.dataAZ,
                     aposClique: (item) async {
-                      int indiceCerto = player.songsAtual.value.indexWhere(
+                      int indiceCerto = audPl.songsAtual.value.indexWhere(
                         (t) => t == item,
                       );
-                      player.setIndex(indiceCerto);
+                      audPl.setIndex(indiceCerto);
                     },
                   );
                 },
               ),
-              if (!isLandscape) mainPlayer(),
+              if (!isLandscape) buildPlayer(),
             ],
           ),
         ),
@@ -140,90 +178,81 @@ class _HomePageState extends State<HomePage> {
                     top: 20,
                     right: 50,
                     left: 50,
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: player.currentIndex,
-                      builder: (context, index, _) {
-                        final songs = player.songsAtual.value;
-
-                        if (songs.isEmpty ||
-                            index < 0 ||
-                            index >= songs.length) {
-                          return const SizedBox.shrink();
+                    child: FutureBuilder<Uint8List?>(
+                      future: _artFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            width: 150,
+                            height: 150,
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
                         }
 
-                        final songPath = songs[index].path;
-
-                        if (_currentPath != songPath) {
-                          _currentPath = songPath;
-                          _artFuture = getTags(songPath);
+                        if (snapshot.hasError) {
+                          log('Erro carregando arte: ${snapshot.error}');
+                          return Container(
+                            width: 150,
+                            height: 150,
+                            color: Colors.grey[850],
+                            child: const Icon(
+                              Icons.broken_image,
+                              size: 60,
+                              color: Colors.white54,
+                            ),
+                          );
                         }
 
-                        return FutureBuilder<Uint8List?>(
-                          future: _artFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
+                        if (!snapshot.hasData ||
+                            snapshot.data == null ||
+                            snapshot.data!.isEmpty) {
+                          return Container(
+                            width: 150,
+                            height: 150,
+                            color: Colors.grey[850],
+                            child: const Icon(
+                              Icons.music_note,
+                              size: 60,
+                              color: Colors.white38,
+                            ),
+                          );
+                        }
+
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            snapshot.data!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              log('ERRO no Image.memory: $error');
                               return Container(
-                                width: 100,
-                                height: 100,
-                                color: Colors.grey[900],
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
+                                width: 150,
+                                height: 150,
+                                color: Colors.grey[850],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 60,
+                                  color: Colors.white54,
                                 ),
                               );
-                            }
-
-                            if (!snapshot.hasData || snapshot.data == null) {
-                              return Image.memory(
-                                songs[index].artUri,
-                                fit: BoxFit.cover,
-                              );
-                            }
-
-                            return Image.memory(
-                              snapshot.data!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                log('ART_DEBUG ❌ ERRO no Image.memory');
-                                log('ART_DEBUG ❌ error: $error');
-                                log('ART_DEBUG ❌ stack: $stackTrace');
-                                return const SizedBox.shrink();
-                              },
-                            );
-                          },
+                            },
+                          ),
                         );
                       },
                     ),
                   ),
-                  mainPlayer(),
+                  buildPlayer(),
                 ],
               ),
             ),
           ),
       ],
-    );
-  }
-
-  Widget mainPlayer() {
-    return ValueListenableBuilder<double>(
-      valueListenable: bottomPosition,
-      builder: (context, value, child) {
-        return AnimatedPositioned(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-          bottom: value,
-          left: 0,
-          right: 0,
-          child: GestureDetector(
-            onTap: () {
-              _toggleBottom();
-            },
-            child: Player(player: player),
-          ),
-        );
-      },
     );
   }
 
@@ -240,10 +269,10 @@ class _HomePageState extends State<HomePage> {
           onKeyEvent: (KeyEvent event) {
             if (event is KeyDownEvent) {
               if (event.logicalKey == LogicalKeyboardKey.space) {
-                if (player.playstate.value == PlayerState.playing) {
-                  player.pause();
+                if (audPl.playstate.value == PlayerState.playing) {
+                  audPl.pause();
                 } else {
-                  player.resume();
+                  audPl.resume();
                 }
               }
             }
@@ -298,7 +327,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            body: mainList(isLandscape ?? true),
+            body: mainList(),
           ),
         );
       },

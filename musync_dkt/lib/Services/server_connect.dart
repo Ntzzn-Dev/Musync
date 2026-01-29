@@ -156,7 +156,7 @@ void startServer(
       socket = await WebSocketTransformer.upgrade(request);
       print('Cliente conectado!');
       connected.value = true;
-      enviarParaAndroid(socket, 'volume', player.vol.value);
+      enviarParaAndroid(socket, 'volume', audPl.vol.value);
 
       socket.listen(
         (data) async {
@@ -184,7 +184,7 @@ void startServer(
                   final fullBytes = Uint8List.fromList(fileBuffers[title]!);
                   fileBuffers.remove(title);
 
-                  await player.tocarMusic({
+                  await audPl.tocarMusic({
                     'audio_title': title,
                     'audio_artist': artist,
                     'data': fullBytes,
@@ -199,9 +199,9 @@ void startServer(
                 }
                 break;
               case 'add_to_atual':
-                player.songsAtual.value = [
-                  ...player.songsAtual.value,
-                  player.songsAll.firstWhere(
+                audPl.songsAtual.value = [
+                  ...audPl.songsAtual.value,
+                  audPl.songsAll.firstWhere(
                     (msc) => msc.id == int.parse(decoded['data']),
                   ),
                 ];
@@ -209,7 +209,7 @@ void startServer(
                 break;
               case 'package_start':
                 log("Iniciando pacote de músicas...");
-                player.songsAtual.value.clear();
+                audPl.songsAtual.value.clear();
                 musicsLoaded = '0/${decoded['count']}';
                 break;
               case 'package_end':
@@ -220,28 +220,36 @@ void startServer(
                 enviarParaAndroid(
                   socket,
                   'verify_data',
-                  player.songsAll.map((msc) => msc.id).join(','),
+                  audPl.songsAll.map((msc) => msc.id).join(','),
                 );
                 break;
               case 'toggle_play':
                 if (decoded['data']) {
-                  player.resume();
+                  audPl.resume();
                 } else {
-                  player.pause();
+                  audPl.pause();
                 }
                 break;
               case 'position':
                 final pos = Duration(milliseconds: decoded['data'].toInt());
-                player.seek(pos);
+                audPl.seek(pos);
                 break;
               case 'volume':
                 double vol = decoded['data'].toDouble();
-                player.setVolume(vol);
+                audPl.setVolume(vol);
                 break;
               case 'newindex':
                 int newindex = decoded['data'].toInt();
                 log(newindex.toString());
-                player.setIndex(newindex);
+                audPl.setIndex(newindex);
+                break;
+              case 'shuffle':
+                int newshuffle = decoded['data'].toInt();
+                audPl.setShuffleModeFromInt(newshuffle);
+                break;
+              case 'loop':
+                int newloop = decoded['data'].toInt();
+                audPl.setLoopModeFromInt(newloop);
                 break;
             }
           } catch (e) {

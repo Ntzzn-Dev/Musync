@@ -1,8 +1,6 @@
 name: Build Flutter Windows
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -39,3 +37,4 @@ jobs:
         with:
           name: musync-windows-build
           path: musync_dkt/build/windows/x64/runner/Release/
+          overwrite: true

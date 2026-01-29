@@ -94,7 +94,6 @@ class _ListContentState extends State<ListContent> {
 
   void _onCurrentIndexChanged() {
     if (listaEmUso && _scrollController.hasClients) {
-      log(widget.audioHandler.currentIndex.value.toString());
       scrollToIndex(widget.audioHandler.currentIndex.value);
     }
   }

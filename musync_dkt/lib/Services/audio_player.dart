@@ -65,7 +65,9 @@ class MusyncAudioHandler extends AudioPlayer {
   MusyncAudioHandler() {
     audPl.onPlayerComplete.listen((event) async {
       try {
-        if (tempFile != null && await tempFile!.exists()) {
+        if (loopMode.value != ModeLoopEnum.one &&
+            tempFile != null &&
+            await tempFile!.exists()) {
           await tempFile?.delete();
         }
       } catch (e) {
@@ -162,13 +164,18 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   @override
+  Future<Duration?> getDuration() => audPl.getDuration();
+
+  @override
   Future<Duration?> getCurrentPosition() => audPl.getCurrentPosition();
 
   @override
-  Stream<Duration> get onDurationChanged => audPl.onDurationChanged;
+  Stream<Duration> get onDurationChanged =>
+      audPl.onDurationChanged.asBroadcastStream();
 
   @override
-  Stream<Duration> get onPositionChanged => audPl.onPositionChanged;
+  Stream<Duration> get onPositionChanged =>
+      audPl.onPositionChanged.asBroadcastStream();
 
   @override
   Stream<PlayerState> get onPlayerStateChanged => audPl.onPlayerStateChanged;
@@ -190,6 +197,11 @@ class MusyncAudioHandler extends AudioPlayer {
     enviarParaAndroid(socket, 'newshuffle', enumToInt(shuffleMode.value));
   }
 
+  void setShuffleModeFromInt(int i) {
+    shuffleMode.value = enumFromInt(i, ModeShuffleEnum.values);
+    prepareShuffle();
+  }
+
   ModeShuffleEnum isShuffleEnabled() {
     return shuffleMode.value;
   }
@@ -197,6 +209,10 @@ class MusyncAudioHandler extends AudioPlayer {
   void setLoopModeEnabled() {
     loopMode.value = enumNext(loopMode.value, ModeLoopEnum.values);
     enviarParaAndroid(socket, 'newloop', enumToInt(loopMode.value));
+  }
+
+  void setLoopModeFromInt(int i) {
+    loopMode.value = enumFromInt(i, ModeLoopEnum.values);
   }
 
   ModeLoopEnum isLoopEnabled() {

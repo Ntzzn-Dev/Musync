@@ -1,5 +1,4 @@
-import 'dart:developer';
-
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/Services/audio_player.dart';
@@ -8,9 +7,9 @@ import 'package:musync_dkt/Services/server_connect.dart';
 import 'package:musync_dkt/Widgets/letreiro.dart';
 
 class Player extends StatefulWidget {
-  final MusyncAudioHandler player;
+  final MusyncAudioHandler audPl;
 
-  const Player({super.key, required this.player});
+  const Player({super.key, required this.audPl});
 
   static String formatDuration(Duration d, bool h) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -39,26 +38,48 @@ class _PlayerState extends State<Player> {
   Duration total = Duration.zero;
   Duration position = Duration.zero;
 
+  late final StreamSubscription<Duration> _durationSub;
+  late final StreamSubscription<Duration> _positionSub;
+  late final StreamSubscription<PlayerState> _stateSub;
+
+  void getTotal() async {
+    total = await widget.audPl.getDuration() ?? Duration.zero;
+  }
+
   @override
   void initState() {
     super.initState();
 
-    widget.player.onDurationChanged.listen((d) {
-      setState(() {
-        total = d;
-      });
+    getTotal();
+
+    _durationSub = widget.audPl.onDurationChanged.listen((d) {
+      if (mounted) {
+        setState(() {
+          total = d;
+        });
+      }
     });
 
-    widget.player.onPositionChanged.listen((p) {
-      setState(() {
-        position = p;
-      });
+    _positionSub = widget.audPl.onPositionChanged.listen((p) {
+      if (mounted) {
+        setState(() {
+          position = p;
+        });
+      }
     });
 
-    widget.player.onPlayerStateChanged.listen((s) {
-      widget.player.playstate.value = s;
+    _stateSub = widget.audPl.onPlayerStateChanged.listen((s) {
+      widget.audPl.playstate.value = s;
       enviarParaAndroid(socket, "toggle_play", s == PlayerState.playing);
     });
+  }
+
+  @override
+  void dispose() {
+    _durationSub.cancel();
+    _positionSub.cancel();
+    _stateSub.cancel();
+    super.dispose();
   }
 
   @override
@@ -73,7 +94,7 @@ class _PlayerState extends State<Player> {
         child: Column(
           children: [
             ValueListenableBuilder<MediaMusic>(
-              valueListenable: widget.player.musicAtual,
+              valueListenable: widget.audPl.musicAtual,
               builder: (context, value, child) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -106,7 +127,7 @@ class _PlayerState extends State<Player> {
                           .toDouble(),
                   onChanged: (value) {
                     final newPos = Duration(milliseconds: value.toInt());
-                    widget.player.seek(newPos);
+                    widget.audPl.seek(newPos);
                     setState(() {
                       position = newPos;
                     });
@@ -135,7 +156,7 @@ class _PlayerState extends State<Player> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: widget.player.shuffleMode,
+                  valueListenable: widget.audPl.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -145,7 +166,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () {
-                        widget.player.setShuffleModeEnabled();
+                        widget.audPl.setShuffleModeEnabled();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional
@@ -172,13 +193,13 @@ class _PlayerState extends State<Player> {
                     shape: const CircleBorder(),
                   ),
                   onPressed: () async {
-                    widget.player.prev();
+                    widget.audPl.prev();
                   },
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<PlayerState>(
-                  valueListenable: widget.player.playstate,
+                  valueListenable: widget.audPl.playstate,
                   builder: (context, value, child) {
                     final isPlaying = value == PlayerState.playing;
                     return ElevatedButton(
@@ -190,8 +211,8 @@ class _PlayerState extends State<Player> {
                       ),
                       onPressed: () {
                         isPlaying
-                            ? widget.player.pause()
-                            : widget.player.resume();
+                            ? widget.audPl.pause()
+                            : widget.audPl.resume();
                       },
                       child: Icon(
                         isPlaying
@@ -203,7 +224,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: widget.player.shuffleMode,
+                  valueListenable: widget.audPl.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -213,7 +234,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        widget.player.next();
+                        widget.audPl.next();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional
@@ -229,7 +250,7 @@ class _PlayerState extends State<Player> {
                 ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeLoopEnum>(
-                  valueListenable: widget.player.loopMode,
+                  valueListenable: widget.audPl.loopMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -239,7 +260,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        widget.player.setLoopModeEnabled();
+                        widget.audPl.setLoopModeEnabled();
                       },
                       child: Icon(
                         value == ModeLoopEnum.off
@@ -257,12 +278,12 @@ class _PlayerState extends State<Player> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
               child: ValueListenableBuilder<double>(
-                valueListenable: widget.player.vol,
+                valueListenable: widget.audPl.vol,
                 builder: (context, vol, child) {
                   return Row(
                     children: [
                       IconButton(
-                        onPressed: () => widget.player.toggleMute(),
+                        onPressed: () => widget.audPl.toggleMute(),
                         icon: Icon(
                           vol <= 0
                               ? Icons.volume_mute_rounded
@@ -291,7 +312,7 @@ class _PlayerState extends State<Player> {
                                 max: 100,
                                 value: vol,
                                 onChanged: (value) {
-                                  widget.player.setVolume(value);
+                                  widget.audPl.setVolume(value);
 
                                   enviarParaAndroid(socket, "volume", value);
                                 },

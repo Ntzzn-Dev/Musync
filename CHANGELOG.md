@@ -323,6 +323,16 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Troca de plugin do ffmpeg para audiotags.  
 - Correção da visualização da imagem.  
 
+### trying_github_actions
+- Criando uma maneira de buildar para windows, programando pelo linux.  
+
+### version 5.12  
+- Correção de bugs de redimensionamento.  
+- Mudança na logica da imagem.  
+- Melhora no frame da imagem.  
+- Adição da troca de dados entre android e desktop para shuffle e loop
+- Correção no slider de tempo da musica ao redimensionar janela.  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
 + Criar checkpoint para reiniciar músicas.  
@@ -332,7 +342,6 @@ Todas as mudanças neste projeto serão documentadas aqui.
 + Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
-+ Troca de informações dkt to and shuffle e repeat falha.  
 + Enviar junto o nome da playlist atual.  
 + Corrigir substituição de Ekosystem.initialIndex quando aperto na lista todas.  
 + Dividir lista de ids de musicas ja baixadas no desktop para não ocupar toda a memoria do socket

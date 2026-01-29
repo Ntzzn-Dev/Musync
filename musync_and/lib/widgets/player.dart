@@ -53,6 +53,78 @@ class _PlayerState extends State<Player> {
     MusyncAudioHandler.mediaAtual.value = MediaAtual.fromMediaItem(item);
   }
 
+  Widget buildShuffleButton() {
+    final isConnected = MusyncAudioHandler.eko?.conected.value ?? false;
+
+    return ValueListenableBuilder<ModeShuffleEnum>(
+      valueListenable: widget.audioHandler.shuffleMode,
+      builder: (context, shuffleMode, child) {
+        return ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: Size.zero,
+            padding: EdgeInsets.all(15),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: const CircleBorder(),
+          ),
+          onPressed: () {
+            widget.audioHandler.setShuffleModeEnabled();
+
+            // Se estiver conectado, atualiza também mediavalue
+            if (isConnected) {
+              final mediaAtual = MusyncAudioHandler.mediaAtual.value;
+              mediaAtual.setShuffle(widget.audioHandler.shuffleMode.value);
+            }
+          },
+          child:
+              shuffleMode != ModeShuffleEnum.shuffleOptional
+                  ? Icon(
+                    shuffleMode == ModeShuffleEnum.shuffleNormal
+                        ? Icons.shuffle
+                        : Icons.arrow_right_alt_rounded,
+                  )
+                  : Image.asset(
+                    'assets/dice.png',
+                    color: const Color.fromARGB(255, 243, 160, 34),
+                    colorBlendMode: BlendMode.srcIn,
+                    width: 18,
+                  ),
+        );
+      },
+    );
+  }
+
+  Widget buildLoopButton() {
+    final isConnected = MusyncAudioHandler.eko?.conected.value ?? false;
+
+    return ValueListenableBuilder<ModeLoopEnum>(
+      valueListenable: widget.audioHandler.loopMode,
+      builder: (context, value, child) {
+        return ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: Size.zero,
+            padding: EdgeInsets.all(15),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: const CircleBorder(),
+          ),
+          onPressed: () async {
+            widget.audioHandler.setLoopModeEnabled();
+            if (isConnected) {
+              final mediaAtual = MusyncAudioHandler.mediaAtual.value;
+              mediaAtual.setLoop(widget.audioHandler.loopMode.value);
+            }
+          },
+          child: Icon(
+            value == ModeLoopEnum.off
+                ? Icons.arrow_right_alt_rounded
+                : value == ModeLoopEnum.all
+                ? Icons.repeat_rounded
+                : Icons.repeat_one_rounded,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -212,35 +284,7 @@ class _PlayerState extends State<Player> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: widget.audioHandler.shuffleMode,
-                  builder: (context, value, child) {
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: EdgeInsets.all(15),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: () {
-                        widget.audioHandler.setShuffleModeEnabled();
-                      },
-                      child:
-                          value != ModeShuffleEnum.shuffleOptional
-                              ? Icon(
-                                value == ModeShuffleEnum.shuffleNormal
-                                    ? Icons.shuffle
-                                    : Icons.arrow_right_alt_rounded,
-                              )
-                              : Image.asset(
-                                'assets/dice.png',
-                                color: Color.fromARGB(255, 243, 160, 34),
-                                colorBlendMode: BlendMode.srcIn,
-                                width: 18,
-                              ),
-                    );
-                  },
-                ),
+                buildShuffleButton(),
                 const SizedBox(width: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -333,29 +377,7 @@ class _PlayerState extends State<Player> {
                   },
                 ),
                 const SizedBox(width: 16),
-                ValueListenableBuilder<ModeLoopEnum>(
-                  valueListenable: widget.audioHandler.loopMode,
-                  builder: (context, value, child) {
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: EdgeInsets.all(15),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: const CircleBorder(),
-                      ),
-                      onPressed: () async {
-                        widget.audioHandler.setLoopModeEnabled();
-                      },
-                      child: Icon(
-                        value == ModeLoopEnum.off
-                            ? Icons.arrow_right_alt_rounded
-                            : value == ModeLoopEnum.all
-                            ? Icons.repeat_rounded
-                            : Icons.repeat_one_rounded,
-                      ),
-                    );
-                  },
-                ),
+                buildLoopButton(),
               ],
             ),
             if (MusyncAudioHandler.eko?.conected.value ?? false) ...[
