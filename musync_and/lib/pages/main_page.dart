@@ -21,6 +21,7 @@ import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:musync_and/widgets/vertical_popup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -586,6 +587,16 @@ class _MusicPageState extends State<MusicPage> {
     return completer.future;
   }
 
+  void showVerticalPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        return const VerticalPopupMenu();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -655,13 +666,7 @@ class _MusicPageState extends State<MusicPage> {
                   children: [
                     GestureDetector(
                       onTap: () async {
-                        if (await showPopupAdd(
-                          context,
-                          'Deseja deconectar do desktop?',
-                          [],
-                        )) {
-                          ekosystem?.tryToDisconect();
-                        }
+                        showVerticalPopup(context);
                       },
                       child: Icon(Icons.connected_tv),
                     ),

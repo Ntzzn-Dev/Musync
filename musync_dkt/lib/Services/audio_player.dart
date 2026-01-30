@@ -49,7 +49,11 @@ class MusyncAudioHandler extends AudioPlayer {
     ),
   );
 
+  ValueNotifier<String> playlistName = ValueNotifier('Musicas Recebidas');
+
   ValueNotifier<PlayerState> playstate = ValueNotifier(PlayerState.playing);
+
+  Map<String, dynamic> receiving = {'first': '', 'last': ''};
 
   void toggleMute() {
     muted = !muted;
@@ -80,6 +84,11 @@ class MusyncAudioHandler extends AudioPlayer {
   void setIndex(int index) async {
     if (index >= songsAtual.value.length) {
       log('Esperar carregar todas');
+      sendMessageAnd({
+        'action': 'wait_load',
+        'min': receiving['first'],
+        'max': receiving['last'],
+      });
       return;
     }
 
@@ -105,7 +114,7 @@ class MusyncAudioHandler extends AudioPlayer {
 
     currentIndex.value = index;
 
-    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+    sendMessageAnd({'action': 'newindex', 'data': currentIndex.value});
 
     await audPl.play(DeviceFileSource(tempFile!.path));
   }
@@ -140,7 +149,7 @@ class MusyncAudioHandler extends AudioPlayer {
       for (int i = 0; i < songs.length; i++) songs[i].id.toString(): i,
     };
 
-    enviarParaAndroid(socket, 'newtemporaryorder', temporaryOrder);
+    sendMessageAnd({'action': 'newtemporaryorder', 'data': temporaryOrder});
   }
 
   String safeFileName(String name) {
@@ -194,7 +203,10 @@ class MusyncAudioHandler extends AudioPlayer {
   void setShuffleModeEnabled() {
     shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
     prepareShuffle();
-    enviarParaAndroid(socket, 'newshuffle', enumToInt(shuffleMode.value));
+    sendMessageAnd({
+      'action': 'newshuffle',
+      'data': enumToInt(shuffleMode.value),
+    });
   }
 
   void setShuffleModeFromInt(int i) {
@@ -208,7 +220,7 @@ class MusyncAudioHandler extends AudioPlayer {
 
   void setLoopModeEnabled() {
     loopMode.value = enumNext(loopMode.value, ModeLoopEnum.values);
-    enviarParaAndroid(socket, 'newloop', enumToInt(loopMode.value));
+    sendMessageAnd({'action': 'newloop', 'data': enumToInt(loopMode.value)});
   }
 
   void setLoopModeFromInt(int i) {
@@ -272,8 +284,7 @@ class MusyncAudioHandler extends AudioPlayer {
 
   Future<bool> repeatNormal() async {
     if (loopMode.value == ModeLoopEnum.one) {
-      await audPl.seek(Duration.zero);
-      resume();
+      setIndex(currentIndex.value);
       return true;
     } else if (loopMode.value == ModeLoopEnum.all &&
         currentIndex.value + 1 >= songsAtual.value.length) {
@@ -308,7 +319,7 @@ class MusyncAudioHandler extends AudioPlayer {
     played.add(nextIndex);
 
     setIndex(nextIndex);
-    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+    sendMessageAnd({'action': 'newindex', 'data': currentIndex.value});
   }
 
   Future<void> playPreviousShuffled() async {
@@ -322,7 +333,7 @@ class MusyncAudioHandler extends AudioPlayer {
 
     int prevIndex = played.last;
     setIndex(prevIndex);
-    enviarParaAndroid(socket, 'newindex', currentIndex.value);
+    sendMessageAnd({'action': 'newindex', 'data': currentIndex.value});
   }
 
   Future<bool> repeatShuffled() async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 final baseAppColor = Color.fromARGB(255, 243, 160, 34);
 ThemeData lighttheme() {
   return ThemeData(
+    fontFamily: "Default-Medium",
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: Color.fromARGB(255, 242, 242, 242),
     appBarTheme: AppBarTheme(
@@ -134,6 +135,7 @@ ThemeData lighttheme() {
 
 ThemeData darktheme() {
   return ThemeData(
+    fontFamily: "Default-Medium",
     primarySwatch: Colors.orange,
     scaffoldBackgroundColor: Color.fromARGB(255, 48, 48, 48),
     appBarTheme: AppBarTheme(

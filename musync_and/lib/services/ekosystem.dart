@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
+import 'package:musync_and/services/audio_player_base.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 
@@ -202,5 +203,15 @@ class Ekosystem {
     }
 
     sendMessage({"action": "package_end"});
+  }
+
+  void sendEkoShuffle(ModeShuffleEnum mode) {
+    int i = enumToInt(mode);
+    sendMessage({'action': 'shuffle', 'data': i});
+  }
+
+  void sendEkoLoop(ModeLoopEnum mode) {
+    int i = enumToInt(mode);
+    sendMessage({'action': 'loop', 'data': i});
   }
 }

@@ -333,6 +333,17 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da troca de dados entre android e desktop para shuffle e loop
 - Correção no slider de tempo da musica ao redimensionar janela.  
 
+### version 5.13  
+- Adição das opções minimizar/restaurar e fechar musync de Desktop via controle remoto(android).
+- Correção do modo de loop one.  
+- Correção em algumas lógicas de comunicação.  
+  - Shuffle e Repeat não precisam ser enviados pela media atual.  
+  - Shuffle e Repeat são sincronizados no Desktop de acordo com o Android logo no inicio da conexão.  
+  - Nome da playlist atual é enviada para o Desktop.  
+- Adição de fontes para textos especificos.  
+- Correção dos valores nos campos de informações de cada musica.  
+- Implementação da logica para indices ainda não recebidos (inacabado).  
+
 ### TO FUTURE VERSIONS
 + Corrigir delete de varias musicas no playlist page.
 + Criar checkpoint para reiniciar músicas.  
@@ -342,6 +353,5 @@ Todas as mudanças neste projeto serão documentadas aqui.
 + Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Corrigir Mudança de playlist antes de carregamento total deve parar de enviar a playlist antiga e começar a nova.  
-+ Enviar junto o nome da playlist atual.  
 + Corrigir substituição de Ekosystem.initialIndex quando aperto na lista todas.  
 + Dividir lista de ids de musicas ja baixadas no desktop para não ocupar toda a memoria do socket

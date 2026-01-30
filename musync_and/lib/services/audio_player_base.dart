@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:math' as mt;
 import 'package:collection/collection.dart';
 
 import 'package:audio_service/audio_service.dart';
@@ -49,6 +50,14 @@ class MusyncAudioHandler extends BaseAudioHandler
   void setEkosystem(Ekosystem ekosystem) {
     eko = ekosystem;
     pause();
+
+    eko?.sendEkoLoop(loopMode.value);
+    eko?.sendEkoShuffle(shuffleMode.value);
+
+    eko?.sendMessage({
+      'action': 'playlist_name',
+      'data': actlist.atualPlaylist.value.title,
+    });
 
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
@@ -106,6 +115,9 @@ class MusyncAudioHandler extends BaseAudioHandler
           break;
         case 'package_end':
           Ekosystem.indexInitial = 0;
+          break;
+        case 'wait_load':
+          sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
           break;
       }
     });
@@ -453,6 +465,21 @@ class MusyncAudioHandler extends BaseAudioHandler
       }
       play();
     }
+  }
+
+  void sendMediaIndexShuffleOutOfLimits(String first, String last) {
+    final min = actlist.songsAllPlaylist.indexWhere((msc) => msc.id == first);
+
+    final max = actlist.songsAllPlaylist.indexWhere((msc) => msc.id == last);
+
+    if (min == -1 || max == -1) {
+      return;
+    }
+
+    final random = mt.Random();
+    final index = min + random.nextInt(max - min + 1);
+    log(index.toString());
+    sendMediaIndex(index);
   }
 
   void sendMediaIndex(int index) {

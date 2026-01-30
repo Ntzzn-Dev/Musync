@@ -42,6 +42,7 @@ dependencies:
   shelf: ^1.4.2
   audioplayers: ^6.5.0
   audiotags: ^1.4.5
+  window_manager: ^0.5.1
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +68,17 @@ flutter:
   assets:
     - assets/dice.png
     - assets/MusyncLogo.png
+
+  fonts:
+    - family: Titles
+      fonts:
+        - asset: assets/fonts/Moderniz.otf
+    - family: Default-Thin
+      fonts:
+        - asset: assets/fonts/ZTNature-Thin.ttf
+    - family: Default-Medium
+      fonts:
+        - asset: assets/fonts/ZTNature-Medium.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

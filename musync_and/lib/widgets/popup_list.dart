@@ -95,7 +95,7 @@ Future<void> showPopupList(
                                 fieldLabels.value.centralize
                                     ? Center(
                                       child: Text(
-                                        item.info.toString(),
+                                        item.value.toString(),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontWeight:
@@ -106,7 +106,7 @@ Future<void> showPopupList(
                                       ),
                                     )
                                     : Text(
-                                      item.info.toString(),
+                                      item.value.toString(),
                                       style: TextStyle(
                                         fontWeight:
                                             fieldLabels.value.bold

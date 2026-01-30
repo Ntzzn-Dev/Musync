@@ -10,11 +10,14 @@ import 'package:musync_dkt/Widgets/player.dart';
 import 'package:musync_dkt/Widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:audiotags/audiotags.dart';
+import 'package:window_manager/window_manager.dart';
 
 final MusyncAudioHandler audPl = MusyncAudioHandler();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await windowManager.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -224,24 +227,30 @@ class _HomePageState extends State<HomePage> {
                           );
                         }
 
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(
-                            snapshot.data!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              log('ERRO no Image.memory: $error');
-                              return Container(
-                                width: 150,
-                                height: 150,
-                                color: Colors.grey[850],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  size: 60,
-                                  color: Colors.white54,
-                                ),
-                              );
-                            },
+                        return Align(
+                          alignment: Alignment.topCenter,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 350),
+                              child: Image.memory(
+                                snapshot.data!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  log('ERRO no Image.memory: $error');
+                                  return Container(
+                                    width: 150,
+                                    height: 150,
+                                    color: Colors.grey[850],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 60,
+                                      color: Colors.white54,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -279,7 +288,19 @@ class _HomePageState extends State<HomePage> {
           },
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('Músicas Recebidas'),
+              title: ValueListenableBuilder<String>(
+                valueListenable: audPl.playlistName,
+                builder: (context, name, child) {
+                  return Text(
+                    name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      fontFamily: 'Titles',
+                    ),
+                  );
+                },
+              ),
               actions: [
                 ValueListenableBuilder<String>(
                   valueListenable: musicsPercent,

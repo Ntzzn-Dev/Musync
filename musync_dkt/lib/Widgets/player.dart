@@ -70,7 +70,10 @@ class _PlayerState extends State<Player> {
 
     _stateSub = widget.audPl.onPlayerStateChanged.listen((s) {
       widget.audPl.playstate.value = s;
-      enviarParaAndroid(socket, "toggle_play", s == PlayerState.playing);
+      sendMessageAnd({
+        'action': 'toggle_play',
+        'data': s == PlayerState.playing,
+      });
     });
   }
 
@@ -132,11 +135,10 @@ class _PlayerState extends State<Player> {
                       position = newPos;
                     });
 
-                    enviarParaAndroid(
-                      socket,
-                      "position",
-                      position.inMilliseconds.toDouble(),
-                    );
+                    sendMessageAnd({
+                      'action': 'position',
+                      'data': position.inMilliseconds.toDouble(),
+                    });
                   },
                 ),
               ),
@@ -146,8 +148,14 @@ class _PlayerState extends State<Player> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(Player.formatDuration(position, false)),
-                  Text(Player.formatDuration(total, false)),
+                  Text(
+                    Player.formatDuration(position, false),
+                    style: TextStyle(fontFamily: 'Default-Thin'),
+                  ),
+                  Text(
+                    Player.formatDuration(total, false),
+                    style: TextStyle(fontFamily: 'Default-Thin'),
+                  ),
                 ],
               ),
             ),
@@ -314,7 +322,10 @@ class _PlayerState extends State<Player> {
                                 onChanged: (value) {
                                   widget.audPl.setVolume(value);
 
-                                  enviarParaAndroid(socket, "volume", value);
+                                  sendMessageAnd({
+                                    'action': 'volume',
+                                    'data': value,
+                                  });
                                 },
                               ),
                             ),

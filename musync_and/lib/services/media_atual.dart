@@ -86,16 +86,6 @@ class MediaAtual extends MediaItem {
     }
   }
 
-  void setShuffle(ModeShuffleEnum mode) {
-    int i = enumToInt(mode);
-    MusyncAudioHandler.eko?.sendMessage({'action': 'shuffle', 'data': i});
-  }
-
-  void setLoop(ModeLoopEnum mode) {
-    int i = enumToInt(mode);
-    MusyncAudioHandler.eko?.sendMessage({'action': 'loop', 'data': i});
-  }
-
   void _startTimer() {
     _timer?.cancel();
 

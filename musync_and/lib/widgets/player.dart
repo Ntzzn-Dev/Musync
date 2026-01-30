@@ -69,10 +69,10 @@ class _PlayerState extends State<Player> {
           onPressed: () {
             widget.audioHandler.setShuffleModeEnabled();
 
-            // Se estiver conectado, atualiza também mediavalue
             if (isConnected) {
-              final mediaAtual = MusyncAudioHandler.mediaAtual.value;
-              mediaAtual.setShuffle(widget.audioHandler.shuffleMode.value);
+              MusyncAudioHandler.eko?.sendEkoShuffle(
+                widget.audioHandler.shuffleMode.value,
+              );
             }
           },
           child:
@@ -109,8 +109,9 @@ class _PlayerState extends State<Player> {
           onPressed: () async {
             widget.audioHandler.setLoopModeEnabled();
             if (isConnected) {
-              final mediaAtual = MusyncAudioHandler.mediaAtual.value;
-              mediaAtual.setLoop(widget.audioHandler.loopMode.value);
+              MusyncAudioHandler.eko?.sendEkoLoop(
+                widget.audioHandler.loopMode.value,
+              );
             }
           },
           child: Icon(

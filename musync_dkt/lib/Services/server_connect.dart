@@ -7,6 +7,7 @@ import 'package:musync_dkt/main.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:window_manager/window_manager.dart';
 
 late WebSocket socket;
 final Map<String, List<int>> fileBuffers = {};
@@ -117,13 +118,9 @@ void enableQRCode(BuildContext context, ValueNotifier<bool> connected) async {
   );
 }
 
-void enviarParaAndroid(WebSocket socket, String action, dynamic data) {
+void sendMessageAnd(Map<String, dynamic> act) {
   try {
-    final message = jsonEncode({
-      "action": action,
-      "data": data,
-      "time": DateTime.now().millisecondsSinceEpoch,
-    });
+    final message = jsonEncode(act);
 
     socket.add(message);
   } catch (e) {
@@ -156,7 +153,7 @@ void startServer(
       socket = await WebSocketTransformer.upgrade(request);
       print('Cliente conectado!');
       connected.value = true;
-      enviarParaAndroid(socket, 'volume', audPl.vol.value);
+      sendMessageAnd({'action': 'volume', 'data': audPl.vol.value});
 
       socket.listen(
         (data) async {
@@ -184,6 +181,8 @@ void startServer(
                   final fullBytes = Uint8List.fromList(fileBuffers[title]!);
                   fileBuffers.remove(title);
 
+                  bool isFirst = musicsLoaded.split('/').first == '0';
+
                   await audPl.tocarMusic({
                     'audio_title': title,
                     'audio_artist': artist,
@@ -191,7 +190,12 @@ void startServer(
                     'id': int.parse(decoded['id'].split("/").last),
                     'part': decoded['parte'],
                     'art': decoded['artUri'],
-                  }, musicsLoaded.split('/').first == '0');
+                  }, isFirst);
+
+                  audPl.receiving = {
+                    'first': isFirst ? decoded['id'] : audPl.receiving['first'],
+                    'last': decoded['id'],
+                  };
 
                   addLoaded(musicsPercent);
 
@@ -214,14 +218,13 @@ void startServer(
                 break;
               case 'package_end':
                 log("Fim da primeira parte");
-                enviarParaAndroid(socket, "package_end", 0);
+                sendMessageAnd({'action': 'package_end'});
                 break;
               case 'request_data':
-                enviarParaAndroid(
-                  socket,
-                  'verify_data',
-                  audPl.songsAll.map((msc) => msc.id).join(','),
-                );
+                sendMessageAnd({
+                  'action': 'verify_data',
+                  'data': audPl.songsAll.map((msc) => msc.id).join(','),
+                });
                 break;
               case 'toggle_play':
                 if (decoded['data']) {
@@ -250,6 +253,20 @@ void startServer(
               case 'loop':
                 int newloop = decoded['data'].toInt();
                 audPl.setLoopModeFromInt(newloop);
+                break;
+              case 'minimize_window':
+                bool minimizado = await windowManager.isMinimized();
+                if (minimizado) {
+                  await windowManager.restore();
+                } else {
+                  await windowManager.minimize();
+                }
+                break;
+              case 'close_window':
+                await windowManager.close();
+                break;
+              case 'playlist_name':
+                audPl.playlistName.value = decoded['data'];
                 break;
             }
           } catch (e) {
