@@ -6,7 +6,7 @@ import 'package:audiotags/audiotags.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';

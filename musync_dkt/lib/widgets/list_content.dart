@@ -2,8 +2,8 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
-import 'package:musync_dkt/Services/audio_player.dart';
-import 'package:musync_dkt/Services/media_music.dart';
+import 'package:musync_dkt/services/audio_player.dart';
+import 'package:musync_dkt/services/media_music.dart';
 import 'package:musync_dkt/themes.dart';
 
 class ListContent extends StatefulWidget {
@@ -162,39 +162,7 @@ class _ListContentState extends State<ListContent> {
                         ? Color.fromARGB(96, 243, 159, 34)
                         : null;
 
-                String currentSlice = '';
-                String previousSlice = '';
-
-                bool showSliceHeader =
-                    index == 0 || currentSlice != previousSlice;
-
-                if (mode == ModeOrderEnum.manual) {
-                  showSliceHeader = false;
-                }
-
                 List<Widget> children = [];
-
-                if (showSliceHeader) {
-                  children.add(
-                    Container(
-                      height: 30,
-                      width: double.infinity,
-                      color: const Color.fromARGB(255, 54, 54, 54),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        currentSlice,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 243, 160, 34),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  );
-                }
 
                 children.add(
                   Row(

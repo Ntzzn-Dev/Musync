@@ -3,7 +3,8 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 
 class Playlists {
@@ -73,7 +74,7 @@ class Playlists {
       return [];
     }
 
-    final resultados = MusyncAudioHandler.reorder(
+    final resultados = reorderMusics(
       enumFromInt(orderMode, ModeOrderEnum.values),
       musicas,
     );

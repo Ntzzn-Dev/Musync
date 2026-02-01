@@ -9,7 +9,8 @@ import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/actionlist.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/download.dart';
 import 'package:musync_and/services/ekosystem.dart';
@@ -28,9 +29,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:diacritic/diacritic.dart';
 
 class MusicPage extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
 
-  const MusicPage({super.key, required this.audioHandler});
+  const MusicPage({super.key});
 
   @override
   State<MusicPage> createState() => _MusicPageState();
@@ -75,7 +75,7 @@ class _MusicPageState extends State<MusicPage> {
 
   @override
   void dispose() {
-    widget.audioHandler.stop();
+    audPl.stop();
     super.dispose();
   }
 
@@ -90,18 +90,17 @@ class _MusicPageState extends State<MusicPage> {
   Future<void> _initFetchSongs() async {
     final fetchedSongs = await FetchSongs.execute();
 
-    final reordered = await MusyncAudioHandler.reorder(modeAtual, fetchedSongs);
+    final reordered = await reorderMusics(modeAtual, fetchedSongs);
 
     MusyncAudioHandler.actlist.songsAll = reordered;
 
     await loadSongsNow();
 
-    widget.audioHandler.initSongs(songs: songsNow);
+    audPl.initSongs(songs: songsNow);
   }
 
   Future<void> loadSongsNow() async {
-    log('metodo loadSongsNow');
-    await widget.audioHandler.searchPlaylists();
+    await audPl.searchPlaylists();
     int idpl = int.tryParse(MusyncAudioHandler.actlist.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
       final pl = await DatabaseHelper().loadPlaylist(idpl);
@@ -168,7 +167,7 @@ class _MusicPageState extends State<MusicPage> {
     modeAtual = mod;
     MusyncAudioHandler
         .actlist
-        .songsAllPlaylist = await MusyncAudioHandler.reorder(
+        .songsAllPlaylist = await reorderMusics(
       modeAtual,
       MusyncAudioHandler.actlist.songsAllPlaylist,
     );
@@ -203,8 +202,8 @@ class _MusicPageState extends State<MusicPage> {
               .toList();
     }
 
-    await widget.audioHandler.recreateQueue(songs: newsongs);
-    await widget.audioHandler.skipToQueueItem(ultimaMusica ?? 0);
+    await audPl.recreateQueue(songs: newsongs);
+    await audPl.skipToQueueItem(ultimaMusica ?? 0);
   }
 
   Future<String?> openQrScanner() async {
@@ -265,21 +264,21 @@ class _MusicPageState extends State<MusicPage> {
     switch (pageIndex) {
       case 0:
         return ListContent(
-          audioHandler: widget.audioHandler,
+          audioHandler: audPl,
           songsNow: songsNow,
           modeReorder: modeAtual,
           idPlaylist: MusyncAudioHandler.actlist.mainPlaylist.tag.toString(),
           aposClique: (item) async {
-            await widget.audioHandler.recreateQueue(
+            await audPl.recreateQueue(
               songs: MusyncAudioHandler.actlist.songsAllPlaylist,
             );
-            widget.audioHandler.savePl(MusyncAudioHandler.actlist.mainPlaylist);
+            audPl.savePl(MusyncAudioHandler.actlist.mainPlaylist);
             int indiceCerto = MusyncAudioHandler.actlist.songsAllPlaylist
                 .indexWhere((t) => t == item);
             if (ekosystem?.conected.value ?? false) {
               Ekosystem.indexInitial = indiceCerto;
             }
-            await widget.audioHandler.skipToQueueItem(indiceCerto);
+            await audPl.skipToQueueItem(indiceCerto);
           },
           selecaoDeMusicas: (indexMsc) async {
             return await moreOptionsSelected(indexMsc);
@@ -295,7 +294,7 @@ class _MusicPageState extends State<MusicPage> {
           ),
         ];
         return ListPlaylist(
-          audioHandler: widget.audioHandler,
+          audioHandler: audPl,
           searchController: _searchController,
           escolhaDePlaylist: (pl) async {
             final newsongs = await pl.findMusics();
@@ -360,28 +359,54 @@ class _MusicPageState extends State<MusicPage> {
     }
   }
 
-  void deletarMusicas(List<MediaItem> itens) async {
-    for (MediaItem item in itens) {
-      final file = File(item.extras?['path']);
-      if (await file.exists()) {
-        try {
-          setState(() {
-            songsNow.remove(item);
-            MusyncAudioHandler.actlist.songsAll.remove(item);
-            if (MusyncAudioHandler.actlist.songsAllPlaylist.contains(item)) {
-              MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
-            }
-          });
-          await widget.audioHandler.recreateQueue(songs: songsNow);
-          await file.delete();
-        } catch (e) {
-          log('Erro ao deletar: $e');
-        }
-      } else {
-        log('Arquivo não encontrado');
+void deletarMusicas(List<MediaItem> itensOriginal) async {
+  final itens = List<MediaItem>.from(itensOriginal);
+  for (MediaItem item in itens) {
+    final path = item.extras?['path'];
+
+    if (path == null) {
+      continue;
+    }
+
+    final file = File(path);
+
+    try {
+      final exists = await file.exists();
+      
+      if (!exists) {
+        continue;
       }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        songsNow.removeWhere((e) => e.id == item.id);
+          MusyncAudioHandler.actlist.songsAll
+              .removeWhere((e) => e.id == item.id);
+          MusyncAudioHandler.actlist.songsAllPlaylist
+              .removeWhere((e) => e.id == item.id);
+
+        MusyncAudioHandler.actlist.songsAll.remove(item);
+
+        if (MusyncAudioHandler.actlist.songsAllPlaylist.contains(item)) {
+          MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
+        } 
+      });
+      await audPl.recreateQueue(songs: songsNow);
+
+      await audPl.stop();
+      await Future.delayed(const Duration(milliseconds: 200));
+      await file.delete();
+    } catch (e, stack) {
+      log('Erro: $e | $stack');
     }
   }
+
+  await loadSongsNow();
+}
+
 
   void _abrirPlaylist({
     required String title,
@@ -400,7 +425,7 @@ class _MusicPageState extends State<MusicPage> {
         builder:
             (context) => PlaylistPage(
               plTitle: title,
-              audioHandler: widget.audioHandler,
+              audioHandler: audPl,
               songsPL: songsPl,
               pl: pl,
               ekosystem: ekosystem,
@@ -858,7 +883,7 @@ class _MusicPageState extends State<MusicPage> {
                     MaterialPageRoute(
                       builder:
                           (context) =>
-                              SettingsPage(audioHandler: widget.audioHandler),
+                              SettingsPage(audioHandler: audPl),
                       settings: RouteSettings(name: 'settings'),
                     ),
                   );
@@ -878,7 +903,7 @@ class _MusicPageState extends State<MusicPage> {
                     MaterialPageRoute(
                       builder:
                           (context) =>
-                              ControlPage(audioHandler: widget.audioHandler),
+                              ControlPage(audioHandler: audPl),
                       settings: RouteSettings(name: 'control'),
                     ),
                   ).then((_) {
@@ -909,7 +934,7 @@ class _MusicPageState extends State<MusicPage> {
                     });
 
                     if (ekosystem != null) {
-                      widget.audioHandler.setEkosystem(ekosystem!);
+                      audPl.setEkosystem(ekosystem!);
                     }
                   }
                 },
@@ -1016,7 +1041,7 @@ class _MusicPageState extends State<MusicPage> {
           ),
           ValueListenableBuilder(
             valueListenable: toDown,
-            builder: (context, value, child) {
+            builder: (context, shouldGoDown, child) {
               bottomInset = MediaQuery.of(context).padding.bottom;
               return ValueListenableBuilder<bool>(
                 valueListenable: ekosystem?.conected ?? ValueNotifier(false),
@@ -1024,12 +1049,12 @@ class _MusicPageState extends State<MusicPage> {
                   return AnimatedPositioned(
                     duration: const Duration(milliseconds: 500),
                     curve: Curves.easeInOut,
-                    bottom: bottomInset - (value ? (conected ? 160 : 102) : 0),
+                    bottom: bottomInset - (shouldGoDown ? (conected ? 142 : 102) : 0),
                     left: 0,
                     right: 0,
                     child: GestureDetector(
                       onTap: _toggleBottom,
-                      child: Player(audioHandler: widget.audioHandler),
+                      child: Player(audioHandler: audPl),
                     ),
                   );
                 },

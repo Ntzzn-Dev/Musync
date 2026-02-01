@@ -5,7 +5,8 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/actionlist.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -82,7 +83,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   void reorganizar() async {
-    final novaLista = await MusyncAudioHandler.reorder(
+    final novaLista = await reorderMusics(
       modeAtual,
       songsNowTranslated,
     );

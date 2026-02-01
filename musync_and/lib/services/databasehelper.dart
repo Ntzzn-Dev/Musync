@@ -1,7 +1,8 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
@@ -455,7 +456,7 @@ class DatabaseHelper {
         .where((x) => !resultadoUps.contains(x) && !resultadoDesups.contains(x))
         .toList();
 
-    List<MediaItem> restoReordenado = await MusyncAudioHandler.reorder(
+    List<MediaItem> restoReordenado = await reorderMusics(
       ModeOrderEnum.dataZA,
       resultadoResto,
     );

@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_dkt/Services/media_music.dart';
-import 'package:musync_dkt/Services/server_connect.dart';
+import 'package:musync_dkt/services/media_music.dart';
+import 'package:musync_dkt/services/server_connect.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -82,7 +82,7 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void setIndex(int index) async {
-    if (index >= songsAtual.value.length) {
+    if (index >= songsAtual.value.length || index < 0) {
       log('Esperar carregar todas');
       sendMessageAnd({
         'action': 'wait_load',
@@ -169,6 +169,8 @@ class MusyncAudioHandler extends AudioPlayer {
   @override
   Future<void> setVolume(double volume) async {
     vol.value = volume;
+    sendMessageAnd({"action": 'volume', "data": volume});
+    
     await audPl.setVolume(volume / 100);
   }
 

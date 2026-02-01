@@ -94,7 +94,7 @@ void enableQRCode(BuildContext context, ValueNotifier<bool> connected) async {
                         ),
                       ),
                       image: PrettyQrDecorationImage(
-                        image: AssetImage("assets/MusyncLogo.png"),
+                        image: AssetImage("assets/musync_icon.png"),
                         colorFilter: ColorFilter.mode(
                           baseAppColor,
                           BlendMode.srcIn,

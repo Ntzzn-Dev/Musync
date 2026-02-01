@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_dkt/Services/audio_player.dart';
-import 'package:musync_dkt/Services/media_music.dart';
-import 'package:musync_dkt/Services/server_connect.dart';
-import 'package:musync_dkt/Widgets/letreiro.dart';
+import 'package:musync_dkt/services/audio_player.dart';
+import 'package:musync_dkt/services/media_music.dart';
+import 'package:musync_dkt/services/server_connect.dart';
+import 'package:musync_dkt/widgets/letreiro.dart';
+import 'package:musync_dkt/widgets/sound_control.dart';
 
 class Player extends StatefulWidget {
   final MusyncAudioHandler audPl;
@@ -303,33 +304,9 @@ class _PlayerState extends State<Player> {
                       ),
                       SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          children: [
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 2,
-                                thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 6,
-                                ),
-                                overlayShape: const RoundSliderOverlayShape(
-                                  overlayRadius: 12,
-                                ),
-                              ),
-                              child: Slider(
-                                min: 0,
-                                max: 100,
-                                value: vol,
-                                onChanged: (value) {
-                                  widget.audPl.setVolume(value);
-
-                                  sendMessageAnd({
-                                    'action': 'volume',
-                                    'data': value,
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: SoundControl(audPl: widget.audPl, height: 30),
                         ),
                       ),
                     ],

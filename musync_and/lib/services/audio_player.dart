@@ -7,6 +7,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/actionlist.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
@@ -78,6 +79,8 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
+      log(msg?['action']);
+      log('======');
       switch (msg?['action']) {
         case 'verify_data':
           String allIds = msg?['data'];
@@ -220,11 +223,11 @@ class MusyncAudioHandler extends BaseAudioHandler
       song.title,
     );
 
-    actlist.songsAllPlaylist = await MusyncAudioHandler.reorder(
+    actlist.songsAllPlaylist = await reorderMusics(
       ModeOrderEnum.up,
       actlist.getMediaItemsFromQueue(),
     );
-    actlist.setMusicListAtual(actlist.songsAllPlaylist, this);
+    actlist.setMusicListAtual(actlist.songsAllPlaylist);
 
     setCurrentTrack(index: 0);
   }
@@ -320,7 +323,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (actlist.queueIsEmpty()) return;
     currentIndex.value = index;
     final item = actlist.queueList[index];
-    item.execute(this);
+    item.execute();
   }
 
   bool _executando = false;
@@ -331,11 +334,12 @@ class MusyncAudioHandler extends BaseAudioHandler
       await audPl.setAudioSource(src);
       mediaItem.add(item);
       _executando = false;
+      log(item.title);
 
       if (item.id != actlist.getMusicAtual(currentIndex.value).id) {
         log("executando correção");
         final item = actlist.queueList[currentIndex.value];
-        item.execute(this);
+        item.execute();
         play();
       }
     }
@@ -346,8 +350,8 @@ class MusyncAudioHandler extends BaseAudioHandler
     await searchPlaylists();
 
     audPl.playbackEventStream.listen(_broadcastState);
-    log(songs.length.toString());
-    actlist.setMusicListAtual(songs, this);
+    
+    actlist.setMusicListAtual(songs);
 
     setCurrentTrack();
 
@@ -362,24 +366,26 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
-
+    final currentSetListQueue = actlist.getMediaItemsFromQueue();
+    
     if (_equality.equals(
       songs.map((e) => e.id).toList(),
       currentQueue.map((e) => e.id).toList(),
+    ) && _equality.equals(
+      songs.map((e) => e.id).toList(),
+      currentSetListQueue.map((e) => e.id).toList(),
     )) {
       log('Fila já está atualizada, não será recriada.');
       return false;
     }
 
-    actlist.setMusicListAtual(songs, this);
+    actlist.setMusicListAtual(songs);
 
     if (eko?.conected.value ?? false) {
       eko?.sendMessage({'action': 'request_data', 'data': ''});
 
       queue.add(songs);
     } else {
-      currentIndex.value = 0;
-
       setCurrentTrack(index: 0);
 
       queue.add(songs);
@@ -396,7 +402,7 @@ class MusyncAudioHandler extends BaseAudioHandler
       currentIndex.value == -1 ? 0 : currentIndex.value,
     );
 
-    actlist.setMusicListAtual(songs, this);
+    actlist.setMusicListAtual(songs);
 
     currentIndex.value = songs.indexOf(songAtual);
 
@@ -477,14 +483,13 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
 
     final random = mt.Random();
-    final index = min + random.nextInt(max - min + 1);
+    final index = min + random.nextInt(max - min + 1); //CORRIGIR PARA ITENS DA SEGUNDA METADE
     log(index.toString());
     sendMediaIndex(index);
   }
 
   void sendMediaIndex(int index) {
     if (eko?.conected.value ?? false) {
-      if (Ekosystem.indexSending < index) return;
       int indexRelative = index - Ekosystem.indexInitial;
       eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
       log('$indexRelative ${Ekosystem.indexInitial}');
@@ -579,153 +584,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   /* SHUFFLE PERSONALIZED */
-  List<int> played = [];
-  List<int> unplayed = [];
-
-  void prepareShuffle() {
-    played.clear();
-    reshuffle();
-    played.add(currentIndex.value);
-  }
-
-  void reshuffle() {
-    int countSongs = queue.value.length;
-    unplayed = List.generate(countSongs, (i) => i)..shuffle();
-  }
-
-  Future<void> playNextShuffled() async {
-    final shouldStop = await repeatShuffled();
-    if (shouldStop) return;
-
-    int nextIndex = unplayed.removeAt(0);
-
-    played.add(nextIndex);
-
-    if (eko?.conected.value ?? false) {
-      sendMediaIndex(nextIndex);
-    } else {
-      setCurrentTrack(index: nextIndex);
-      play();
-    }
-  }
-
-  Future<void> playPreviousShuffled() async {
-    if (played.length <= 1) return;
-
-    final shouldStop = await repeatShuffled();
-    if (shouldStop) return;
-
-    unplayed.add(played.last);
-    played.removeLast();
-
-    int prevIndex = played.last;
-    if (eko?.conected.value ?? false) {
-      sendMediaIndex(prevIndex);
-    } else {
-      setCurrentTrack(index: prevIndex);
-      play();
-    }
-  }
-
-  Future<bool> repeatShuffled() async {
-    if (loopMode.value == ModeLoopEnum.one) {
-      await audPl.seek(Duration.zero);
-      play();
-      return true;
-    } else if (loopMode.value == ModeLoopEnum.all) {
-      if (unplayed.isEmpty) {
-        reshuffle();
-      }
-      return false;
-    } else {
-      if (unplayed.isEmpty) return true;
-      return false;
-    }
-  }
-
-  /* REORDER */
-
-  static Future<List<MediaItem>> reorder(
-    ModeOrderEnum modeAtual,
-    List<MediaItem> songs, {
-    List<int>? order,
-  }) async {
-    List<MediaItem> ordenadas = [];
-    switch (modeAtual) {
-      case ModeOrderEnum.titleAZ:
-        ordenadas = [...songs]..sort(
-          (a, b) => a.title.trim().toLowerCase().compareTo(
-            b.title.trim().toLowerCase(),
-          ),
-        );
-        break;
-      case ModeOrderEnum.titleZA:
-        ordenadas = [...songs]..sort(
-          (a, b) => b.title.trim().toLowerCase().compareTo(
-            a.title.trim().toLowerCase(),
-          ),
-        );
-        break;
-      case ModeOrderEnum.dataAZ:
-        ordenadas = [...songs]..sort((a, b) {
-          try {
-            final rawA = a.extras?['lastModified'];
-            final rawB = b.extras?['lastModified'];
-
-            final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
-            final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
-
-            if (dateA == null || dateB == null) {
-              return 0;
-            }
-            return dateA.compareTo(dateB);
-          } catch (e) {
-            log('Erro durante sort por data: $e');
-            return 0;
-          }
-        });
-        break;
-      case ModeOrderEnum.dataZA:
-        ordenadas = [...songs]..sort((a, b) {
-          try {
-            final rawA = a.extras?['lastModified'];
-            final rawB = b.extras?['lastModified'];
-
-            final dateA = rawA is String ? DateTime.tryParse(rawA) : null;
-            final dateB = rawB is String ? DateTime.tryParse(rawB) : null;
-
-            if (dateA == null || dateB == null) {
-              return 0;
-            }
-            return dateB.compareTo(dateA);
-          } catch (e) {
-            log('Erro durante sort por data: $e');
-            return 0;
-          }
-        });
-        break;
-      case ModeOrderEnum.manual:
-        if (order != null && order.length == songs.length) {
-          final posicoes = {for (int i = 0; i < order.length; i++) order[i]: i};
-
-          ordenadas = [...songs]..sort((a, b) {
-            final idxA = posicoes[int.tryParse(a.id)] ?? 99999;
-            final idxB = posicoes[int.tryParse(b.id)] ?? 99999;
-            return idxA.compareTo(idxB);
-          });
-        } else {
-          ordenadas = [...songs];
-        }
-        break;
-      case ModeOrderEnum.up:
-        ordenadas = await DatabaseHelper().reorderToUp(
-          actlist.viewingPlaylist.tag.toString(),
-          songs,
-        );
-        break;
-    }
-    return ordenadas;
-  }
+  
 }
 
 class MusyncMediaUpdateNotifier extends ChangeNotifier {

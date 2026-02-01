@@ -2,12 +2,12 @@ import 'dart:developer';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_dkt/Services/audio_player.dart';
-import 'package:musync_dkt/Services/media_music.dart';
-import 'package:musync_dkt/Services/server_connect.dart';
-import 'package:musync_dkt/Widgets/list_content.dart';
-import 'package:musync_dkt/Widgets/player.dart';
-import 'package:musync_dkt/Widgets/popup_add.dart';
+import 'package:musync_dkt/services/audio_player.dart';
+import 'package:musync_dkt/services/media_music.dart';
+import 'package:musync_dkt/services/server_connect.dart';
+import 'package:musync_dkt/widgets/list_content.dart';
+import 'package:musync_dkt/widgets/player.dart';
+import 'package:musync_dkt/widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:window_manager/window_manager.dart';
@@ -43,6 +43,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final TextEditingController _searchController = TextEditingController();
   ValueNotifier<bool> connected = ValueNotifier(false);
   ValueNotifier<String> musicsPercent = ValueNotifier('0%');
   final FocusNode _focusNode = FocusNode();
@@ -149,22 +150,57 @@ class _HomePageState extends State<HomePage> {
         Expanded(
           flex: 1,
           child: Stack(
-            children: [
-              ValueListenableBuilder<List<MediaMusic>>(
-                valueListenable: audPl.songsAtual,
-                builder: (context, value, child) {
-                  return ListContent(
-                    audioHandler: audPl,
-                    songsNow: audPl.songsAtual.value,
-                    modeReorder: ModeOrderEnum.dataAZ,
-                    aposClique: (item) async {
-                      int indiceCerto = audPl.songsAtual.value.indexWhere(
-                        (t) => t == item,
-                      );
-                      audPl.setIndex(indiceCerto);
-                    },
-                  );
-                },
+            children: [ 
+              Column(
+                children: [
+                  TextField(
+                      controller: _searchController,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color:
+                            Theme.of(
+                              context,
+                            ).extension<CustomColors>()!.textForce,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Pesquisa',
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        //setState(() {
+                        //  songsNow =
+                        //      MusyncAudioHandler.actlist.songsAllPlaylist
+                        //          .where(
+                        //            (item) => removeDiacritics(item.title)
+                        //                .toLowerCase()
+                        //                .contains(value.toLowerCase()),
+                        //          )
+                        //          .toList();
+                        //});
+                      },
+                    ),
+                    Expanded(child: 
+                    ValueListenableBuilder<List<MediaMusic>>(
+                      valueListenable: audPl.songsAtual,
+                      builder: (context, value, child) {
+                        return ListContent(
+                          audioHandler: audPl,
+                          songsNow: audPl.songsAtual.value,
+                          modeReorder: ModeOrderEnum.dataAZ,
+                          aposClique: (item) async {
+                            int indiceCerto = audPl.songsAtual.value.indexWhere(
+                              (t) => t == item,
+                            );
+                            audPl.setIndex(indiceCerto);
+                          },
+                        );
+                      },
+                    ),
+                    ),
+                ],
               ),
               if (!isLandscape) buildPlayer(),
             ],

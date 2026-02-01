@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 
@@ -95,6 +95,12 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
+    if(!act['action'].startsWith('audio_')){
+      log('========================================');
+      log(act['action']);
+      log('========================================');
+    }
+
     try {
       final msg = jsonEncode(act);
       channel?.sink.add(msg);
@@ -103,7 +109,6 @@ class Ekosystem {
     }
   }
 
-  static int indexSending = 0;
   static int indexInitial = 0;
 
   Future<void> sendFileInChunks(MediaItem music, int part) async {
@@ -187,7 +192,6 @@ class Ekosystem {
         });
         continue;
       }
-      indexSending = mscs1.indexOf(music);
       await sendFileInChunks(music, 1);
     }
 

@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/pages/main_page.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'themes.dart';
-import 'services/audio_player_base.dart';
+import 'services/audio_player.dart';
 import 'package:intl/date_symbol_data_local.dart';
 //import 'services/databasehelper.dart';
-
-MusyncAudioHandler _audioHandler = MusyncAudioHandler();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  _audioHandler = await AudioService.init(
+  audPl = await AudioService.init(
     builder: () => MusyncAudioHandler(),
     config: AudioServiceConfig(
       androidNotificationChannelId: 'com.nathandv.musync_and',
@@ -36,7 +35,7 @@ class MyApp extends StatelessWidget {
       theme: lighttheme(),
       darkTheme: darktheme(),
       themeMode: ThemeMode.system,
-      home: MusicPage(audioHandler: _audioHandler),
+      home: MusicPage()
     );
   }
 }

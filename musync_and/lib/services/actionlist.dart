@@ -1,7 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/setlist.dart';
 
 enum SetListType { main, view, atual }
@@ -38,14 +38,13 @@ class ActionList {
   }
 
   void setMusicListAtual(
-    List<MediaItem> songs,
-    MusyncAudioHandler audioHandler,
+    List<MediaItem> songs
   ) {
     final List<MusicItem> songsF =
         songs
             .map(
               (media) =>
-                  MusicItem(mediaItem: media, audioHandler: audioHandler),
+                  MusicItem(mediaItem: media),
             )
             .toList();
 
@@ -72,19 +71,18 @@ class ActionList {
 }
 
 class SetItem {
-  void execute(MusyncAudioHandler aud) {}
+  void execute() {}
 }
 
 class MusicItem extends SetItem {
   final MediaItem mediaItem;
-  final MusyncAudioHandler audioHandler;
 
-  MusicItem({required this.mediaItem, required this.audioHandler});
+  MusicItem({required this.mediaItem});
 
   @override
-  void execute(MusyncAudioHandler aud) {
+  void execute() {
     final src = ProgressiveAudioSource(Uri.parse(mediaItem.id));
-    aud.executeMusic(src, mediaItem);
+    audPl.executeMusic(src, mediaItem);
   }
 }
 
@@ -94,7 +92,7 @@ class ActionItem extends SetItem {
   ActionItem(this.action);
 
   @override
-  void execute(MusyncAudioHandler aud) {
+  void execute() {
     action();
   }
 }

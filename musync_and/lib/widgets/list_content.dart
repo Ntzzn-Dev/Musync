@@ -4,7 +4,8 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
@@ -248,7 +249,7 @@ class _ListContentState extends State<ListContent> {
     await action(tag, itemId, itemTitle);
 
     MusyncAudioHandler.actlist.songsAllPlaylist =
-        await MusyncAudioHandler.reorder(ModeOrderEnum.up, mutableSongs);
+        await reorderMusics(ModeOrderEnum.up, mutableSongs);
 
     setState(() {
       mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;

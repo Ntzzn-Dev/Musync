@@ -67,7 +67,7 @@ flutter:
 
   assets:
     - assets/dice.png
-    - assets/MusyncLogo.png
+    - assets/musync_icon.png
 
   fonts:
     - family: Titles

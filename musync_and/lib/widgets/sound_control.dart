@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_and/services/audio_player_base.dart';
+import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
 import 'package:volume_controller/volume_controller.dart';
