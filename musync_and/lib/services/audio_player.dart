@@ -80,8 +80,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     eko?.receivedMessage.addListener(() {
       final msg = eko?.receivedMessage.value;
-      log(msg?['action']);
-      log('======');
+
       switch (msg?['action']) {
         case 'verify_data':
           String allIds = msg?['data'];
@@ -96,7 +95,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           break;
         case 'position':
           final progress = Duration(milliseconds: msg?['data'].toInt());
-          mediaAtual.value.seek(progress, enviando: false);
+          mediaAtual.value.seek(progress, ekoSending: false);
           break;
         case 'toggle_play':
           MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
@@ -495,7 +494,13 @@ class MusyncAudioHandler extends BaseAudioHandler
   void sendMediaIndex(int index) {
     if (eko?.conected.value ?? false) {
       int indexRelative = index - Ekosystem.indexInitial;
-      eko?.sendMessage({'action': 'newindex', 'data': indexRelative});
+      eko?.sendMessage({
+        'action': 'newindex',
+        'data': indexRelative,
+        'DEVE SER APAGADO': '',
+        'index': index,
+        'indexInicial': Ekosystem.indexInitial,
+      });
       log('$indexRelative ${Ekosystem.indexInitial}');
     }
 

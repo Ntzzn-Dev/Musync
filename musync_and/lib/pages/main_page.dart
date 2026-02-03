@@ -29,7 +29,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:diacritic/diacritic.dart';
 
 class MusicPage extends StatefulWidget {
-
   const MusicPage({super.key});
 
   @override
@@ -165,9 +164,7 @@ class _MusicPageState extends State<MusicPage> {
 
   void switchOrder(ModeOrderEnum mod) async {
     modeAtual = mod;
-    MusyncAudioHandler
-        .actlist
-        .songsAllPlaylist = await reorderMusics(
+    MusyncAudioHandler.actlist.songsAllPlaylist = await reorderMusics(
       modeAtual,
       MusyncAudioHandler.actlist.songsAllPlaylist,
     );
@@ -275,9 +272,7 @@ class _MusicPageState extends State<MusicPage> {
             audPl.savePl(MusyncAudioHandler.actlist.mainPlaylist);
             int indiceCerto = MusyncAudioHandler.actlist.songsAllPlaylist
                 .indexWhere((t) => t == item);
-            if (ekosystem?.conected.value ?? false) {
-              Ekosystem.indexInitial = indiceCerto;
-            }
+
             await audPl.skipToQueueItem(indiceCerto);
           },
           selecaoDeMusicas: (indexMsc) async {
@@ -359,54 +354,55 @@ class _MusicPageState extends State<MusicPage> {
     }
   }
 
-void deletarMusicas(List<MediaItem> itensOriginal) async {
-  final itens = List<MediaItem>.from(itensOriginal);
-  for (MediaItem item in itens) {
-    final path = item.extras?['path'];
+  void deletarMusicas(List<MediaItem> itensOriginal) async {
+    final itens = List<MediaItem>.from(itensOriginal);
+    for (MediaItem item in itens) {
+      final path = item.extras?['path'];
 
-    if (path == null) {
-      continue;
-    }
-
-    final file = File(path);
-
-    try {
-      final exists = await file.exists();
-      
-      if (!exists) {
+      if (path == null) {
         continue;
       }
 
-      if (!mounted) {
-        return;
+      final file = File(path);
+
+      try {
+        final exists = await file.exists();
+
+        if (!exists) {
+          continue;
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          songsNow.removeWhere((e) => e.id == item.id);
+          MusyncAudioHandler.actlist.songsAll.removeWhere(
+            (e) => e.id == item.id,
+          );
+          MusyncAudioHandler.actlist.songsAllPlaylist.removeWhere(
+            (e) => e.id == item.id,
+          );
+
+          MusyncAudioHandler.actlist.songsAll.remove(item);
+
+          if (MusyncAudioHandler.actlist.songsAllPlaylist.contains(item)) {
+            MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
+          }
+        });
+        await audPl.recreateQueue(songs: songsNow);
+
+        await audPl.stop();
+        await Future.delayed(const Duration(milliseconds: 200));
+        await file.delete();
+      } catch (e, stack) {
+        log('Erro: $e | $stack');
       }
-
-      setState(() {
-        songsNow.removeWhere((e) => e.id == item.id);
-          MusyncAudioHandler.actlist.songsAll
-              .removeWhere((e) => e.id == item.id);
-          MusyncAudioHandler.actlist.songsAllPlaylist
-              .removeWhere((e) => e.id == item.id);
-
-        MusyncAudioHandler.actlist.songsAll.remove(item);
-
-        if (MusyncAudioHandler.actlist.songsAllPlaylist.contains(item)) {
-          MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
-        } 
-      });
-      await audPl.recreateQueue(songs: songsNow);
-
-      await audPl.stop();
-      await Future.delayed(const Duration(milliseconds: 200));
-      await file.delete();
-    } catch (e, stack) {
-      log('Erro: $e | $stack');
     }
+
+    await loadSongsNow();
   }
-
-  await loadSongsNow();
-}
-
 
   void _abrirPlaylist({
     required String title,
@@ -881,9 +877,7 @@ void deletarMusicas(List<MediaItem> itensOriginal) async {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              SettingsPage(audioHandler: audPl),
+                      builder: (context) => SettingsPage(audioHandler: audPl),
                       settings: RouteSettings(name: 'settings'),
                     ),
                   );
@@ -901,9 +895,7 @@ void deletarMusicas(List<MediaItem> itensOriginal) async {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              ControlPage(audioHandler: audPl),
+                      builder: (context) => ControlPage(audioHandler: audPl),
                       settings: RouteSettings(name: 'control'),
                     ),
                   ).then((_) {
@@ -1049,7 +1041,9 @@ void deletarMusicas(List<MediaItem> itensOriginal) async {
                   return AnimatedPositioned(
                     duration: const Duration(milliseconds: 500),
                     curve: Curves.easeInOut,
-                    bottom: bottomInset - (shouldGoDown ? (conected ? 142 : 102) : 0),
+                    bottom:
+                        bottomInset -
+                        (shouldGoDown ? (conected ? 142 : 102) : 0),
                     left: 0,
                     right: 0,
                     child: GestureDetector(

@@ -265,7 +265,7 @@ void startServer(
                 break;
               case 'volume':
                 double vol = decoded['data'].toDouble();
-                audPl.setVolume(vol);
+                audPl.setVolume(vol, ekoSending: false);
                 break;
               case 'newindex':
                 int newindex = decoded['data'].toInt();

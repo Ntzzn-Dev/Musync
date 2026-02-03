@@ -238,7 +238,6 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Text('LOG:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-
             SizedBox(
               height: screenHeight * 0.5,
               child: ListView.builder(
@@ -251,16 +250,7 @@ class _HomePageState extends State<HomePage> {
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isEntrada
-                                ? Colors.greenAccent
-                                : Colors.orangeAccent,
-                      ),
-                    ),
+                    child: _buildColoredText(text, isEntrada),
                   );
                 },
               ),
@@ -268,6 +258,32 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
+    );
+  }
+
+  //Permite visualização de valores desnecessários para o sistema, mas necessários para diagnóstico visual.
+  Widget _buildColoredText(String text, bool isEntrada) {
+    const marker = 'DEVE SER APAGADO: ';
+
+    final defaultColor = isEntrada ? Colors.greenAccent : Colors.orangeAccent;
+
+    if (!text.contains(marker)) {
+      return Text(text, style: TextStyle(fontSize: 12, color: defaultColor));
+    }
+
+    final parts = text.split(marker);
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        children: [
+          TextSpan(text: parts[0], style: TextStyle(color: defaultColor)),
+          TextSpan(
+            text: marker + (parts.length > 1 ? parts[1] : ''),
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ],
+      ),
     );
   }
 
@@ -366,9 +382,9 @@ class _HomePageState extends State<HomePage> {
                       valueListenable: showlog,
                       builder: (_, value, a) {
                         if (value) {
-                          return buildCover();
-                        } else {
                           return buildLog();
+                        } else {
+                          return buildCover();
                         }
                       },
                     ),

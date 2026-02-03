@@ -103,10 +103,10 @@ class MediaAtual extends MediaItem {
     });
   }
 
-  void seek(Duration pos, {bool enviando = true}) {
+  void seek(Duration pos, {bool ekoSending = true}) {
     position.value = pos;
 
-    if (enviando && (MusyncAudioHandler.eko?.conected.value ?? false)) {
+    if (ekoSending && (MusyncAudioHandler.eko?.conected.value ?? false)) {
       MusyncAudioHandler.eko?.sendMessage({
         "action": 'position',
         "data": pos.inMilliseconds.toDouble(),

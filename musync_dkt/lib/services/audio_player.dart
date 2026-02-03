@@ -167,9 +167,12 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   @override
-  Future<void> setVolume(double volume) async {
+  Future<void> setVolume(double volume, {bool ekoSending = true}) async {
     vol.value = volume;
-    sendMessageAnd({"action": 'volume', "data": volume});
+
+    if (ekoSending) {
+      sendMessageAnd({"action": 'volume', "data": volume});
+    }
 
     await audPl.setVolume(volume / 100);
   }

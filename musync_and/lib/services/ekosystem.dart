@@ -95,7 +95,7 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
-    if(!act['action'].startsWith('audio_')){
+    if (!act['action'].startsWith('audio_')) {
       log('========================================');
       log(act['action']);
       log('========================================');
