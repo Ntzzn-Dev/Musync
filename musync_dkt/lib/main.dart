@@ -11,6 +11,7 @@ import 'package:musync_dkt/widgets/popup_add.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:diacritic/diacritic.dart';
 
 final MusyncAudioHandler audPl = MusyncAudioHandler();
 
@@ -47,6 +48,8 @@ class _HomePageState extends State<HomePage> {
   ValueNotifier<bool> connected = ValueNotifier(false);
   ValueNotifier<String> musicsPercent = ValueNotifier('0%');
   final FocusNode _focusNode = FocusNode();
+  double screenHeight = 0;
+  ValueNotifier<bool> showlog = ValueNotifier(false);
 
   @override
   void initState() {
@@ -74,6 +77,7 @@ class _HomePageState extends State<HomePage> {
 
   void checkOrientation(Size size) {
     bool landscape = size.width > size.height;
+    screenHeight = size.height;
     if (isLandscape != landscape) {
       isLandscape = landscape;
       if (landscape) {
@@ -89,7 +93,7 @@ class _HomePageState extends State<HomePage> {
 
   void _onCurrentIndexChanged() {
     final index = audPl.currentIndex.value;
-    final songs = audPl.songsAtual.value;
+    final songs = audPl.songsNow.value;
 
     if (songs.isEmpty || index < 0) return;
 
@@ -144,54 +148,195 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget buildCover() {
+    return FutureBuilder<Uint8List?>(
+      future: _artFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            width: 150,
+            height: 150,
+            color: Colors.grey[900],
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          log('Erro carregando arte: ${snapshot.error}');
+          return Container(
+            width: 150,
+            height: 150,
+            color: Colors.grey[850],
+            child: const Icon(
+              Icons.broken_image,
+              size: 60,
+              color: Colors.white54,
+            ),
+          );
+        }
+
+        if (!snapshot.hasData ||
+            snapshot.data == null ||
+            snapshot.data!.isEmpty) {
+          return Container(
+            width: 150,
+            height: 150,
+            color: Colors.grey[850],
+            child: const Icon(
+              Icons.music_note,
+              size: 60,
+              color: Colors.white38,
+            ),
+          );
+        }
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: screenHeight * 0.5),
+              child: Image.memory(
+                snapshot.data!,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  log('ERRO no Image.memory: $error');
+                  return Container(
+                    width: 150,
+                    height: 150,
+                    color: Colors.grey[850],
+                    child: const Icon(
+                      Icons.broken_image,
+                      size: 60,
+                      color: Colors.white54,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget buildLog() {
+    return ValueListenableBuilder<List<Map<String, String>>>(
+      valueListenable: entradasESaidas,
+      builder: (context, logs, _) {
+        if (logs.isEmpty) {
+          return const Text(
+            'LOG vazio',
+            style: TextStyle(color: Colors.white54),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('LOG:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+
+            SizedBox(
+              height: screenHeight * 0.5,
+              child: ListView.builder(
+                itemCount: logs.length,
+                itemBuilder: (context, index) {
+                  final item = logs[index];
+
+                  final isEntrada = item.containsKey('Entrada');
+                  final text = item['Entrada'] ?? item['Saida'] ?? '';
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            isEntrada
+                                ? Colors.greenAccent
+                                : Colors.orangeAccent,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget mainList() {
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: Stack(
-            children: [ 
+            children: [
               Column(
                 children: [
-                  TextField(
-                      controller: _searchController,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color:
-                            Theme.of(
-                              context,
-                            ).extension<CustomColors>()!.textForce,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Pesquisa',
-                        contentPadding: EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 12,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color:
+                                Theme.of(
+                                  context,
+                                ).extension<CustomColors>()!.textForce,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Pesquisa',
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 12,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              audPl.songsNow.value =
+                                  audPl.songsAtual
+                                      .where(
+                                        (item) => removeDiacritics(item.title)
+                                            .toLowerCase()
+                                            .contains(value.toLowerCase()),
+                                      )
+                                      .toList();
+                            });
+                          },
                         ),
                       ),
-                      onChanged: (value) {
-                        //setState(() {
-                        //  songsNow =
-                        //      MusyncAudioHandler.actlist.songsAllPlaylist
-                        //          .where(
-                        //            (item) => removeDiacritics(item.title)
-                        //                .toLowerCase()
-                        //                .contains(value.toLowerCase()),
-                        //          )
-                        //          .toList();
-                        //});
-                      },
-                    ),
-                    Expanded(child: 
-                    ValueListenableBuilder<List<MediaMusic>>(
-                      valueListenable: audPl.songsAtual,
-                      builder: (context, value, child) {
+                      SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          audPl.songsNow.value = audPl.songsAtual;
+                        },
+                        icon: Icon(
+                          Icons.close,
+                          color: Theme.of(context).focusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  Expanded(
+                    child: ValueListenableBuilder<List<MediaMusic>>(
+                      valueListenable: audPl.songsNow,
+                      builder: (context, songsNow, child) {
                         return ListContent(
                           audioHandler: audPl,
-                          songsNow: audPl.songsAtual.value,
+                          songsNow: songsNow,
                           modeReorder: ModeOrderEnum.dataAZ,
                           aposClique: (item) async {
-                            int indiceCerto = audPl.songsAtual.value.indexWhere(
+                            int indiceCerto = audPl.songsAtual.indexWhere(
                               (t) => t == item,
                             );
                             audPl.setIndex(indiceCerto);
@@ -199,7 +344,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    ),
+                  ),
                 ],
               ),
               if (!isLandscape) buildPlayer(),
@@ -217,78 +362,14 @@ class _HomePageState extends State<HomePage> {
                     top: 20,
                     right: 50,
                     left: 50,
-                    child: FutureBuilder<Uint8List?>(
-                      future: _artFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Container(
-                            width: 150,
-                            height: 150,
-                            color: Colors.grey[900],
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                              ),
-                            ),
-                          );
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: showlog,
+                      builder: (_, value, a) {
+                        if (value) {
+                          return buildCover();
+                        } else {
+                          return buildLog();
                         }
-
-                        if (snapshot.hasError) {
-                          log('Erro carregando arte: ${snapshot.error}');
-                          return Container(
-                            width: 150,
-                            height: 150,
-                            color: Colors.grey[850],
-                            child: const Icon(
-                              Icons.broken_image,
-                              size: 60,
-                              color: Colors.white54,
-                            ),
-                          );
-                        }
-
-                        if (!snapshot.hasData ||
-                            snapshot.data == null ||
-                            snapshot.data!.isEmpty) {
-                          return Container(
-                            width: 150,
-                            height: 150,
-                            color: Colors.grey[850],
-                            child: const Icon(
-                              Icons.music_note,
-                              size: 60,
-                              color: Colors.white38,
-                            ),
-                          );
-                        }
-
-                        return Align(
-                          alignment: Alignment.topCenter,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 350),
-                              child: Image.memory(
-                                snapshot.data!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  log('ERRO no Image.memory: $error');
-                                  return Container(
-                                    width: 150,
-                                    height: 150,
-                                    color: Colors.grey[850],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 60,
-                                      color: Colors.white54,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
                       },
                     ),
                   ),
@@ -324,16 +405,29 @@ class _HomePageState extends State<HomePage> {
           },
           child: Scaffold(
             appBar: AppBar(
-              title: ValueListenableBuilder<String>(
+              title: ValueListenableBuilder<SetList>(
                 valueListenable: audPl.playlistName,
-                builder: (context, name, child) {
-                  return Text(
-                    name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      fontFamily: 'Titles',
-                    ),
+                builder: (context, playlist, child) {
+                  return Row(
+                    children: [
+                      Text(
+                        playlist.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          fontFamily: 'Titles',
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        playlist.subtitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w200,
+                          fontSize: 10,
+                          fontFamily: 'Titles',
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -380,6 +474,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 9),
                 ElevatedButton(
                   onPressed: () => enableQRCode(context, connected),
+                  onLongPress: () => {showlog.value = !showlog.value},
                   child: Icon(Icons.qr_code_rounded),
                 ),
               ],

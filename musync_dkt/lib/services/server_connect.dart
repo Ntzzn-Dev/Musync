@@ -123,6 +123,8 @@ void sendMessageAnd(Map<String, dynamic> act) {
     final message = jsonEncode(act);
 
     socket.add(message);
+
+    makeLogList(false, act);
   } catch (e) {
     log(e.toString());
   }
@@ -140,6 +142,25 @@ void addLoaded(ValueNotifier<String> musicsPercent) {
 
     musicsLoaded = '$first/$second';
   }
+}
+
+ValueNotifier<List<Map<String, String>>> entradasESaidas = ValueNotifier([]);
+void makeLogList(bool recebido, Map<String, dynamic> decoded) {
+  final parametros = decoded.entries
+      .where((e) => e.key != 'action' && e.value != null)
+      .map((e) => '${e.key}: ${e.value}')
+      .join(', ');
+
+  final header = recebido ? 'RECEBIDO' : 'ENVIADO';
+
+  final novaLista = List<Map<String, String>>.from(entradasESaidas.value)..add({
+    recebido ? 'Entrada' : 'Saida':
+        parametros.isNotEmpty
+            ? '$header: ${decoded['action']} PARAMETROS: $parametros'
+            : '$header: ${decoded['action']}',
+  });
+
+  entradasESaidas.value = novaLista;
 }
 
 void startServer(
@@ -161,6 +182,10 @@ void startServer(
             final decoded = jsonDecode(data);
             final action = decoded['action'];
             print('Ação recebida: $action');
+
+            if (!action.startsWith('audio_')) {
+              makeLogList(true, decoded);
+            }
 
             switch (action) {
               case 'audio_start':
@@ -203,17 +228,18 @@ void startServer(
                 }
                 break;
               case 'add_to_atual':
-                audPl.songsAtual.value = [
-                  ...audPl.songsAtual.value,
+                audPl.songsAtual = [
+                  ...audPl.songsAtual,
                   audPl.songsAll.firstWhere(
                     (msc) => msc.id == int.parse(decoded['data']),
                   ),
                 ];
+                audPl.songsNow.value = audPl.songsAtual;
                 addLoaded(musicsPercent);
                 break;
               case 'package_start':
                 log("Iniciando pacote de músicas...");
-                audPl.songsAtual.value.clear();
+                audPl.songsAtual.clear();
                 musicsLoaded = '0/${decoded['count']}';
                 break;
               case 'package_end':
@@ -243,7 +269,6 @@ void startServer(
                 break;
               case 'newindex':
                 int newindex = decoded['data'].toInt();
-                log(newindex.toString());
                 audPl.setIndex(newindex);
                 break;
               case 'shuffle':
@@ -266,7 +291,8 @@ void startServer(
                 await windowManager.close();
                 break;
               case 'playlist_name':
-                audPl.playlistName.value = decoded['data'];
+                audPl.playlistName.value.title = decoded['title'];
+                audPl.playlistName.value.subtitle = decoded['subtitle'];
                 break;
             }
           } catch (e) {

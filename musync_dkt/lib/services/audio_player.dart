@@ -37,7 +37,8 @@ class MusyncAudioHandler extends AudioPlayer {
   double volumeatual = 50;
   File? tempFile;
   List<MediaMusic> songsAll = [];
-  ValueNotifier<List<MediaMusic>> songsAtual = ValueNotifier([]);
+  List<MediaMusic> songsAtual = [];
+  ValueNotifier<List<MediaMusic>> songsNow = ValueNotifier([]);
   ValueNotifier<MediaMusic> musicAtual = ValueNotifier(
     MediaMusic(
       id: 0,
@@ -49,7 +50,7 @@ class MusyncAudioHandler extends AudioPlayer {
     ),
   );
 
-  ValueNotifier<String> playlistName = ValueNotifier('Musicas Recebidas');
+  ValueNotifier<SetList> playlistName = ValueNotifier(SetList());
 
   ValueNotifier<PlayerState> playstate = ValueNotifier(PlayerState.playing);
 
@@ -82,7 +83,7 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void setIndex(int index) async {
-    if (index >= songsAtual.value.length || index < 0) {
+    if (index >= songsAtual.length || index < 0) {
       log('Esperar carregar todas');
       sendMessageAnd({
         'action': 'wait_load',
@@ -99,18 +100,15 @@ class MusyncAudioHandler extends AudioPlayer {
     }
 
     tempFile = File(
-      p.join(
-        tempDir.path,
-        'temp_${safeFileName(songsAtual.value[index].title)}.mp3',
-      ),
+      p.join(tempDir.path, 'temp_${safeFileName(songsAtual[index].title)}.mp3'),
     );
 
     if (!await tempFile!.exists()) {
-      await tempFile?.writeAsBytes(songsAtual.value[index].bytes, flush: true);
+      await tempFile?.writeAsBytes(songsAtual[index].bytes, flush: true);
     }
 
-    songsAtual.value[index].path = tempFile?.path ?? '';
-    musicAtual.value = songsAtual.value[index];
+    songsAtual[index].path = tempFile?.path ?? '';
+    musicAtual.value = songsAtual[index];
 
     currentIndex.value = index;
 
@@ -128,10 +126,11 @@ class MusyncAudioHandler extends AudioPlayer {
       artUri: music['art'] != null ? base64Decode(music['art']) : Uint8List(0),
       path: '',
     );
-    final novaLista = List<MediaMusic>.from(songsAtual.value)
-      ..insert(music['part'] == 2 ? 0 : songsAtual.value.length, newMsc);
+    final novaLista = List<MediaMusic>.from(songsAtual)
+      ..insert(music['part'] == 2 ? 0 : songsAtual.length, newMsc);
 
-    songsAtual.value = novaLista;
+    songsAtual = novaLista;
+    songsNow.value = novaLista;
     songsAll.add(newMsc);
 
     currentIndex.value = novaLista.indexOf(musicAtual.value);
@@ -142,7 +141,8 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void reorganizeQueue({required List<MediaMusic> songs}) {
-    songsAtual.value = songs;
+    songsAtual = songs;
+    songsNow.value = songs;
     currentIndex.value = songs.indexOf(musicAtual.value);
 
     Map<String, int> temporaryOrder = {
@@ -170,7 +170,7 @@ class MusyncAudioHandler extends AudioPlayer {
   Future<void> setVolume(double volume) async {
     vol.value = volume;
     sendMessageAnd({"action": 'volume', "data": volume});
-    
+
     await audPl.setVolume(volume / 100);
   }
 
@@ -264,7 +264,7 @@ class MusyncAudioHandler extends AudioPlayer {
     final shouldStop = await repeatNormal();
     if (shouldStop) return;
 
-    if (currentIndex.value + 1 < songsAtual.value.length) {
+    if (currentIndex.value + 1 < songsAtual.length) {
       setIndex(currentIndex.value + 1);
     }
 
@@ -289,7 +289,7 @@ class MusyncAudioHandler extends AudioPlayer {
       setIndex(currentIndex.value);
       return true;
     } else if (loopMode.value == ModeLoopEnum.all &&
-        currentIndex.value + 1 >= songsAtual.value.length) {
+        currentIndex.value + 1 >= songsAtual.length) {
       currentIndex.value = -1;
       return false;
     } else {
@@ -308,7 +308,7 @@ class MusyncAudioHandler extends AudioPlayer {
   }
 
   void reshuffle() {
-    int countSongs = songsAtual.value.length;
+    int countSongs = songsAtual.length;
     unplayed = List.generate(countSongs, (i) => i)..shuffle();
   }
 
@@ -321,7 +321,6 @@ class MusyncAudioHandler extends AudioPlayer {
     played.add(nextIndex);
 
     setIndex(nextIndex);
-    sendMessageAnd({'action': 'newindex', 'data': currentIndex.value});
   }
 
   Future<void> playPreviousShuffled() async {
@@ -353,4 +352,9 @@ class MusyncAudioHandler extends AudioPlayer {
       return false;
     }
   }
+}
+
+class SetList {
+  String title = 'Musicas Recebidas';
+  String subtitle = '';
 }

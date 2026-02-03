@@ -10,20 +10,16 @@ class ListContent extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
   final List<MediaMusic> songsNow;
   final ModeOrderEnum modeReorder;
-  final int? idPlaylist;
   final bool? withReorder;
   final void Function(MediaMusic)? aposClique;
-  final void Function(List<int>)? selecaoDeMusicas;
 
   const ListContent({
     super.key,
     required this.audioHandler,
     required this.songsNow,
     required this.modeReorder,
-    this.idPlaylist,
     this.withReorder,
     this.aposClique,
-    this.selecaoDeMusicas,
   });
 
   @override
@@ -33,7 +29,6 @@ class ListContent extends StatefulWidget {
 class _ListContentState extends State<ListContent> {
   late final ScrollController _scrollController;
   late bool listaEmUso;
-  late List<int> idsSelecoes;
 
   late List<MediaMusic> mutableSongs;
   late ModeOrderEnum mode;
@@ -44,9 +39,8 @@ class _ListContentState extends State<ListContent> {
     _scrollController = ScrollController();
     listaEmUso = const ListEquality().equals(
       widget.songsNow,
-      widget.audioHandler.songsAtual.value,
+      widget.audioHandler.songsAtual,
     );
-    idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
     mode = widget.modeReorder;
 
@@ -78,20 +72,6 @@ class _ListContentState extends State<ListContent> {
     );
   }
 
-  void toggleSelecao(ValueNotifier<List<bool>> musicasSelecionadas, int index) {
-    final novaLista = List<bool>.from(musicasSelecionadas.value);
-    novaLista[index] = !novaLista[index];
-    musicasSelecionadas.value = novaLista;
-
-    if (novaLista[index]) {
-      idsSelecoes.add(index);
-    } else {
-      idsSelecoes.remove(index);
-    }
-
-    widget.selecaoDeMusicas?.call(idsSelecoes);
-  }
-
   void _onCurrentIndexChanged() {
     if (listaEmUso && _scrollController.hasClients) {
       scrollToIndex(widget.audioHandler.currentIndex.value);
@@ -101,10 +81,6 @@ class _ListContentState extends State<ListContent> {
   @override
   Widget build(BuildContext context) {
     mutableSongs = widget.songsNow;
-    final musicasSelecionadas = ValueNotifier(
-      List.filled(mutableSongs.length, false),
-    );
-    bool selecionando = false;
 
     void onReorder(int oldIndex, int newIndex) async {
       setState(() {
@@ -143,142 +119,119 @@ class _ListContentState extends State<ListContent> {
     return ValueListenableBuilder<int>(
       valueListenable: widget.audioHandler.currentIndex,
       builder: (context, value, child) {
-        return ValueListenableBuilder<List<bool>>(
-          valueListenable: musicasSelecionadas,
-          builder: (context, selecionada, child) {
-            return ReorderableListView.builder(
-              onReorder: onReorder,
-              scrollController: _scrollController,
-              itemCount: mutableSongs.length,
-              itemBuilder: (context, index) {
-                MediaMusic item = mutableSongs[index];
-                final corFundo =
-                    selecionada[index]
-                        ? Color.fromARGB(95, 243, 34, 34)
-                        : value != -1 &&
-                            mutableSongs[index] ==
-                                widget.audioHandler.songsAtual.value[value] &&
-                            listaEmUso
-                        ? Color.fromARGB(96, 243, 159, 34)
-                        : null;
+        return ReorderableListView.builder(
+          onReorder: onReorder,
+          scrollController: _scrollController,
+          itemCount: mutableSongs.length,
+          itemBuilder: (context, index) {
+            MediaMusic item = mutableSongs[index];
+            final corFundo =
+                value != -1 &&
+                        value < widget.audioHandler.songsAtual.length &&
+                        mutableSongs[index] ==
+                            widget.audioHandler.songsAtual[value] &&
+                        listaEmUso
+                    ? Color.fromARGB(96, 243, 159, 34)
+                    : null;
 
-                List<Widget> children = [];
+            List<Widget> children = [];
 
-                children.add(
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          color: corFundo,
-                          height: 78,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () async {
-                              if (selecionando) {
-                                toggleSelecao(musicasSelecionadas, index);
-                                if (!musicasSelecionadas.value.contains(true)) {
-                                  selecionando = false;
-                                }
-                              } else {
-                                try {
-                                  if (!listaEmUso) {
-                                    setState(() {
-                                      listaEmUso = true;
-                                    });
-                                  }
-                                  widget.aposClique?.call(mutableSongs[index]);
-                                } catch (e) {
-                                  log('Erro ao tocar música: $e');
-                                }
-                              }
-                            },
-                            onLongPress: () {
-                              toggleSelecao(musicasSelecionadas, index);
-                              if (selecionando &&
-                                  !musicasSelecionadas.value.contains(true)) {
-                                selecionando = false;
-                              } else {
-                                selecionando = true;
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
+            children.add(
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      color: corFundo,
+                      height: 78,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          try {
+                            if (!listaEmUso) {
+                              setState(() {
+                                listaEmUso = true;
+                              });
+                            }
+                            widget.aposClique?.call(mutableSongs[index]);
+                          } catch (e) {
+                            log('Erro ao tocar música: $e');
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: imgs[index],
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.max,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: imgs[index],
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          item.artist,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 3,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 15),
-                                  if (widget.withReorder ?? false)
-                                    ReorderableDragStartListener(
-                                      index: index,
-                                      child: Container(
-                                        color: corFundo,
-                                        width: 44,
-                                        height: 78,
-                                        child: Icon(
-                                          Icons.drag_handle,
-                                          color:
-                                              Theme.of(context)
-                                                  .extension<CustomColors>()!
-                                                  .textForce,
-                                        ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      //'$index        ${item.title}',
+                                      item.title,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
                                     ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.artist,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 3,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+
+                              const SizedBox(width: 15),
+                              if (widget.withReorder ?? false)
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: Container(
+                                    color: corFundo,
+                                    width: 44,
+                                    height: 78,
+                                    child: Icon(
+                                      Icons.drag_handle,
+                                      color:
+                                          Theme.of(context)
+                                              .extension<CustomColors>()!
+                                              .textForce,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                );
+                ],
+              ),
+            );
 
-                return Column(
-                  key: ValueKey(item.id),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: children,
-                );
-              },
+            return Column(
+              key: ValueKey(item.id),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
             );
           },
         );

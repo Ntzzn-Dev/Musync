@@ -12,11 +12,11 @@ Future<void> main() async {
 
   audPl = await AudioService.init(
     builder: () => MusyncAudioHandler(),
-    config: AudioServiceConfig(
+    config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.nathandv.musync_and',
-      androidNotificationChannelName: 'Audio playback',
-      androidNotificationOngoing: true,
+      androidNotificationChannelName: 'mediaPlayback',
       androidShowNotificationBadge: true,
+      androidStopForegroundOnPause: false,
     ),
   );
 
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
       theme: lighttheme(),
       darkTheme: darktheme(),
       themeMode: ThemeMode.system,
-      home: MusicPage()
+      home: MusicPage(),
     );
   }
 }

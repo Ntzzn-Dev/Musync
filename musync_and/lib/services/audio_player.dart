@@ -57,7 +57,8 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     eko?.sendMessage({
       'action': 'playlist_name',
-      'data': actlist.atualPlaylist.value.title,
+      'title': actlist.atualPlaylist.value.title,
+      'subtitle': actlist.atualPlaylist.value.subtitle,
     });
 
     if (eko?.conected.value ?? false) {
@@ -95,7 +96,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           break;
         case 'position':
           final progress = Duration(milliseconds: msg?['data'].toInt());
-          mediaAtual.value.seek(progress);
+          mediaAtual.value.seek(progress, enviando: false);
           break;
         case 'toggle_play':
           MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
@@ -350,7 +351,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     await searchPlaylists();
 
     audPl.playbackEventStream.listen(_broadcastState);
-    
+
     actlist.setMusicListAtual(songs);
 
     setCurrentTrack();
@@ -367,14 +368,15 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
     final currentSetListQueue = actlist.getMediaItemsFromQueue();
-    
+
     if (_equality.equals(
-      songs.map((e) => e.id).toList(),
-      currentQueue.map((e) => e.id).toList(),
-    ) && _equality.equals(
-      songs.map((e) => e.id).toList(),
-      currentSetListQueue.map((e) => e.id).toList(),
-    )) {
+          songs.map((e) => e.id).toList(),
+          currentQueue.map((e) => e.id).toList(),
+        ) &&
+        _equality.equals(
+          songs.map((e) => e.id).toList(),
+          currentSetListQueue.map((e) => e.id).toList(),
+        )) {
       log('Fila já está atualizada, não será recriada.');
       return false;
     }
@@ -483,7 +485,9 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
 
     final random = mt.Random();
-    final index = min + random.nextInt(max - min + 1); //CORRIGIR PARA ITENS DA SEGUNDA METADE
+    final index =
+        min +
+        random.nextInt(max - min + 1); //CORRIGIR PARA ITENS DA SEGUNDA METADE
     log(index.toString());
     sendMediaIndex(index);
   }
@@ -584,7 +588,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   /* SHUFFLE PERSONALIZED */
-  
 }
 
 class MusyncMediaUpdateNotifier extends ChangeNotifier {

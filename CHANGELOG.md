@@ -353,8 +353,18 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição da barra de pesquisa (Apenas visual).  
 - Correção de slices desnecessários na listContent de desktop.  
   
+### version 5.13.2  
+- Barra de pesquisa no desktop funcionando.  
+- Mudança na logica de algumas listas.  
+- Adição do subtitulo ao nome da playlist enviada para o desktop.  
+- Alteração no tamanho da imagem no desktop, para escala da tela.  
+- Remoção da possibilidade de selecionar mais de uma musica na versão de desktop.  
+- Adição de um modo desenvolvedor para visualizar a comunicação do desktop com o android.  
+- Otimização na lógica de envio de dados.  
+- Tentativa de manter o app em funcionamento por mais tempo no android, antes que ele seja fechado e tenha que reiniciar.  
+  
 ### TO FUTURE VERSIONS  
-+ Revisar se conceito de seleção realmente é necessário na versão de desktop.  
++ Corrigir indices não recebidos quando o item ainda for clicado manualmente no android. Verificar se não foi clicado no botão de next com o shuffle ativo, e mostrar mensagem na tela dizendo que o indice ainda não foi enviado para o desktop, alem de retornar a musica anterior. [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
 + Corrigir separação de indices não recebidos enviados pelo desktop para o android na segunda metade [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
 + Criar checkpoint para reiniciar músicas.  
 + Atualizar o README para explicar novas adições.  

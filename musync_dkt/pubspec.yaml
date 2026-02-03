@@ -43,6 +43,7 @@ dependencies:
   audioplayers: ^6.5.0
   audiotags: ^1.4.5
   window_manager: ^0.5.1
+  diacritic: ^0.1.6
 
 dev_dependencies:
   flutter_test:
