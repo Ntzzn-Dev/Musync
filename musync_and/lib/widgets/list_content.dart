@@ -9,6 +9,7 @@ import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
+import 'package:musync_and/widgets/menu_helper.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
@@ -118,7 +119,7 @@ class _ListContentState extends State<ListContent> {
           OptionAction(
             label: 'Adicionar a Playlist',
             icon: Icons.playlist_add,
-            funct: () => addToPlaylist(item),
+            funct: () => selectPlaylistMenu(context, [item.id]),
           ),
         ],
       ),
@@ -248,158 +249,14 @@ class _ListContentState extends State<ListContent> {
 
     await action(tag, itemId, itemTitle);
 
-    MusyncAudioHandler.actlist.songsAllPlaylist =
-        await reorderMusics(ModeOrderEnum.up, mutableSongs);
+    MusyncAudioHandler.actlist.songsAllPlaylist = await reorderMusics(
+      ModeOrderEnum.up,
+      mutableSongs,
+    );
 
     setState(() {
       mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
     });
-  }
-
-  void addToPlaylist(MediaItem item) async {
-    List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
-      idMusic: item.id,
-    );
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return FractionallySizedBox(
-              heightFactor: 0.45,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          showPopupAdd(
-                            context,
-                            'Adicionar Playlist',
-                            [
-                              ContentItem(
-                                value: 'Título',
-                                type: ContentTypeEnum.title,
-                              ),
-                              ContentItem(
-                                value: 'Subtitulo',
-                                type: ContentTypeEnum.text,
-                              ),
-                            ],
-                            onConfirm: (valores) async {
-                              DatabaseHelper().insertPlaylist(
-                                valores[0],
-                                valores[1],
-                                1,
-                              );
-
-                              playlists =
-                                  await DatabaseHelper().loadPlaylists();
-                            },
-                          );
-                        },
-                        child: const Text("Adicionar playlist"),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: playlists.length,
-                        itemBuilder: (context, index) {
-                          final playlist = playlists[index];
-                          return Container(
-                            color:
-                                playlist.haveMusic ?? false
-                                    ? Color.fromARGB(255, 243, 160, 34)
-                                    : null,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: () async {
-                                if (playlist.haveMusic ?? false) {
-                                  await DatabaseHelper().removeFromPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                } else {
-                                  await DatabaseHelper().addToPlaylist(
-                                    playlist.id,
-                                    item.id,
-                                  );
-                                }
-
-                                setModalState(() {
-                                  playlists[index] = playlist.copyWith(
-                                    haveMusic: !(playlist.haveMusic ?? false),
-                                  );
-                                });
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      playlist.title,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      softWrap: true,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 2,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      playlist.subtitle,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
-                                      ),
-                                      softWrap: true,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 3,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   void showSpec(MediaItem item) {

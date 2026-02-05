@@ -13,7 +13,9 @@ import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/services/setlist.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
+import 'package:musync_and/widgets/menu_helper.dart';
 import 'package:musync_and/widgets/player.dart';
+import 'package:musync_and/widgets/popup_add.dart';
 
 class PlaylistPage extends StatefulWidget {
   final String plTitle;
@@ -82,25 +84,23 @@ class _PlaylistPageState extends State<PlaylistPage> {
     toDown.value = !toDown.value;
   }
 
-  void reorganizar() async {
-    final novaLista = await reorderMusics(
-      modeAtual,
-      songsNowTranslated,
-    );
+  void reorderPlaylist(ModeOrderEnum mode) async {
+    final novaLista = await reorderMusics(mode, songsNowTranslated);
 
     setState(() {
+      modeAtual = mode;
       songsPlaylist = novaLista;
     });
 
     if (widget.pl != null) {
       DatabaseHelper().updatePlaylist(
         widget.pl!.id,
-        orderMode: enumToInt(modeAtual),
+        orderMode: enumToInt(mode),
       );
     }
   }
 
-  void deletarMusicas(List<MediaItem> itens) async {
+  Future<void> deletarMusicas(List<MediaItem> itens) async {
     for (MediaItem item in itens) {
       final file = File(item.extras?['path']);
       if (await file.exists()) {
@@ -125,126 +125,26 @@ class _PlaylistPageState extends State<PlaylistPage> {
     if (indexMsc.isNotEmpty) {
       List<String> idsMscs =
           indexMsc.map((i) => songsNowTranslated[i].id).toList();
-      List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
-        idsMusic: idsMscs,
-      );
       funcSuperior.value = PopupMenuButton<String>(
         icon: Icon(Icons.queue_music_rounded),
-        onSelected: (value) {
+        onSelected: (value) async {
           switch (value) {
             case 'addtoplaylist':
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) {
-                  return StatefulBuilder(
-                    builder: (context, setModalState) {
-                      return FractionallySizedBox(
-                        heightFactor: 0.45,
-                        child: Container(
-                          padding: const EdgeInsets.only(top: 20),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          child: ListView.builder(
-                            itemCount: playlists.length,
-                            itemBuilder: (context, index) {
-                              final playlist = playlists[index];
-                              return Container(
-                                color:
-                                    playlist.haveMusic ?? false
-                                        ? Color.fromARGB(255, 243, 160, 34)
-                                        : null,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(8),
-                                  onTap: () async {
-                                    for (String id in idsMscs) {
-                                      if (playlist.haveMusic ?? false) {
-                                        await DatabaseHelper()
-                                            .removeFromPlaylist(
-                                              playlist.id,
-                                              id,
-                                            );
-                                      } else {
-                                        await DatabaseHelper().addToPlaylist(
-                                          playlist.id,
-                                          id,
-                                        );
-                                      }
-                                    }
-
-                                    setModalState(() {
-                                      playlists[index] = playlist.copyWith(
-                                        haveMusic:
-                                            !(playlist.haveMusic ?? false),
-                                      );
-                                    });
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          playlist.title,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          softWrap: true,
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          playlist.subtitle,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                          softWrap: true,
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 3,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ).then((_) {
+              if (await selectPlaylistMenu(context, idsMscs)) {
                 completer.complete(true);
-              });
+              }
               break;
             case 'delete': //Consertar esse delete esta apagando, mas altera a musica atual, e trava quando tento reproduzir, não altera quando tem apenas uma selecionada, provavelmente ao apagar uma pula para a seguinte
-              deletarMusicas(
-                indexMsc.map((i) => songsNowTranslated[i]).toList(),
-              );
-              completer.complete(true);
+              if (await showPopupAdd(
+                context,
+                'Deletar musicas selecionadas?',
+                [],
+              )) {
+                await deletarMusicas(
+                  indexMsc.map((i) => songsNowTranslated[i]).toList(),
+                );
+                completer.complete(true);
+              }
               break;
           }
         },
@@ -317,122 +217,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
                             : controller.open(),
               );
             },
-            menuChildren: [
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.manual
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Manual',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.titleAZ;
-                  reorganizar();
-                },
-              ),
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.titleAZ
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Titulo A - Z',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.titleAZ;
-                  reorganizar();
-                },
-              ),
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.titleZA
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Titulo Z - A',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.titleZA;
-                  reorganizar();
-                },
-              ),
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.dataAZ
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Data A - Z',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.dataAZ;
-                  reorganizar();
-                },
-              ),
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.dataZA
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Data Z - A',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.dataZA;
-                  reorganizar();
-                },
-              ),
-              MenuItemButton(
-                style:
-                    modeAtual == ModeOrderEnum.up
-                        ? ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(baseAppColor),
-                        )
-                        : null,
-                child: Text(
-                  'Ups',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
-                onPressed: () {
-                  modeAtual = ModeOrderEnum.up;
-                  reorganizar();
-                },
-              ),
-            ],
+            menuChildren: reorderMenu(
+              modeAtual: modeAtual,
+              context: context,
+              onChange: reorderPlaylist,
+            ),
           ),
         ],
       ),
@@ -440,62 +229,30 @@ class _PlaylistPageState extends State<PlaylistPage> {
         children: [
           Column(
             children: [
-              Container(
-                color:
-                    Theme.of(
-                      context,
-                    ).extension<CustomColors>()!.backgroundForce,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8.0,
-                    vertical: 4.0,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: const InputDecoration(
-                            labelText: 'Pesquisa',
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 12,
-                            ),
-                          ),
-                          onChanged: (value) {
-                            setState(() {
-                              songsPlaylist =
-                                  songsNowTranslated
-                                      .where(
-                                        (item) => item.title
-                                            .toLowerCase()
-                                            .contains(value.toLowerCase()),
-                                      )
-                                      .toList();
-                            });
-                          },
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          FocusScope.of(context).requestFocus(FocusNode());
-                          _searchController.clear();
-                          setState(() {
-                            songsPlaylist = [...songsNowTranslated];
-                          });
-                        },
-                        child: SizedBox(
-                          width: 30,
-                          child: Icon(
-                            Icons.close,
-                            color: Color.fromARGB(255, 243, 160, 34),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              searchMenu(
+                context,
+                _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    songsPlaylist =
+                        songsNowTranslated
+                            .where(
+                              (item) => item.title.toLowerCase().contains(
+                                value.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+                  });
+                },
+                onClear: () {
+                  FocusScope.of(context).requestFocus(FocusNode());
+
+                  _searchController.clear();
+
+                  setState(() {
+                    songsPlaylist = [...songsNowTranslated];
+                  });
+                },
               ),
               Expanded(
                 child: ListContent(
