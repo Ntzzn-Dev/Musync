@@ -380,6 +380,9 @@ class MusyncAudioHandler extends BaseAudioHandler
       return false;
     }
 
+    final idAtual =
+        (actlist.queueList[currentIndex.value] as MusicItem).mediaItem.id;
+
     actlist.setMusicListAtual(songs);
 
     if (eko?.conected.value ?? false) {
@@ -387,7 +390,11 @@ class MusyncAudioHandler extends BaseAudioHandler
 
       queue.add(songs);
     } else {
-      setCurrentTrack(index: 0);
+      final indiceNewList = actlist.queueList.indexWhere(
+        (e) => (e as MusicItem).mediaItem.id == idAtual,
+      );
+
+      setCurrentTrack(index: indiceNewList != -1 ? indiceNewList : 0);
 
       queue.add(songs);
 
@@ -543,56 +550,6 @@ class MusyncAudioHandler extends BaseAudioHandler
       playPrevious();
     }
   }
-
-  Future<void> playNext() async {
-    final shouldStop = await repeatNormal();
-    if (shouldStop) return;
-
-    if (currentIndex.value + 1 < actlist.getLengthActionsListAtual()) {
-      if (eko?.conected.value ?? false) {
-        sendMediaIndex(currentIndex.value + 1);
-      } else {
-        await setCurrentTrack(index: currentIndex.value + 1);
-        play();
-      }
-    }
-
-    if (shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
-      unplayed.removeWhere((i) => i == currentIndex.value);
-      played.add(currentIndex.value);
-    }
-  }
-
-  Future<void> playPrevious() async {
-    final shouldStop = await repeatNormal();
-    if (shouldStop) return;
-
-    if (currentIndex.value > 0) {
-      currentIndex.value--;
-      if (eko?.conected.value ?? false) {
-        sendMediaIndex(currentIndex.value);
-      } else {
-        setCurrentTrack(index: currentIndex.value);
-        play();
-      }
-    }
-  }
-
-  Future<bool> repeatNormal() async {
-    if (loopMode.value == ModeLoopEnum.one) {
-      await audPl.seek(Duration.zero);
-      play();
-      return true;
-    } else if (loopMode.value == ModeLoopEnum.all &&
-        currentIndex.value + 1 >= actlist.getLengthActionsListAtual()) {
-      currentIndex.value = -1;
-      return false;
-    } else {
-      return false;
-    }
-  }
-
-  /* SHUFFLE PERSONALIZED */
 }
 
 class MusyncMediaUpdateNotifier extends ChangeNotifier {

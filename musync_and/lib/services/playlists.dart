@@ -107,7 +107,6 @@ class Playlists {
       AudioTags.write(filePath, tag);
 
       await atualizarNoMediaStore(filePath);
-      log('atualiado');
     } catch (e) {
       log("Erro ao editar tags: $e");
     }

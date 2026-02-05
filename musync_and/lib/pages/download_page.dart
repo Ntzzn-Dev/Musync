@@ -7,7 +7,6 @@ import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:youtube_explode_webview/youtube_explode_webview.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -44,8 +43,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   void initAsync() async {
     WidgetsFlutterBinding.ensureInitialized();
-    final solver = await WebviewEJSSolver.init();
-    yt = YoutubeExplode(jsSolver: solver);
+    yt = YoutubeExplode();
 
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('playlist_principal') ?? '';
@@ -55,13 +53,16 @@ class _DownloadPageState extends State<DownloadPage> {
     if (directory == '') {
       showPopupAdd(
         context,
-        'Adicione um diretorio nas configurações para evitar problemas',
-        [],
+        'Adicione um diretório padrão para musicas baixadas',
+        [ContentItem(value: 'Caminho', type: ContentTypeEnum.necessary)],
+        onConfirm: (values) {
+          prefs.setString('dir_download', values[0]);
+        },
       );
     }
 
     setState(() {
-      _btnDownloadActv = false;
+      _btnDownloadActv = true;
     });
 
     procurarPlaylist(url);
@@ -108,7 +109,20 @@ class _DownloadPageState extends State<DownloadPage> {
 
   Widget listarVideos() {
     if (videos.isEmpty) {
-      return SizedBox.shrink();
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Adicione uma playlist padrão nas configurações para exibir seus vídeos aqui',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 16,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
     }
 
     return ListView.builder(
@@ -252,11 +266,11 @@ class _DownloadPageState extends State<DownloadPage> {
                         ValueListenableBuilder<String>(
                           valueListenable: DownloadSpecs().titleAtual,
                           builder: (context, title, _) {
-                            return Player.titleText(
+                            /*return Player.titleText(
                               "DESATIVADO TEMPORÁRIAMENTE",
                               20,
-                            );
-                            //return Player.titleText(title, 20);
+                            );*/
+                            return Player.titleText(title, 20);
                           },
                         ),
                         ValueListenableBuilder<String>(

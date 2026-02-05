@@ -1,5 +1,3 @@
-
-
 import 'dart:developer';
 
 import 'package:audio_service/audio_service.dart';
@@ -8,6 +6,7 @@ import 'package:musync_and/services/databasehelper.dart';
 
 MusyncAudioHandler audPl = MusyncAudioHandler();
 
+/* SHUFFLES */
 List<int> played = [];
 List<int> unplayed = [];
 
@@ -20,6 +19,42 @@ void prepareShuffle() {
 void reshuffle() {
   int countSongs = audPl.queue.value.length;
   unplayed = List.generate(countSongs, (i) => i)..shuffle();
+}
+
+/* PLAYS */
+Future<void> playNext() async {
+  final shouldStop = await repeatNormal();
+  if (shouldStop) return;
+
+  if (audPl.currentIndex.value + 1 <
+      MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+    if (MusyncAudioHandler.eko?.conected.value ?? false) {
+      audPl.sendMediaIndex(audPl.currentIndex.value + 1);
+    } else {
+      await audPl.setCurrentTrack(index: audPl.currentIndex.value + 1);
+      audPl.play();
+    }
+  }
+
+  if (audPl.shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
+    unplayed.removeWhere((i) => i == audPl.currentIndex.value);
+    played.add(audPl.currentIndex.value);
+  }
+}
+
+Future<void> playPrevious() async {
+  final shouldStop = await repeatNormal();
+  if (shouldStop) return;
+
+  if (audPl.currentIndex.value > 0) {
+    audPl.currentIndex.value--;
+    if (MusyncAudioHandler.eko?.conected.value ?? false) {
+      audPl.sendMediaIndex(audPl.currentIndex.value);
+    } else {
+      audPl.setCurrentTrack(index: audPl.currentIndex.value);
+      audPl.play();
+    }
+  }
 }
 
 Future<void> playNextShuffled() async {
@@ -56,6 +91,22 @@ Future<void> playPreviousShuffled() async {
   }
 }
 
+/* REPEATS */
+Future<bool> repeatNormal() async {
+  if (audPl.loopMode.value == ModeLoopEnum.one) {
+    await audPl.seek(Duration.zero);
+    audPl.play();
+    return true;
+  } else if (audPl.loopMode.value == ModeLoopEnum.all &&
+      audPl.currentIndex.value + 1 >=
+          MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+    audPl.currentIndex.value = -1;
+    return false;
+  } else {
+    return false;
+  }
+}
+
 Future<bool> repeatShuffled() async {
   if (audPl.loopMode.value == ModeLoopEnum.one) {
     await audPl.seek(Duration.zero);
@@ -71,8 +122,6 @@ Future<bool> repeatShuffled() async {
     return false;
   }
 }
-
-/* REORDER */
 
 Future<List<MediaItem>> reorderMusics(
   ModeOrderEnum modeAtual,

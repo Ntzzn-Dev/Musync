@@ -92,13 +92,15 @@ class DownloadSpecs {
   Future<void> baixarAudio(Video video, String title, String artist) async {
     await accessStorage().then((_) async {
       progressAtual.value = 0.1;
-      var manifest = await yt.videos.streamsClient.getManifest(video.id);
+      var manifest = await yt.videos.streams.getManifest(
+        video.id,
+        ytClients: [YoutubeApiClient.androidVr],
+      );
       progressAtual.value = 0;
       atualizarProgresso(progressAtual);
       log('1');
 
       var audio = manifest.audioOnly.withHighestBitrate();
-      var stream = yt.videos.streamsClient.get(audio);
 
       log('1.1 $directory');
 
@@ -114,23 +116,11 @@ class DownloadSpecs {
 
       log('1.2');
       var file = File(webmpath);
-      log('1.3 $directory');
-      var fileStream = file.openWrite();
 
-      final totalBytes = audio.size.totalBytes;
-      int downloadedBytes = 0;
-
+      log('1.3');
+      await yt.videos.streamsClient.get(audio).pipe(file.openWrite());
+      atualizarProgresso(progressAtual);
       log('1.4');
-      await for (final data in stream) {
-        downloadedBytes += data.length;
-        fileStream.add(data);
-        log('1.4.1');
-
-        progressAtual.value = (downloadedBytes / totalBytes) * incremento * 2;
-      }
-      log('1.5');
-      await fileStream.flush();
-      await fileStream.close();
 
       await convertWebmToMp3(webmpath, mp3path);
       atualizarProgresso(progressAtual);
@@ -177,6 +167,7 @@ class DownloadSpecs {
       );
 
       MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
+      MusyncAudioHandler.actlist.songsAllPlaylist.add(musicBaixada);
 
       await Playlists.atualizarNoMediaStore(mp3path);
       atualizarProgresso(progressAtual);

@@ -22,6 +22,7 @@ import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:musync_and/widgets/popup_list.dart';
 import 'package:musync_and/widgets/vertical_popup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
@@ -391,7 +392,7 @@ class _MusicPageState extends State<MusicPage> {
             MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
           }
         });
-        await audPl.recreateQueue(songs: songsNow);
+        await audPl.recreateQueue(songs: songsNow); // tentar com o reorganize
 
         await audPl.stop();
         await Future.delayed(const Duration(milliseconds: 200));
@@ -637,7 +638,41 @@ class _MusicPageState extends State<MusicPage> {
               if (value == 1) {
                 return ElevatedButton(
                   onPressed: () async {
-                    if (await showPopupAdd(context, 'Fazendo Downloads', [])) {}
+                    showPopupList(
+                      context,
+                      'Fazendo Downloads ',
+                      [
+                        InfoItem(
+                          info: 'Situação',
+                          value:
+                              DownloadSpecs().situacao.value.split(
+                                'Situação: ',
+                              )[1],
+                        ),
+                        InfoItem(
+                          info: 'Musica Atual',
+                          value: DownloadSpecs().titleAtual.value,
+                        ),
+                        InfoItem(
+                          info: 'Artista Atual',
+                          value: DownloadSpecs().authorAtual.value,
+                        ),
+                      ],
+                      InfoLabelSpecs(
+                        info: InfoLabel(
+                          name: '',
+                          flex: 2,
+                          centralize: true,
+                          bold: true,
+                        ),
+                        value: InfoLabel(
+                          name: '',
+                          flex: 3,
+                          centralize: true,
+                          bold: false,
+                        ),
+                      ),
+                    );
                   },
                   style: ButtonStyle(
                     shape: WidgetStateProperty.all(const CircleBorder()),
@@ -719,13 +754,6 @@ class _MusicPageState extends State<MusicPage> {
             },
             menuChildren: [
               SubmenuButton(
-                child: Text(
-                  'Reordenar',
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).extension<CustomColors>()!.textForce,
-                  ),
-                ),
                 menuChildren: [
                   MenuItemButton(
                     style:
@@ -838,6 +866,13 @@ class _MusicPageState extends State<MusicPage> {
                     },
                   ),
                 ],
+                child: Text(
+                  'Reordenar',
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).extension<CustomColors>()!.textForce,
+                  ),
+                ),
               ),
               MenuItemButton(
                 child: Text(
@@ -856,11 +891,7 @@ class _MusicPageState extends State<MusicPage> {
                     ),
                   ).then((_) {
                     setState(() {
-                      /*MusyncAudioHandler.songsAll = MusyncAudioHandler.reorder(
-                        modeAtual,
-                        MusyncAudioHandler.songsAll,
-                      );
-                      songsNow = MusyncAudioHandler.songsAllPlaylist;*/
+                      switchOrder(modeAtual);
                     });
                   });
                 },
