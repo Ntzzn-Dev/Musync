@@ -455,12 +455,22 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> play() async {
+    _idleTimer?.cancel();
     if (!audPl.playing) audPl.play();
   }
 
   @override
   Future<void> pause() async {
     audPl.pause();
+    if (modoDeEnergia == 1) {
+      _startIdleTimer();
+    }
+  }
+
+  @override
+  Future<void> stop() async {
+    _idleTimer?.cancel();
+    await super.stop();
   }
 
   @override
@@ -549,6 +559,43 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       playPrevious();
     }
+  }
+
+  /* MODO BALACEADO */
+  Timer? _idleTimer;
+
+  static const Duration idleTimeout = Duration(hours: 1);
+
+  void _startIdleTimer() {
+    log('[IDLE] Timer iniciado');
+
+    _idleTimer?.cancel();
+    _idleTimer = Timer(idleTimeout, () async {
+      log('[IDLE] Timer disparou');
+
+      final isPlaying = playbackState.value.playing;
+      log('[IDLE] isPlaying = $isPlaying');
+
+      if (!isPlaying) {
+        log('[IDLE] Encerrando serviço');
+        await _shutdownService();
+      }
+    });
+  }
+
+  Future<void> _shutdownService() async {
+    log('[IDLE] shutdownService()');
+
+    _idleTimer?.cancel();
+
+    playbackState.add(
+      playbackState.value.copyWith(
+        playing: false,
+        processingState: AudioProcessingState.idle,
+      ),
+    );
+
+    await stop();
   }
 }
 

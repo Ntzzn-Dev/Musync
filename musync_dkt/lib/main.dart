@@ -55,6 +55,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     startServer(connected, musicsPercent);
+    enableQRCode(context, connected);
     _focusNode.requestFocus();
     audPl.setVolume(50);
 

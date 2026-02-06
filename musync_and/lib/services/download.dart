@@ -126,21 +126,9 @@ class DownloadSpecs {
       atualizarProgresso(progressAtual);
       log('2');
 
-      final thumbUrl =
-          'https://img.youtube.com/vi/${video.id.value}/hqdefault.jpg';
-      final response = await http.get(Uri.parse(thumbUrl));
-      final thumbBytes = response.bodyBytes;
+      final url = await fetchThumbnailUrl(video.id.value);
+      final img = await fetchThumbnailPicture(url);
 
-      List<Picture> img = [];
-      if (response.statusCode == 200) {
-        img = [
-          Picture(
-            bytes: thumbBytes,
-            mimeType: MimeType.jpeg,
-            pictureType: PictureType.coverFront,
-          ),
-        ];
-      }
       atualizarProgresso(progressAtual);
       log('3');
 
@@ -163,7 +151,7 @@ class DownloadSpecs {
         artist: artist,
         duration: video.duration ?? Duration.zero,
         extras: {'lastModified': lastModified, 'path': mp3path},
-        artUri: Uri.parse(thumbUrl),
+        artUri: Uri.parse(url),
       );
 
       MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
@@ -173,6 +161,40 @@ class DownloadSpecs {
       atualizarProgresso(progressAtual);
       log('5');
     });
+  }
+
+  Future<String> fetchThumbnailUrl(String videoId) async {
+    final List<String> res = [
+      'maxresdefault.jpg',
+      'sddefault.jpg',
+      'hqdefault.jpg',
+    ];
+
+    for (final r in res) {
+      final url = 'https://img.youtube.com/vi/$videoId/$r';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        return url;
+      }
+    }
+    return '';
+  }
+
+  Future<List<Picture>> fetchThumbnailPicture(String videoUrl) async {
+    final response = await http.get(Uri.parse(videoUrl));
+
+    if (response.statusCode == 200) {
+      return [
+        Picture(
+          bytes: response.bodyBytes,
+          mimeType: MimeType.jpeg,
+          pictureType: PictureType.coverFront,
+        ),
+      ];
+    }
+
+    return [];
   }
 
   Future<void> convertWebmToMp3(String webmpath, String mp3path) async {

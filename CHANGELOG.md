@@ -379,7 +379,17 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Otimização de codigo e diminuição de linhas.  
 - Correção na lógica de adição/remoção de musicas em playlists.  
   
+### version 5.14.2  
+- Desktop com o QRCode aberto ao iniciar app.  
+- Adição de um modo performance, balanciado e de economia, onde cada um age de uma maneira para evitar alto consumo de energia desnecessario, executando ou não o app em segundo plano por mais tempo.  
+- Novo popup de informação adicionado.  
+- Mudança na resolução da imagem ao fazer o download.  
+
 ### TO FUTURE VERSIONS  
++ Repensar conceito de setList dinamica.
++ Verificar maneiras de otimizar consumo de energia e de dados.
++ Criar reconexão com desktop.  
+
 + Corrigir indices não recebidos quando o item ainda for clicado manualmente no android. Verificar se não foi clicado no botão de next com o shuffle ativo, e mostrar mensagem na tela dizendo que o indice ainda não foi enviado para o desktop, alem de retornar a musica anterior. [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
 + Corrigir separação de indices não recebidos enviados pelo desktop para o android na segunda metade [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
 + Criar checkpoint para reiniciar músicas.  

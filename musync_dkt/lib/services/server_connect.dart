@@ -55,64 +55,60 @@ Future<String?> getLocalIPAddress() async {
 void enableQRCode(BuildContext context, ValueNotifier<bool> connected) async {
   final ip = await getLocalIPAddress();
 
+  late VoidCallback listener;
+
+  listener = () {
+    if (connected.value && Navigator.canPop(context)) {
+      Navigator.pop(context);
+      connected.removeListener(listener);
+    }
+  };
+
+  connected.addListener(listener);
+
   showDialog(
     context: context,
     builder: (context) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: connected,
-        builder: (context, isConnected, _) {
-          if (isConnected) {
-            Future.microtask(() {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            });
-          }
-
-          return AlertDialog(
-            backgroundColor: Colors.black87,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.orangeAccent, width: 2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: PrettyQrView.data(
-                    data: ip ?? '',
-                    decoration: PrettyQrDecoration(
-                      shape: PrettyQrShape.custom(
-                        PrettyQrDotsSymbol(color: baseAppColor),
-                        finderPattern: PrettyQrSmoothSymbol(
-                          color: baseAppColor,
-                        ),
-                        alignmentPatterns: PrettyQrSmoothSymbol(
-                          color: baseAppColor,
-                        ),
-                      ),
-                      image: PrettyQrDecorationImage(
-                        image: AssetImage("assets/musync_icon.png"),
-                        colorFilter: ColorFilter.mode(
-                          baseAppColor,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+      return AlertDialog(
+        backgroundColor: Colors.black87,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.orangeAccent, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: PrettyQrView.data(
+                data: ip ?? '',
+                decoration: PrettyQrDecoration(
+                  shape: PrettyQrShape.custom(
+                    PrettyQrDotsSymbol(color: baseAppColor),
+                    finderPattern: PrettyQrSmoothSymbol(color: baseAppColor),
+                    alignmentPatterns: PrettyQrSmoothSymbol(
+                      color: baseAppColor,
                     ),
-                    errorCorrectLevel: QrErrorCorrectLevel.H,
+                  ),
+                  image: PrettyQrDecorationImage(
+                    image: AssetImage("assets/musync_icon.png"),
+                    colorFilter: ColorFilter.mode(
+                      baseAppColor,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Fechar"),
-                ),
-              ],
+                errorCorrectLevel: QrErrorCorrectLevel.H,
+              ),
             ),
-          );
-        },
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Fechar"),
+            ),
+          ],
+        ),
       );
     },
   );

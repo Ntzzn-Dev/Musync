@@ -1,8 +1,13 @@
+import 'dart:developer';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:musync_and/widgets/popup_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -17,6 +22,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _playlistDefault = TextEditingController();
   final TextEditingController _dirDownload = TextEditingController();
+  ValueNotifier<List<bool>> modeBattery = ValueNotifier([false, false, true]);
 
   @override
   void initState() {
@@ -33,6 +39,11 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     final plDefault = prefs.getString('playlist_principal') ?? '';
     final dirDownload = prefs.getString('dir_download') ?? '';
+    final modoEnergia = prefs.getInt('modo_energia') ?? modoDeEnergia;
+
+    modeBattery.value = List.generate(3, (index) => index == modoEnergia);
+    log(modeBattery.value[modoEnergia].toString() + 'ligado ou des');
+    log(modoEnergia.toString());
 
     _playlistDefault.text = plDefault;
     _dirDownload.text = dirDownload;
@@ -42,6 +53,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('playlist_principal', _playlistDefault.text);
     prefs.setString('dir_download', _dirDownload.text);
+    prefs.setInt('modo_energia', modeBattery.value.indexWhere((v) => v));
   }
 
   @override
@@ -181,6 +193,147 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Color.fromRGBO(60, 60, 60, 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Modos de energia",
+                            style: TextStyle(
+                              color: baseAppColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 152,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ValueListenableBuilder(
+                                    valueListenable: modeBattery,
+                                    builder: (_, value, s) {
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
+                                        children: [
+                                          Text(
+                                            'Modo Economia.............................',
+                                            style: TextStyle(
+                                              color:
+                                                  value[0]
+                                                      ? baseAppColor
+                                                      : Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Modo Balanceado..........................',
+                                            style: TextStyle(
+                                              color:
+                                                  value[1]
+                                                      ? baseAppColor
+                                                      : Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Modo Performance........................',
+                                            style: TextStyle(
+                                              color:
+                                                  value[2]
+                                                      ? baseAppColor
+                                                      : Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    ToggleButtons(
+                                      direction: Axis.vertical,
+                                      isSelected: modeBattery.value,
+                                      onPressed: (index) {
+                                        modeBattery.value = List.generate(
+                                          3,
+                                          (i) => i == index,
+                                        );
+                                        switch (index) {
+                                          case 0:
+                                            showPopupInfo(
+                                              context,
+                                              title: 'Modo Economia!',
+                                              message:
+                                                  'O aplicativo não roda em segundo plano, então caso fique um tempo sem usar, o proprio android vai matar o processo.',
+                                              icon:
+                                                  Icons
+                                                      .battery_charging_full_outlined,
+                                              iconBackground: Colors.green,
+                                            );
+                                            break;
+                                          case 1:
+                                            showPopupInfo(
+                                              context,
+                                              title: 'Modo Balanceado!',
+                                              message:
+                                                  'O aplicativo fica rodando em segundo plano até 1 hora sem uso, depois disso ele permite que o android mate o processo a qualquer momento.',
+                                              icon: Icons.battery_full_outlined,
+                                            );
+                                            break;
+                                          case 2:
+                                            showPopupInfo(
+                                              context,
+                                              title: 'Modo Performance!',
+                                              message:
+                                                  'O aplicativo roda em segundo plano até que seja manualmente fechado pelo usuário, podendo consumir mais bateria.',
+                                              icon:
+                                                  Icons
+                                                      .battery_unknown_outlined,
+                                              iconBackground: Colors.red,
+                                            );
+                                            break;
+                                        }
+                                        showPopupInfo(
+                                          context,
+                                          title: 'Aviso!',
+                                          message:
+                                              'É recomendado salvar e reiniciar o aplicativo para que o modo funcione corretamente.',
+                                          icon: Icons.info_outline,
+                                        );
+                                      },
+                                      children: const [
+                                        Icon(
+                                          Icons.battery_charging_full_outlined,
+                                        ),
+                                        Icon(Icons.battery_full_outlined),
+                                        Icon(Icons.battery_unknown_outlined),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

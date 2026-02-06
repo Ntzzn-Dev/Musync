@@ -5,6 +5,7 @@ import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/databasehelper.dart';
 
 MusyncAudioHandler audPl = MusyncAudioHandler();
+int modoDeEnergia = 2;
 
 /* SHUFFLES */
 List<int> played = [];

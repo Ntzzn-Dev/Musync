@@ -10,6 +10,7 @@ import 'package:musync_and/services/download.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_add.dart';
+import 'package:musync_and/widgets/popup_info.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 
 List<Widget> reorderMenu({
@@ -323,10 +324,14 @@ Widget downloadVisualizerMenu({required void Function() onFinalize}) {
       if (value == 2) {
         return ElevatedButton(
           onPressed: () async {
-            if (await showPopupAdd(context, 'Finalizados', [])) {
-              DownloadSpecs().finish();
-              onFinalize();
-            }
+            showPopupInfo(
+              context,
+              title: 'Downloads finalizados!',
+              message: 'Suas músicas foram baixadas com sucesso.',
+              icon: Icons.music_note,
+            );
+            DownloadSpecs().finish();
+            onFinalize();
           },
           style: ButtonStyle(
             shape: WidgetStateProperty.all(const CircleBorder()),
@@ -434,93 +439,4 @@ List<Widget> routesMenu({
       ),
     ),
   ];
-}
-
-Widget tabsMenu() {
-  return Column(
-    children: [
-      SizedBox(
-        height: 56,
-        child: Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    abaSelect = 0;
-                    songsNow = MusyncAudioHandler.actlist.songsAllPlaylist;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: baseFundoDark,
-                    border: Border(
-                      bottom: BorderSide(
-                        color:
-                            abaSelect == 0
-                                ? Color.fromARGB(255, 243, 160, 34)
-                                : Colors.transparent,
-                        width: 3,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    MusyncAudioHandler.actlist.mainPlaylist.title,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  setState(() {
-                    abaSelect = 1;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: baseFundoDark,
-                    border: Border(
-                      bottom: BorderSide(
-                        color:
-                            abaSelect == 1
-                                ? Color.fromARGB(255, 243, 160, 34)
-                                : Colors.transparent,
-                        width: 3,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    'Playlists',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              height: double.infinity,
-              color: baseFundoDark,
-              child: InkWell(
-                onTap: _toggleTop,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Icon(
-                    Icons.search,
-                    color: Color.fromARGB(255, 243, 160, 34),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      Expanded(child: pageSelect(abaSelect)),
-      Padding(padding: EdgeInsets.only(bottom: 52 + bottomInset)),
-    ],
-  );
 }

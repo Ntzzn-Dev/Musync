@@ -46,6 +46,16 @@ ThemeData lighttheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: Color.fromARGB(255, 242, 242, 242),
     ),
+    toggleButtonsTheme: ToggleButtonsThemeData(
+      borderColor: baseAppColor.withOpacity(0.5),
+      selectedBorderColor: baseAppColor,
+      borderRadius: BorderRadius.circular(12),
+      borderWidth: 2,
+      color: Colors.grey.shade300,
+      selectedColor: baseElementDark,
+      fillColor: baseAppColor,
+      hoverColor: baseAppColor.withOpacity(0.2),
+    ),
     textTheme: ThemeData.dark().textTheme.apply(
       bodyColor: Color.fromARGB(255, 0, 0, 0),
       displayColor: Color.fromARGB(255, 0, 0, 0),
@@ -180,7 +190,16 @@ ThemeData darktheme() {
       backgroundColor: baseElementDark,
       titleTextStyle: TextStyle(color: Colors.white),
     ),
-
+    toggleButtonsTheme: ToggleButtonsThemeData(
+      borderColor: baseAppColor.withOpacity(0.5),
+      selectedBorderColor: baseAppColor,
+      borderRadius: BorderRadius.circular(12),
+      borderWidth: 2,
+      color: Colors.grey.shade300,
+      selectedColor: baseElementDark,
+      fillColor: baseAppColor,
+      hoverColor: baseAppColor.withOpacity(0.2),
+    ),
     textTheme: TextTheme(
       titleMedium: TextStyle(color: Colors.white),
       bodyMedium: TextStyle(color: Colors.grey.shade300),
