@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/databasehelper.dart';
@@ -28,6 +29,8 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     carregarPreferencias();
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override

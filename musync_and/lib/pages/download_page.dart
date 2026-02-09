@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/download.dart';
 import 'package:musync_and/themes.dart';
@@ -33,6 +34,8 @@ class _DownloadPageState extends State<DownloadPage> {
   void initState() {
     super.initState();
     initAsync();
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override

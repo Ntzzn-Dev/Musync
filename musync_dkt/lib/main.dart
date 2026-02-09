@@ -479,7 +479,7 @@ class _HomePageState extends State<HomePage> {
                             'Conectado ao smartphone\nDeseja deconectar?',
                             [],
                           )) {
-                            socket.close();
+                            closeServer();
                           }
                         },
                         child: Icon(Icons.connected_tv),

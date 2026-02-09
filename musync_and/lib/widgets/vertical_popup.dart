@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 
 class VerticalPopupMenu extends StatefulWidget {
@@ -101,7 +101,7 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
                         'Deseja deconectar do desktop?',
                         [],
                       )) {
-                        MusyncAudioHandler.eko?.tryToDisconect();
+                        eko.tryToDisconect();
                         await _closePopup();
                       }
                     },
@@ -110,9 +110,7 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
 
                 _roundButton(Icons.crop_square, 'Minimizar', () async {
                   //Icons.remove
-                  MusyncAudioHandler.eko?.sendMessage({
-                    'action': 'minimize_window',
-                  });
+                  eko.sendMessage({'action': 'minimize_window'});
 
                   await _closePopup();
                 }),
@@ -125,9 +123,7 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
                       'Deseja fechar Musync do desktop?',
                       [],
                     )) {
-                      MusyncAudioHandler.eko?.sendMessage({
-                        'action': 'close_window',
-                      });
+                      eko.sendMessage({'action': 'close_window'});
                       await _closePopup();
                     }
                   }),

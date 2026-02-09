@@ -2,21 +2,13 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/themes.dart';
 
-enum ButtonTypes {
-  prev,
-  next,
-  shuffle,
-  repeat,
-  up,
-  nextPlaylist,
-  prevPlaylist,
-  checkpoint,
-}
+enum ButtonTypes { prev, next, shuffle, repeat, nextBtn, prevBtn, modal }
 
 class ControlPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -27,7 +19,7 @@ class ControlPage extends StatefulWidget {
 }
 
 class _ControlPageState extends State<ControlPage> {
-  final ekoConnected = MusyncAudioHandler.eko?.conected.value ?? false;
+  final ekoConnected = eko.conected.value;
   Stream<String> _timeStream() async* {
     yield* Stream.periodic(const Duration(seconds: 1), (_) {
       return DateFormat('HH:mm').format(DateTime.now());
@@ -225,7 +217,7 @@ class _ControlPageState extends State<ControlPage> {
               () {
                 widget.audioHandler.setShuffleModeEnabled();
               },
-              5 / 4,
+              3 / 2,
               2,
             );
           },
@@ -246,21 +238,12 @@ class _ControlPageState extends State<ControlPage> {
               () {
                 widget.audioHandler.setLoopModeEnabled();
               },
-              5 / 4,
+              3 / 2,
               2,
             );
           },
         );
-      case ButtonTypes.up:
-        return _buildButton(
-          Icon(Icons.favorite, size: 45),
-          () {
-            widget.audioHandler.upAtualMedia();
-          },
-          5 / 8,
-          1,
-        );
-      case ButtonTypes.nextPlaylist:
+      case ButtonTypes.nextBtn:
         return _buildButton(
           Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
           () async {
@@ -270,7 +253,7 @@ class _ControlPageState extends State<ControlPage> {
           2 / 2,
           1,
         );
-      case ButtonTypes.prevPlaylist:
+      case ButtonTypes.prevBtn:
         return _buildButton(
           Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
           () async {
@@ -280,9 +263,9 @@ class _ControlPageState extends State<ControlPage> {
           2 / 2,
           1,
         );
-      case ButtonTypes.checkpoint:
+      case ButtonTypes.modal:
         return _buildButton(
-          Icon(Icons.track_changes, size: 45),
+          Icon(Icons.swap_horiz_rounded, size: 45),
           () async {
             widget.audioHandler.returnToCheckpoint();
           },
@@ -381,8 +364,6 @@ class _ControlPageState extends State<ControlPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     buildAudioHandlerButtons(ButtonTypes.shuffle),
-                    const SizedBox(width: 10),
-                    buildAudioHandlerButtons(ButtonTypes.up),
                     const SizedBox(width: 10),
                     buildAudioHandlerButtons(ButtonTypes.repeat),
                   ],
@@ -553,11 +534,11 @@ class _ControlPageState extends State<ControlPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildAudioHandlerButtons(ButtonTypes.prevPlaylist),
+                    buildAudioHandlerButtons(ButtonTypes.prevBtn),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons(ButtonTypes.nextPlaylist),
+                    buildAudioHandlerButtons(ButtonTypes.modal),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons(ButtonTypes.checkpoint),
+                    buildAudioHandlerButtons(ButtonTypes.nextBtn),
                   ],
                 ),
               ],

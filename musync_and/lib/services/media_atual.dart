@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/ekosystem.dart';
 
 class MediaAtual extends MediaItem {
   final Duration total;
@@ -61,11 +61,8 @@ class MediaAtual extends MediaItem {
   void sendPauseAndPlay(bool playing) {
     isPlaying.value = playing;
 
-    if (MusyncAudioHandler.eko?.conected.value ?? false) {
-      MusyncAudioHandler.eko?.sendMessage({
-        "action": 'toggle_play',
-        "data": playing,
-      });
+    if (eko.conected.value) {
+      eko.sendMessage({"action": 'toggle_play', "data": playing});
     }
   }
 
@@ -81,8 +78,8 @@ class MediaAtual extends MediaItem {
 
   void setVolume(double vol) {
     volume.value = vol;
-    if (MusyncAudioHandler.eko?.conected.value ?? false) {
-      MusyncAudioHandler.eko?.sendMessage({"action": 'volume', "data": vol});
+    if (eko.conected.value) {
+      eko.sendMessage({"action": 'volume', "data": vol});
     }
   }
 
@@ -106,8 +103,8 @@ class MediaAtual extends MediaItem {
   void seek(Duration pos, {bool ekoSending = true}) {
     position.value = pos;
 
-    if (ekoSending && (MusyncAudioHandler.eko?.conected.value ?? false)) {
-      MusyncAudioHandler.eko?.sendMessage({
+    if (ekoSending && (eko.conected.value)) {
+      eko.sendMessage({
         "action": 'position',
         "data": pos.inMilliseconds.toDouble(),
       });

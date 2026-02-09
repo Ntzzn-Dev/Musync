@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:musync_dkt/main.dart';
+import 'package:musync_dkt/services/media_music.dart';
 import 'package:musync_dkt/themes.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
@@ -159,6 +160,11 @@ void makeLogList(bool recebido, Map<String, dynamic> decoded) {
   entradasESaidas.value = novaLista;
 }
 
+void closeServer() {
+  sendMessageAnd({'action': 'close_server'});
+  socket.close();
+}
+
 void startServer(
   ValueNotifier<bool> connected,
   ValueNotifier<String> musicsPercent,
@@ -224,13 +230,17 @@ void startServer(
                 }
                 break;
               case 'add_to_atual':
-                audPl.songsAtual = [
-                  ...audPl.songsAtual,
-                  audPl.songsAll.firstWhere(
-                    (msc) => msc.id == int.parse(decoded['data']),
-                  ),
-                ];
-                audPl.songsNow.value = audPl.songsAtual;
+                final part = decoded['parte'];
+                final musica = audPl.songsAll.firstWhere(
+                  (msc) => msc.id == int.parse(decoded['data']),
+                );
+
+                final novaLista = List<MediaMusic>.from(audPl.songsAtual)
+                  ..insert(part == 2 ? 0 : audPl.songsAtual.length, musica);
+
+                audPl.songsAtual = novaLista;
+                audPl.songsNow.value = novaLista;
+
                 addLoaded(musicsPercent);
                 break;
               case 'package_start':
@@ -246,6 +256,7 @@ void startServer(
                 sendMessageAnd({
                   'action': 'verify_data',
                   'data': audPl.songsAll.map((msc) => msc.id).join(','),
+                  'atual': audPl.currentIndex.value,
                 });
                 break;
               case 'toggle_play':

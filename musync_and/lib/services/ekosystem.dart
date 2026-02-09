@@ -5,8 +5,13 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/services/media_atual.dart';
+import 'package:musync_and/services/qrcode_helper.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
+
+Ekosystem eko = Ekosystem.create();
 
 class Ekosystem {
   ValueNotifier<bool> conected;
@@ -24,20 +29,110 @@ class Ekosystem {
     required this.status,
   });
 
-  static Future<Ekosystem> create({
-    required String host,
-    required int porta,
-  }) async {
-    final ekosystem = Ekosystem._internal(
+  factory Ekosystem.create() {
+    return Ekosystem._internal(
       conected: ValueNotifier(false),
       receivedMessage: ValueNotifier(null),
-      host: host,
-      porta: porta,
-      status: "Tentando conectar...",
+      host: '',
+      porta: 0,
+      status: 'Desconectado',
     );
-    await ekosystem.tryToConect(host, porta);
+  }
 
-    return ekosystem;
+  static void connectGlobal({required String host, required int porta}) {
+    eko.host = host;
+    eko.porta = porta;
+    eko.status = "Tentando conectar...";
+
+    eko.conect(host, porta);
+  }
+
+  static void setEkosystem() async {
+    Ekosystem.connectGlobal(host: hostDkt, porta: 8080);
+
+    audPl.pause();
+
+    eko.sendEkoLoop(audPl.loopMode.value);
+    eko.sendEkoShuffle(audPl.shuffleMode.value);
+
+    eko.sendMessage({
+      'action': 'playlist_name',
+      'title': MusyncAudioHandler.actlist.atualPlaylist.value.title,
+      'subtitle': MusyncAudioHandler.actlist.atualPlaylist.value.subtitle,
+    });
+
+    if (eko.conected.value) {
+      eko.sendMessage({'action': 'request_data', 'data': ''});
+    }
+
+    final songsAtual = MusyncAudioHandler.actlist.getMediaItemsFromQueue();
+
+    MusyncAudioHandler.mediaAtual = ValueNotifier(
+      MediaAtual(
+        total: songsAtual[audPl.currentIndex.value].duration ?? Duration.zero,
+        id: songsAtual[audPl.currentIndex.value].id,
+        title: songsAtual[audPl.currentIndex.value].title,
+        artist: songsAtual[audPl.currentIndex.value].artist,
+        album: songsAtual[audPl.currentIndex.value].album,
+        artUri: songsAtual[audPl.currentIndex.value].artUri,
+      ),
+    );
+
+    eko.receivedMessage.addListener(() {
+      final msg = eko.receivedMessage.value;
+
+      switch (msg?['action']) {
+        case 'verify_data':
+          String allIds = msg?['data'];
+          int atualId = msg?['atual'] + Ekosystem.indexInitial;
+          final listIds = allIds.split(',');
+
+          eko.sendAudios(
+            MusyncAudioHandler.actlist.getMediaItemsFromQueue(),
+            audPl.currentIndex.value,
+            listIds,
+          );
+          Ekosystem.indexInitial = audPl.currentIndex.value;
+
+          audPl.setMediaIndex(atualId);
+          break;
+        case 'position':
+          final progress = Duration(milliseconds: msg?['data'].toInt());
+          MusyncAudioHandler.mediaAtual.value.seek(progress, ekoSending: false);
+          break;
+        case 'toggle_play':
+          MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
+          break;
+        case 'volume':
+          MediaAtual.volume.value = msg?['data'].toDouble();
+          break;
+        case 'newloop':
+          audPl.loopMode.value = enumFromInt(msg?['data'], ModeLoopEnum.values);
+          break;
+        case 'newshuffle':
+          audPl.shuffleMode.value = enumFromInt(
+            msg?['data'],
+            ModeShuffleEnum.values,
+          );
+          break;
+        case 'newindex':
+          int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
+          audPl.setMediaIndex(indexRelative);
+          break;
+        case 'newtemporaryorder':
+          audPl.reorganizeSongsAtual(msg?['data']);
+          break;
+        case 'package_end':
+          Ekosystem.indexInitial = 0;
+          break;
+        case 'wait_load':
+          audPl.sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
+          break;
+        case 'close_server':
+          hostDkt = '';
+          break;
+      }
+    });
   }
 
   void conect(String host, int porta) async {
@@ -71,27 +166,11 @@ class Ekosystem {
     }
   }
 
-  Future<bool> tryToConect(String host, int porta) async {
-    try {
-      final socket = await Socket.connect(
-        host,
-        porta,
-        timeout: Duration(seconds: 2),
-      );
-      socket.destroy();
-
-      conect(host, porta);
-      return true;
-    } catch (e) {
-      log("Não foi possível conectar: $e");
-      return false;
-    }
-  }
-
   void tryToDisconect() {
-    channel?.sink.close();
+    hostDkt = '';
     conected.value = false;
     status = "Desconectado";
+    channel?.sink.close();
   }
 
   void sendMessage(Map<String, dynamic> act) {
@@ -189,6 +268,7 @@ class Ekosystem {
         sendMessage({
           'action': 'add_to_atual',
           'data': music.id.split("/").last,
+          "parte": 1,
         });
         continue;
       }
@@ -200,6 +280,7 @@ class Ekosystem {
         sendMessage({
           'action': 'add_to_atual',
           'data': music.id.split("/").last,
+          "parte": 2,
         });
         continue;
       }

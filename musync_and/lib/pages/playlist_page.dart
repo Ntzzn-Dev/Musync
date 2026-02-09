@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
@@ -22,14 +23,12 @@ class PlaylistPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsPL;
   final Playlists? pl;
-  final Ekosystem? ekosystem;
   const PlaylistPage({
     super.key,
     required this.plTitle,
     required this.audioHandler,
     required this.songsPL,
     this.pl,
-    this.ekosystem,
   });
 
   @override
@@ -65,6 +64,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
         tag: widget.pl?.id.toString() ?? widget.plTitle,
       ),
     );
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   void _onPlaylistChanged() async {
@@ -278,8 +279,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     int indiceCerto = songsNowTranslated.indexWhere(
                       (t) => t == item,
                     );
-                    if ((widget.ekosystem?.conected.value ?? false) &&
-                        recriou) {
+                    if ((eko.conected.value) && recriou) {
                       Ekosystem.indexInitial = indiceCerto;
                     }
                     await widget.audioHandler.skipToQueueItem(indiceCerto);
@@ -298,8 +298,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
             builder: (context, value, child) {
               bottomInset = MediaQuery.of(context).padding.bottom;
               return ValueListenableBuilder<bool>(
-                valueListenable:
-                    widget.ekosystem?.conected ?? ValueNotifier(false),
+                valueListenable: eko.conected,
                 builder: (context, conected, child) {
                   return AnimatedPositioned(
                     duration: const Duration(milliseconds: 500),

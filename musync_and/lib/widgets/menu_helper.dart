@@ -356,7 +356,7 @@ Widget downloadVisualizerMenu({required void Function() onFinalize}) {
 List<Widget> routesMenu({
   required BuildContext context,
   required ModeOrderEnum modeAtual,
-  required void Function() onConnect,
+  required void Function(BuildContext) onConnect,
   required void Function(ModeOrderEnum) onSwitchMode,
 }) {
   return [
@@ -430,7 +430,7 @@ List<Widget> routesMenu({
       },
     ),
     MenuItemButton(
-      onPressed: onConnect,
+      onPressed: () => onConnect(context),
       child: Text(
         'Connect Desktop',
         style: TextStyle(

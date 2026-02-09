@@ -385,6 +385,14 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Novo popup de informação adicionado.  
 - Mudança na resolução da imagem ao fazer o download.  
 
+### version 5.15  
+- Adicionado reconexão rápida.  
+- Aprimorado etapas de sincronização pós reconexão.  
+- Desconexão manual requer conexão manual, desconexão involuntária pode se reconectar apenas saindo e voltando ao aplicativo ou apertando em conectar ao desktop.  
+- Otimização e reorganização de código.  
+- Trava de rotação em algumas paginas.  
+- Preparação para proximas atualizações do SuperControl.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 + Verificar maneiras de otimizar consumo de energia e de dados.

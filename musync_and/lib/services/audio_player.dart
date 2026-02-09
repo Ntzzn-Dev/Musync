@@ -45,86 +45,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   late List<Playlists> playlists;
 
-  static Ekosystem? eko;
   static late ValueNotifier<MediaAtual> mediaAtual;
-
-  void setEkosystem(Ekosystem ekosystem) {
-    eko = ekosystem;
-    pause();
-
-    eko?.sendEkoLoop(loopMode.value);
-    eko?.sendEkoShuffle(shuffleMode.value);
-
-    eko?.sendMessage({
-      'action': 'playlist_name',
-      'title': actlist.atualPlaylist.value.title,
-      'subtitle': actlist.atualPlaylist.value.subtitle,
-    });
-
-    if (eko?.conected.value ?? false) {
-      eko?.sendMessage({'action': 'request_data', 'data': ''});
-    }
-
-    final songsAtual = actlist.getMediaItemsFromQueue();
-
-    mediaAtual = ValueNotifier(
-      MediaAtual(
-        total: songsAtual[currentIndex.value].duration ?? Duration.zero,
-        id: songsAtual[currentIndex.value].id,
-        title: songsAtual[currentIndex.value].title,
-        artist: songsAtual[currentIndex.value].artist,
-        album: songsAtual[currentIndex.value].album,
-        artUri: songsAtual[currentIndex.value].artUri,
-      ),
-    );
-
-    eko?.receivedMessage.addListener(() {
-      final msg = eko?.receivedMessage.value;
-
-      switch (msg?['action']) {
-        case 'verify_data':
-          String allIds = msg?['data'];
-          final listIds = allIds.split(',');
-
-          eko?.sendAudios(
-            actlist.getMediaItemsFromQueue(),
-            currentIndex.value,
-            listIds,
-          );
-          Ekosystem.indexInitial = currentIndex.value;
-          break;
-        case 'position':
-          final progress = Duration(milliseconds: msg?['data'].toInt());
-          mediaAtual.value.seek(progress, ekoSending: false);
-          break;
-        case 'toggle_play':
-          MusyncAudioHandler.mediaAtual.value.pauseAndPlay(msg?['data']);
-          break;
-        case 'volume':
-          MediaAtual.volume.value = msg?['data'].toDouble();
-          break;
-        case 'newloop':
-          loopMode.value = enumFromInt(msg?['data'], ModeLoopEnum.values);
-          break;
-        case 'newshuffle':
-          shuffleMode.value = enumFromInt(msg?['data'], ModeShuffleEnum.values);
-          break;
-        case 'newindex':
-          int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
-          setMediaIndex(indexRelative);
-          break;
-        case 'newtemporaryorder':
-          reorganizeSongsAtual(msg?['data']);
-          break;
-        case 'package_end':
-          Ekosystem.indexInitial = 0;
-          break;
-        case 'wait_load':
-          sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
-          break;
-      }
-    });
-  }
 
   void reorganizeSongsAtual(Map<String, dynamic> ordem) {
     //songsAtual.sort((a, b) {
@@ -385,8 +306,8 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     actlist.setMusicListAtual(songs);
 
-    if (eko?.conected.value ?? false) {
-      eko?.sendMessage({'action': 'request_data', 'data': ''});
+    if (eko.conected.value) {
+      eko.sendMessage({'action': 'request_data', 'data': ''});
 
       queue.add(songs);
     } else {
@@ -480,7 +401,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToQueueItem(int index) async {
-    if (eko?.conected.value ?? false) {
+    if (eko.conected.value) {
       sendMediaIndex(index);
     } else {
       setCurrentTrack(index: index);
@@ -509,9 +430,9 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void sendMediaIndex(int index) {
-    if (eko?.conected.value ?? false) {
+    if (eko.conected.value) {
       int indexRelative = index - Ekosystem.indexInitial;
-      eko?.sendMessage({
+      eko.sendMessage({
         'action': 'newindex',
         'data': indexRelative,
         'DEVE SER APAGADO': '',

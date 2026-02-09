@@ -32,7 +32,7 @@ class MusicPage extends StatefulWidget {
   State<MusicPage> createState() => _MusicPageState();
 }
 
-class _MusicPageState extends State<MusicPage> {
+class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   ValueNotifier<bool> toDown = ValueNotifier(false);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
@@ -44,8 +44,6 @@ class _MusicPageState extends State<MusicPage> {
   double bottomInset = 0;
 
   List<MediaItem> songsNow = [];
-
-  Ekosystem? ekosystem;
 
   @override
   void initState() {
@@ -67,12 +65,26 @@ class _MusicPageState extends State<MusicPage> {
         child: Icon(Icons.play_arrow_rounded),
       ),
     ];
+
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     audPl.stop();
+    WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    log('att + ${state == AppLifecycleState.resumed}');
+    if (state == AppLifecycleState.resumed && !eko.conected.value) {
+      connectToDesktop(context);
+    }
   }
 
   void _toggleBottom() {
@@ -367,7 +379,6 @@ class _MusicPageState extends State<MusicPage> {
               audioHandler: audPl,
               songsPL: songsPl,
               pl: pl,
-              ekosystem: ekosystem,
             ),
         settings: const RouteSettings(name: 'playlistOpened'),
       ),
@@ -476,7 +487,7 @@ class _MusicPageState extends State<MusicPage> {
         actions: [
           downloadVisualizerMenu(onFinalize: () => switchOrder(modeAtual)),
           ValueListenableBuilder<bool>(
-            valueListenable: ekosystem?.conected ?? ValueNotifier(false),
+            valueListenable: eko.conected,
             builder: (context, value, child) {
               if (value) {
                 return Row(
@@ -517,20 +528,7 @@ class _MusicPageState extends State<MusicPage> {
               context: context,
               modeAtual: modeAtual,
               onSwitchMode: switchOrder,
-              onConnect: () async {
-                final host = await openQrScanner(context) ?? '';
-                if (host != '') {
-                  final eko = await Ekosystem.create(host: host, porta: 8080);
-
-                  setState(() {
-                    ekosystem = eko;
-                  });
-
-                  if (ekosystem != null) {
-                    audPl.setEkosystem(ekosystem!);
-                  }
-                }
-              },
+              onConnect: (context) => scanToConnect(context),
             ),
             child: Icon(Icons.more_horiz),
           ),
@@ -636,7 +634,7 @@ class _MusicPageState extends State<MusicPage> {
             builder: (context, shouldGoDown, child) {
               bottomInset = MediaQuery.of(context).padding.bottom;
               return ValueListenableBuilder<bool>(
-                valueListenable: ekosystem?.conected ?? ValueNotifier(false),
+                valueListenable: eko.conected,
                 builder: (context, conected, child) {
                   return AnimatedPositioned(
                     duration: const Duration(milliseconds: 500),

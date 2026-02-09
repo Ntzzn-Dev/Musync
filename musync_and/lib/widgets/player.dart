@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/letreiro.dart';
@@ -54,7 +55,7 @@ class _PlayerState extends State<Player> {
   }
 
   Widget buildShuffleButton() {
-    final isConnected = MusyncAudioHandler.eko?.conected.value ?? false;
+    final isConnected = eko.conected.value;
 
     return ValueListenableBuilder<ModeShuffleEnum>(
       valueListenable: widget.audioHandler.shuffleMode,
@@ -70,9 +71,7 @@ class _PlayerState extends State<Player> {
             widget.audioHandler.setShuffleModeEnabled();
 
             if (isConnected) {
-              MusyncAudioHandler.eko?.sendEkoShuffle(
-                widget.audioHandler.shuffleMode.value,
-              );
+              eko.sendEkoShuffle(widget.audioHandler.shuffleMode.value);
             }
           },
           child:
@@ -94,7 +93,7 @@ class _PlayerState extends State<Player> {
   }
 
   Widget buildLoopButton() {
-    final isConnected = MusyncAudioHandler.eko?.conected.value ?? false;
+    final isConnected = eko.conected.value;
 
     return ValueListenableBuilder<ModeLoopEnum>(
       valueListenable: widget.audioHandler.loopMode,
@@ -109,9 +108,7 @@ class _PlayerState extends State<Player> {
           onPressed: () async {
             widget.audioHandler.setLoopModeEnabled();
             if (isConnected) {
-              MusyncAudioHandler.eko?.sendEkoLoop(
-                widget.audioHandler.loopMode.value,
-              );
+              eko.sendEkoLoop(widget.audioHandler.loopMode.value);
             }
           },
           child: Icon(
@@ -159,7 +156,7 @@ class _PlayerState extends State<Player> {
                 );
               },
             ),
-            MusyncAudioHandler.eko?.conected.value ?? false
+            eko.conected.value
                 ? ValueListenableBuilder<MediaAtual>(
                   valueListenable: MusyncAudioHandler.mediaAtual,
                   builder: (context, value, child) {
@@ -300,7 +297,7 @@ class _PlayerState extends State<Player> {
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
                 const SizedBox(width: 16),
-                MusyncAudioHandler.eko?.conected.value ?? false
+                eko.conected.value
                     ? ValueListenableBuilder<MediaAtual>(
                       valueListenable: MusyncAudioHandler.mediaAtual,
                       builder: (context, value, child) {
@@ -381,7 +378,7 @@ class _PlayerState extends State<Player> {
                 buildLoopButton(),
               ],
             ),
-            if (MusyncAudioHandler.eko?.conected.value ?? false) ...[
+            if (eko.conected.value) ...[
               SizedBox(height: 10),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),

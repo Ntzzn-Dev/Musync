@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/services/ekosystem.dart';
 
 MusyncAudioHandler audPl = MusyncAudioHandler();
 int modoDeEnergia = 2;
@@ -29,7 +30,7 @@ Future<void> playNext() async {
 
   if (audPl.currentIndex.value + 1 <
       MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
-    if (MusyncAudioHandler.eko?.conected.value ?? false) {
+    if (eko.conected.value) {
       audPl.sendMediaIndex(audPl.currentIndex.value + 1);
     } else {
       await audPl.setCurrentTrack(index: audPl.currentIndex.value + 1);
@@ -49,7 +50,7 @@ Future<void> playPrevious() async {
 
   if (audPl.currentIndex.value > 0) {
     audPl.currentIndex.value--;
-    if (MusyncAudioHandler.eko?.conected.value ?? false) {
+    if (eko.conected.value) {
       audPl.sendMediaIndex(audPl.currentIndex.value);
     } else {
       audPl.setCurrentTrack(index: audPl.currentIndex.value);
@@ -66,7 +67,7 @@ Future<void> playNextShuffled() async {
 
   played.add(nextIndex);
 
-  if (MusyncAudioHandler.eko?.conected.value ?? false) {
+  if (eko.conected.value) {
     audPl.sendMediaIndex(nextIndex);
   } else {
     audPl.setCurrentTrack(index: nextIndex);
@@ -84,7 +85,7 @@ Future<void> playPreviousShuffled() async {
   played.removeLast();
 
   int prevIndex = played.last;
-  if (MusyncAudioHandler.eko?.conected.value ?? false) {
+  if (eko.conected.value) {
     audPl.sendMediaIndex(prevIndex);
   } else {
     audPl.setCurrentTrack(index: prevIndex);
