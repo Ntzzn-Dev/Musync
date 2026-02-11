@@ -8,11 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/services/playlists.dart';
-import 'package:musync_and/services/setlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
@@ -187,11 +186,11 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void savePl(Setlist setlist) async {
+  void savePl(SetList SetList) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('pl_last', setlist.tag);
+    prefs.setString('pl_last', SetList.tag);
 
-    actlist.setSetList(SetListType.atual, setlist);
+    actlist.setSetList(SetListType.atual, SetList);
   }
 
   void returnToCheckpoint() {
@@ -216,7 +215,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     actlist.setSetList(
       SetListType.atual,
-      Setlist(
+      SetList(
         title: nextPlaylist.title,
         subtitle: nextPlaylist.subtitle,
         tag: nextPlaylist.id.toString(),
@@ -248,6 +247,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   bool _executando = false;
+
   Future<void> executeMusic(ProgressiveAudioSource src, MediaItem item) async {
     if (!_executando) {
       _executando = true;
@@ -360,6 +360,10 @@ class MusyncAudioHandler extends BaseAudioHandler
     shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
     prepareShuffle();
     _broadcastState();
+
+    if (eko.conected.value) {
+      eko.sendEkoShuffle(shuffleMode.value);
+    }
   }
 
   ModeShuffleEnum isShuffleEnabled() {
@@ -368,6 +372,9 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   void setLoopModeEnabled() {
     loopMode.value = enumNext(loopMode.value, ModeLoopEnum.values);
+    if (eko.conected.value) {
+      eko.sendEkoLoop(loopMode.value);
+    }
   }
 
   ModeLoopEnum isLoopEnabled() {

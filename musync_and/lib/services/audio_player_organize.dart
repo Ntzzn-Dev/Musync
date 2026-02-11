@@ -2,10 +2,10 @@ import 'dart:developer';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 
-MusyncAudioHandler audPl = MusyncAudioHandler();
+MusyncAudioHandler mscAudPl = MusyncAudioHandler();
 int modoDeEnergia = 2;
 
 /* SHUFFLES */
@@ -15,11 +15,11 @@ List<int> unplayed = [];
 void prepareShuffle() {
   played.clear();
   reshuffle();
-  played.add(audPl.currentIndex.value);
+  played.add(mscAudPl.currentIndex.value);
 }
 
 void reshuffle() {
-  int countSongs = audPl.queue.value.length;
+  int countSongs = mscAudPl.queue.value.length;
   unplayed = List.generate(countSongs, (i) => i)..shuffle();
 }
 
@@ -28,19 +28,19 @@ Future<void> playNext() async {
   final shouldStop = await repeatNormal();
   if (shouldStop) return;
 
-  if (audPl.currentIndex.value + 1 <
+  if (mscAudPl.currentIndex.value + 1 <
       MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
     if (eko.conected.value) {
-      audPl.sendMediaIndex(audPl.currentIndex.value + 1);
+      mscAudPl.sendMediaIndex(mscAudPl.currentIndex.value + 1);
     } else {
-      await audPl.setCurrentTrack(index: audPl.currentIndex.value + 1);
-      audPl.play();
+      await mscAudPl.setCurrentTrack(index: mscAudPl.currentIndex.value + 1);
+      mscAudPl.play();
     }
   }
 
-  if (audPl.shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
-    unplayed.removeWhere((i) => i == audPl.currentIndex.value);
-    played.add(audPl.currentIndex.value);
+  if (mscAudPl.shuffleMode.value == ModeShuffleEnum.shuffleOptional) {
+    unplayed.removeWhere((i) => i == mscAudPl.currentIndex.value);
+    played.add(mscAudPl.currentIndex.value);
   }
 }
 
@@ -48,13 +48,13 @@ Future<void> playPrevious() async {
   final shouldStop = await repeatNormal();
   if (shouldStop) return;
 
-  if (audPl.currentIndex.value > 0) {
-    audPl.currentIndex.value--;
+  if (mscAudPl.currentIndex.value > 0) {
+    mscAudPl.currentIndex.value--;
     if (eko.conected.value) {
-      audPl.sendMediaIndex(audPl.currentIndex.value);
+      mscAudPl.sendMediaIndex(mscAudPl.currentIndex.value);
     } else {
-      audPl.setCurrentTrack(index: audPl.currentIndex.value);
-      audPl.play();
+      mscAudPl.setCurrentTrack(index: mscAudPl.currentIndex.value);
+      mscAudPl.play();
     }
   }
 }
@@ -68,10 +68,10 @@ Future<void> playNextShuffled() async {
   played.add(nextIndex);
 
   if (eko.conected.value) {
-    audPl.sendMediaIndex(nextIndex);
+    mscAudPl.sendMediaIndex(nextIndex);
   } else {
-    audPl.setCurrentTrack(index: nextIndex);
-    audPl.play();
+    mscAudPl.setCurrentTrack(index: nextIndex);
+    mscAudPl.play();
   }
 }
 
@@ -86,23 +86,23 @@ Future<void> playPreviousShuffled() async {
 
   int prevIndex = played.last;
   if (eko.conected.value) {
-    audPl.sendMediaIndex(prevIndex);
+    mscAudPl.sendMediaIndex(prevIndex);
   } else {
-    audPl.setCurrentTrack(index: prevIndex);
-    audPl.play();
+    mscAudPl.setCurrentTrack(index: prevIndex);
+    mscAudPl.play();
   }
 }
 
 /* REPEATS */
 Future<bool> repeatNormal() async {
-  if (audPl.loopMode.value == ModeLoopEnum.one) {
-    await audPl.seek(Duration.zero);
-    audPl.play();
+  if (mscAudPl.loopMode.value == ModeLoopEnum.one) {
+    await mscAudPl.seek(Duration.zero);
+    mscAudPl.play();
     return true;
-  } else if (audPl.loopMode.value == ModeLoopEnum.all &&
-      audPl.currentIndex.value + 1 >=
+  } else if (mscAudPl.loopMode.value == ModeLoopEnum.all &&
+      mscAudPl.currentIndex.value + 1 >=
           MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
-    audPl.currentIndex.value = -1;
+    mscAudPl.currentIndex.value = -1;
     return false;
   } else {
     return false;
@@ -110,11 +110,11 @@ Future<bool> repeatNormal() async {
 }
 
 Future<bool> repeatShuffled() async {
-  if (audPl.loopMode.value == ModeLoopEnum.one) {
-    await audPl.seek(Duration.zero);
-    audPl.play();
+  if (mscAudPl.loopMode.value == ModeLoopEnum.one) {
+    await mscAudPl.seek(Duration.zero);
+    mscAudPl.play();
     return true;
-  } else if (audPl.loopMode.value == ModeLoopEnum.all) {
+  } else if (mscAudPl.loopMode.value == ModeLoopEnum.all) {
     if (unplayed.isEmpty) {
       reshuffle();
     }

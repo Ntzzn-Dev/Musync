@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_option.dart';
@@ -194,9 +195,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
 
                   setState(() {});
 
-                  await ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Playlist Atualizada')),
-                  );
+                  showSnack('Playlist Atualizada', context);
                 },
               );
               Navigator.of(context).pop();

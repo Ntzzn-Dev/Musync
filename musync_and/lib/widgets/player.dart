@@ -55,8 +55,6 @@ class _PlayerState extends State<Player> {
   }
 
   Widget buildShuffleButton() {
-    final isConnected = eko.conected.value;
-
     return ValueListenableBuilder<ModeShuffleEnum>(
       valueListenable: widget.audioHandler.shuffleMode,
       builder: (context, shuffleMode, child) {
@@ -69,10 +67,6 @@ class _PlayerState extends State<Player> {
           ),
           onPressed: () {
             widget.audioHandler.setShuffleModeEnabled();
-
-            if (isConnected) {
-              eko.sendEkoShuffle(widget.audioHandler.shuffleMode.value);
-            }
           },
           child:
               shuffleMode != ModeShuffleEnum.shuffleOptional
@@ -93,8 +87,6 @@ class _PlayerState extends State<Player> {
   }
 
   Widget buildLoopButton() {
-    final isConnected = eko.conected.value;
-
     return ValueListenableBuilder<ModeLoopEnum>(
       valueListenable: widget.audioHandler.loopMode,
       builder: (context, value, child) {
@@ -107,9 +99,6 @@ class _PlayerState extends State<Player> {
           ),
           onPressed: () async {
             widget.audioHandler.setLoopModeEnabled();
-            if (isConnected) {
-              eko.sendEkoLoop(widget.audioHandler.loopMode.value);
-            }
           },
           child: Icon(
             value == ModeLoopEnum.off
@@ -382,7 +371,7 @@ class _PlayerState extends State<Player> {
               SizedBox(height: 10),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: SoundControl(ekoConnected: true, height: 30),
+                child: SoundControl(height: 30),
               ),
             ],
           ],

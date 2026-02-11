@@ -2,7 +2,6 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
-import 'package:musync_and/services/setlist.dart';
 
 enum SetListType { main, view, atual }
 
@@ -11,9 +10,9 @@ class ActionList {
   List<MediaItem> songsAllPlaylist = [];
   List<SetItem> queueList = [];
 
-  Setlist mainPlaylist = Setlist();
-  Setlist viewingPlaylist = Setlist();
-  ValueNotifier<Setlist> atualPlaylist = ValueNotifier(Setlist());
+  SetList mainPlaylist = SetList();
+  SetList viewingPlaylist = SetList();
+  ValueNotifier<SetList> atualPlaylist = ValueNotifier(SetList());
 
   bool queueIsEmpty() {
     return queueList.isEmpty;
@@ -37,21 +36,14 @@ class ActionList {
     return songs.length;
   }
 
-  void setMusicListAtual(
-    List<MediaItem> songs
-  ) {
+  void setMusicListAtual(List<MediaItem> songs) {
     final List<MusicItem> songsF =
-        songs
-            .map(
-              (media) =>
-                  MusicItem(mediaItem: media),
-            )
-            .toList();
+        songs.map((media) => MusicItem(mediaItem: media)).toList();
 
     queueList = [...songsF];
   }
 
-  void setSetList(SetListType type, Setlist list) {
+  void setSetList(SetListType type, SetList list) {
     switch (type) {
       case SetListType.main:
         mainPlaylist = list;
@@ -82,7 +74,7 @@ class MusicItem extends SetItem {
   @override
   void execute() {
     final src = ProgressiveAudioSource(Uri.parse(mediaItem.id));
-    audPl.executeMusic(src, mediaItem);
+    mscAudPl.executeMusic(src, mediaItem);
   }
 }
 
@@ -94,5 +86,29 @@ class ActionItem extends SetItem {
   @override
   void execute() {
     action();
+  }
+}
+
+class SetList {
+  String tag;
+  String title;
+  String subtitle;
+
+  SetList({this.tag = '/Todas', this.title = 'Todas', this.subtitle = '=---='});
+
+  SetList copyWith({String? tag, String? title, String? subtitle}) {
+    return SetList(
+      tag: tag ?? this.tag,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+    );
+  }
+
+  factory SetList.fromMap(Map<String, dynamic> map) {
+    return SetList(
+      tag: map['tag'],
+      title: map['title'],
+      subtitle: map['subtitle'],
+    );
   }
 }

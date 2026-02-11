@@ -1,14 +1,14 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:musync_and/helpers/control_helper.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/ekosystem.dart';
-import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/themes.dart';
-
-enum ButtonTypes { prev, next, shuffle, repeat, nextBtn, prevBtn, modal }
 
 class ControlPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -19,16 +19,18 @@ class ControlPage extends StatefulWidget {
 }
 
 class _ControlPageState extends State<ControlPage> {
-  final ekoConnected = eko.conected.value;
   Stream<String> _timeStream() async* {
     yield* Stream.periodic(const Duration(seconds: 1), (_) {
       return DateFormat('HH:mm').format(DateTime.now());
     });
   }
 
+  bool swapBtns = false;
+
   @override
   void initState() {
     super.initState();
+    swapBtns = eko.conected.value ? true : false;
   }
 
   @override
@@ -36,268 +38,69 @@ class _ControlPageState extends State<ControlPage> {
     super.dispose();
   }
 
-  Widget buildSliderMusic() {
-    if (ekoConnected) {
-      return ValueListenableBuilder<MediaAtual>(
-        valueListenable: MusyncAudioHandler.mediaAtual,
-        builder: (context, value, child) {
-          return ValueListenableBuilder<Duration>(
-            valueListenable: value.position,
-            builder: (context, pos, child) {
-              return _buildSlider(pos, media: value);
-            },
-          );
-        },
-      );
-    } else {
-      return StreamBuilder<Duration>(
-        stream: widget.audioHandler.positionStream,
-        builder: (context, snapshot) {
-          final position = snapshot.data ?? Duration.zero;
-          final total = widget.audioHandler.duration ?? Duration.zero;
-
-          return _buildSlider(position, total: total);
-        },
-      );
-    }
-  }
-
-  Widget _buildSlider(Duration position, {Duration? total, MediaAtual? media}) {
-    final Duration durationTotal = media?.total ?? total ?? Duration.zero;
-
-    final int maxMs = durationTotal.inMilliseconds;
-    final int posMs = position.inMilliseconds.clamp(0, maxMs);
-
-    return Column(
-      children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 2,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-          ),
-          child: Slider(
-            min: 0,
-            max: maxMs.toDouble(),
-            value: posMs.toDouble(),
-            onChanged: (value) {
-              final target = Duration(milliseconds: value.toInt());
-              if (ekoConnected) {
-                media?.seek(target);
-              } else {
-                widget.audioHandler.seek(target);
-              }
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                Player.formatDuration(position, false),
-                style: const TextStyle(fontFamily: 'Default-Thin'),
-              ),
-              if (ekoConnected)
-                Text(
-                  'CONECTADO AO DESKTOP',
-                  style: TextStyle(
-                    fontFamily: 'Default-Thin',
-                    color: baseAppColor,
-                  ),
-                ),
-              Text(
-                Player.formatDuration(durationTotal, false),
-                style: const TextStyle(fontFamily: 'Default-Thin'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildPlayPauseButton() {
-    if (ekoConnected) {
-      return ValueListenableBuilder<MediaAtual>(
-        valueListenable: MusyncAudioHandler.mediaAtual,
-        builder: (context, mediaAtual, child) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: mediaAtual.isPlaying,
-            builder: (context, isPlaying, child) {
-              return _buildButton(
-                Icon(
-                  isPlaying ? Icons.pause_outlined : Icons.play_arrow_outlined,
-                  size: 45,
-                ),
-                () {
-                  mediaAtual.sendPauseAndPlay(!isPlaying);
-                },
-                1,
-                1,
-              );
-            },
-          );
-        },
-      );
-    }
-
-    return StreamBuilder<bool>(
-      stream: widget.audioHandler.playingStream,
-      builder: (context, snapshot) {
-        final isPlaying = snapshot.data ?? false;
-        return _buildButton(
-          Icon(
-            isPlaying ? Icons.pause_outlined : Icons.play_arrow_outlined,
-            size: 45,
-          ),
-          () {
-            isPlaying
-                ? widget.audioHandler.pause()
-                : widget.audioHandler.play();
-          },
-          1,
-          1,
-        );
-      },
-    );
-  }
-
-  Widget buildAudioHandlerButtons(ButtonTypes type) {
+  Widget buildExtraPlayerButtons(ExtraButtonTypes type) {
     switch (type) {
-      case ButtonTypes.next:
-        return ValueListenableBuilder<ModeShuffleEnum>(
-          valueListenable: widget.audioHandler.shuffleMode,
-          builder: (context, value, child) {
-            return _buildButton(
-              value != ModeShuffleEnum.shuffleOptional
-                  ? Icon(Icons.keyboard_double_arrow_right_sharp, size: 45)
-                  : Image.asset(
-                    'assets/dice.png',
-                    color: baseAppColor,
-                    colorBlendMode: BlendMode.srcIn,
-                    width: 45,
-                  ),
-              () async {
-                await widget.audioHandler.skipToNext();
-              },
-              1,
-              1,
-            );
-          },
-        );
-      case ButtonTypes.prev:
-        return _buildButton(
-          Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
-          () async {
-            await widget.audioHandler.skipToPrevious();
-          },
-          1,
-          1,
-        );
-      case ButtonTypes.shuffle:
-        return ValueListenableBuilder<ModeShuffleEnum>(
-          valueListenable: widget.audioHandler.shuffleMode,
-          builder: (context, value, child) {
-            return _buildButton(
-              value != ModeShuffleEnum.shuffleOptional
-                  ? Icon(
-                    value == ModeShuffleEnum.shuffleNormal
-                        ? Icons.shuffle
-                        : Icons.arrow_right_alt_rounded,
-                    size: 45,
-                  )
-                  : Image.asset(
-                    'assets/dice.png',
-                    color: baseAppColor,
-                    colorBlendMode: BlendMode.srcIn,
-                    width: 45,
-                  ),
-              () {
-                widget.audioHandler.setShuffleModeEnabled();
-              },
-              3 / 2,
-              2,
-            );
-          },
-        );
-      case ButtonTypes.repeat:
-        return ValueListenableBuilder<ModeLoopEnum>(
-          valueListenable: widget.audioHandler.loopMode,
-          builder: (context, value, child) {
-            return _buildButton(
-              Icon(
-                value == ModeLoopEnum.off
-                    ? Icons.arrow_right_alt_rounded
-                    : value == ModeLoopEnum.all
-                    ? Icons.repeat_rounded
-                    : Icons.repeat_one_rounded,
-                size: 45,
-              ),
-              () {
-                widget.audioHandler.setLoopModeEnabled();
-              },
-              3 / 2,
-              2,
-            );
-          },
-        );
-      case ButtonTypes.nextBtn:
-        return _buildButton(
-          Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
-          () async {
-            await widget.audioHandler.skipPlaylist(true);
-            setState(() {});
-          },
-          2 / 2,
-          1,
-        );
-      case ButtonTypes.prevBtn:
-        return _buildButton(
-          Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
-          () async {
-            await widget.audioHandler.skipPlaylist(false);
-            setState(() {});
-          },
-          2 / 2,
-          1,
-        );
-      case ButtonTypes.modal:
-        return _buildButton(
+      case ExtraButtonTypes.nextBtn:
+        if (swapBtns) {
+          return buildButton(
+            Icon(Icons.favorite, size: 45),
+            () async {
+              await mscAudPl.skipPlaylist(true);
+              setState(() {});
+            },
+            2 / 2,
+            1,
+          );
+        } else {
+          return buildButton(
+            Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
+            () async {
+              await mscAudPl.skipPlaylist(true);
+              setState(() {});
+            },
+            2 / 2,
+            1,
+          );
+        }
+      case ExtraButtonTypes.prevBtn:
+        if (swapBtns) {
+          return buildButton(
+            Icon(Icons.track_changes_rounded, size: 45),
+            () async {
+              await mscAudPl.skipPlaylist(false);
+              setState(() {});
+            },
+            2 / 2,
+            1,
+          );
+        } else {
+          return buildButton(
+            Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
+            () async {
+              await mscAudPl.skipPlaylist(false);
+              setState(() {});
+            },
+            2 / 2,
+            1,
+          );
+        }
+      case ExtraButtonTypes.modal:
+        return buildButton(
           Icon(Icons.swap_horiz_rounded, size: 45),
           () async {
-            widget.audioHandler.returnToCheckpoint();
+            if (!eko.conected.value) {
+              setState(() {
+                swapBtns = !swapBtns;
+              });
+            } else {
+              showSnack('Indisponível enquanto conectado ao desktop', context);
+            }
+            //mscAudPl.returnToCheckpoint();
           },
           2 / 2,
           1,
         );
     }
-  }
-
-  Widget _buildButton(
-    Widget icon,
-    VoidCallback onPressed,
-    double aspect,
-    int flex,
-  ) {
-    return Expanded(
-      flex: flex,
-      child: AspectRatio(
-        aspectRatio: aspect,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.all(15),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          onPressed: onPressed,
-          child: icon,
-        ),
-      ),
-    );
   }
 
   @override
@@ -369,7 +172,7 @@ class _ControlPageState extends State<ControlPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                SoundControl(ekoConnected: ekoConnected),
+                SoundControl(),
                 const SizedBox(height: 10),
                 ValueListenableBuilder(
                   valueListenable: MusyncAudioHandler.actlist.atualPlaylist,
@@ -534,11 +337,11 @@ class _ControlPageState extends State<ControlPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    buildAudioHandlerButtons(ButtonTypes.prevBtn),
+                    buildExtraPlayerButtons(ExtraButtonTypes.prevBtn),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons(ButtonTypes.modal),
+                    buildExtraPlayerButtons(ExtraButtonTypes.modal),
                     const SizedBox(width: 10),
-                    buildAudioHandlerButtons(ButtonTypes.nextBtn),
+                    buildExtraPlayerButtons(ExtraButtonTypes.nextBtn),
                   ],
                 ),
               ],

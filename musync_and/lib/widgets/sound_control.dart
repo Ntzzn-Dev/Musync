@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
 import 'package:volume_controller/volume_controller.dart';
 
 class SoundControl extends StatefulWidget {
-  final bool ekoConnected;
   final double? height;
-  const SoundControl({super.key, required this.ekoConnected, this.height});
+  const SoundControl({super.key, this.height});
 
   @override
   State<SoundControl> createState() => _SoundControlState();
@@ -23,7 +23,7 @@ class _SoundControlState extends State<SoundControl> {
   @override
   void initState() {
     super.initState();
-    if (!widget.ekoConnected) {
+    if (!eko.conected.value) {
       VolumeController().getVolume().then((v) => setState(() => volume = v));
       VolumeController().listener((v) => setState(() => volume = v));
     } else {
@@ -41,7 +41,7 @@ class _SoundControlState extends State<SoundControl> {
 
   @override
   void dispose() {
-    if (!widget.ekoConnected) {
+    if (!eko.conected.value) {
       VolumeController().removeListener();
     } else {
       if (mediaListener != null) {
@@ -71,7 +71,7 @@ class _SoundControlState extends State<SoundControl> {
             setState(() {
               volume = delta;
 
-              if (widget.ekoConnected) {
+              if (eko.conected.value) {
                 MusyncAudioHandler.mediaAtual.value.setVolume(volume * 100);
               } else {
                 VolumeController().setVolume(delta);

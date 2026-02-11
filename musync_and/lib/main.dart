@@ -29,7 +29,7 @@ Future<void> main() async {
             androidNotificationOngoing: true,
           );
 
-  audPl = await AudioService.init(
+  mscAudPl = await AudioService.init(
     builder: () => MusyncAudioHandler(),
     config: conf,
   );

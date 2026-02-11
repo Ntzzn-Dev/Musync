@@ -8,13 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/playlists.dart';
-import 'package:musync_and/services/setlist.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
-import 'package:musync_and/widgets/menu_helper.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 
@@ -58,7 +57,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
 
     MusyncAudioHandler.actlist.setSetList(
       SetListType.view,
-      Setlist(
+      SetList(
         title: widget.pl?.title ?? widget.plTitle.replaceAll('/', ''),
         subtitle: widget.pl?.subtitle ?? '',
         tag: widget.pl?.id.toString() ?? widget.plTitle,
@@ -270,7 +269,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     );
 
                     widget.audioHandler.savePl(
-                      Setlist(
+                      SetList(
                         title: widget.pl?.title ?? widget.plTitle,
                         subtitle: widget.pl?.subtitle ?? '',
                         tag: (widget.pl?.id ?? widget.plTitle).toString(),

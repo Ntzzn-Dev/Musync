@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/download.dart';
+import 'package:musync_and/helpers/download_helper.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';

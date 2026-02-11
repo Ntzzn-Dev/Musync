@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 
 enum ContentTypeEnum { title, text, necessary }
 
@@ -162,9 +163,7 @@ Future<bool> showPopupAdd(
                       }
 
                       if (hasAnyError) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Corrija os campos')),
-                        );
+                        showSnack('Corrija os campos', context);
                         return;
                       }
 

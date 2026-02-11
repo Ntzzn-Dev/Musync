@@ -5,8 +5,8 @@ import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
-import 'package:musync_and/services/databasehelper.dart';
-import 'package:musync_and/services/download.dart';
+import 'package:musync_and/helpers/database_helper.dart';
+import 'package:musync_and/helpers/download_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_add.dart';
@@ -160,12 +160,9 @@ Future<bool> selectPlaylistMenu(
 
                               escolhido = true;
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
-                                  ),
-                                ),
+                              showSnack(
+                                '${playlist.haveMusic ?? false ? 'Removido de' : 'Adicionado à'} playlist: ${playlist.title}',
+                                context,
                               );
                             },
                             child: Padding(
@@ -401,7 +398,7 @@ List<Widget> routesMenu({
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => SettingsPage(audioHandler: audPl),
+            builder: (context) => SettingsPage(audioHandler: mscAudPl),
             settings: RouteSettings(name: 'settings'),
           ),
         );
@@ -418,7 +415,7 @@ List<Widget> routesMenu({
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ControlPage(audioHandler: audPl),
+            builder: (context) => ControlPage(audioHandler: mscAudPl),
             settings: RouteSettings(name: 'control'),
           ),
         ).then((_) {
@@ -439,4 +436,10 @@ List<Widget> routesMenu({
       ),
     ),
   ];
+}
+
+void showSnack(String message, BuildContext context) {
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message, textAlign: TextAlign.center)));
 }

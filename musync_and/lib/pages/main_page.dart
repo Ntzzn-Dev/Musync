@@ -8,16 +8,15 @@ import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
-import 'package:musync_and/services/databasehelper.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
-import 'package:musync_and/services/qrcode_helper.dart';
-import 'package:musync_and/services/setlist.dart';
+import 'package:musync_and/helpers/qrcode_helper.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/list_content.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
-import 'package:musync_and/widgets/menu_helper.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/vertical_popup.dart';
@@ -52,7 +51,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
       setState(() {
         MusyncAudioHandler.actlist.setSetList(
           SetListType.main,
-          Setlist(title: value.replaceAll('/', ''), tag: value),
+          SetList(title: value.replaceAll('/', ''), tag: value),
         );
       });
     });
@@ -73,7 +72,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    audPl.stop();
+    mscAudPl.stop();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -104,11 +103,11 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
 
     await loadSongsNow();
 
-    audPl.initSongs(songs: songsNow);
+    mscAudPl.initSongs(songs: songsNow);
   }
 
   Future<void> loadSongsNow() async {
-    await audPl.searchPlaylists();
+    await mscAudPl.searchPlaylists();
     int idpl = int.tryParse(MusyncAudioHandler.actlist.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
       final pl = await DatabaseHelper().loadPlaylist(idpl);
@@ -118,7 +117,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           songsNow = newsongs;
           MusyncAudioHandler.actlist.setSetList(
             SetListType.main,
-            Setlist(
+            SetList(
               title: pl.title,
               subtitle: pl.subtitle,
               tag: pl.id.toString(),
@@ -208,27 +207,27 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
               .toList();
     }
 
-    await audPl.recreateQueue(songs: newsongs);
-    await audPl.skipToQueueItem(ultimaMusica ?? 0);
+    await mscAudPl.recreateQueue(songs: newsongs);
+    await mscAudPl.skipToQueueItem(ultimaMusica ?? 0);
   }
 
   Widget pageSelect(int pageIndex) {
     switch (pageIndex) {
       case 0:
         return ListContent(
-          audioHandler: audPl,
+          audioHandler: mscAudPl,
           songsNow: songsNow,
           modeReorder: modeAtual,
           idPlaylist: MusyncAudioHandler.actlist.mainPlaylist.tag.toString(),
           aposClique: (item) async {
-            await audPl.recreateQueue(
+            await mscAudPl.recreateQueue(
               songs: MusyncAudioHandler.actlist.songsAllPlaylist,
             );
-            audPl.savePl(MusyncAudioHandler.actlist.mainPlaylist);
+            mscAudPl.savePl(MusyncAudioHandler.actlist.mainPlaylist);
             int indiceCerto = MusyncAudioHandler.actlist.songsAllPlaylist
                 .indexWhere((t) => t == item);
 
-            await audPl.skipToQueueItem(indiceCerto);
+            await mscAudPl.skipToQueueItem(indiceCerto);
           },
           selecaoDeMusicas: (indexMsc) async {
             return await moreOptionsSelected(indexMsc);
@@ -244,7 +243,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           ),
         ];
         return ListPlaylist(
-          audioHandler: audPl,
+          audioHandler: mscAudPl,
           searchController: _searchController,
           escolhaDePlaylist: (pl) async {
             final newsongs = await pl.findMusics();
@@ -346,9 +345,11 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
             MusyncAudioHandler.actlist.songsAllPlaylist.remove(item);
           }
         });
-        await audPl.recreateQueue(songs: songsNow); // tentar com o reorganize
+        await mscAudPl.recreateQueue(
+          songs: songsNow,
+        ); // tentar com o reorganize
 
-        await audPl.stop();
+        await mscAudPl.stop();
         await Future.delayed(const Duration(milliseconds: 200));
         await file.delete();
       } catch (e, stack) {
@@ -376,7 +377,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
         builder:
             (context) => PlaylistPage(
               plTitle: title,
-              audioHandler: audPl,
+              audioHandler: mscAudPl,
               songsPL: songsPl,
               pl: pl,
             ),
@@ -646,7 +647,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
                     right: 0,
                     child: GestureDetector(
                       onTap: _toggleBottom,
-                      child: Player(audioHandler: audPl),
+                      child: Player(audioHandler: mscAudPl),
                     ),
                   );
                 },

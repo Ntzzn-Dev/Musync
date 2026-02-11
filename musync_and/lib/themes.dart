@@ -14,6 +14,13 @@ ThemeData lighttheme() {
       foregroundColor: baseAppColor,
       surfaceTintColor: Color.fromARGB(255, 242, 242, 242),
     ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: baseFundoDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentTextStyle: TextStyle(color: Colors.white, fontSize: 16),
+      elevation: 10,
+      behavior: SnackBarBehavior.fixed,
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: Color.fromARGB(255, 242, 242, 242),
@@ -156,6 +163,17 @@ ThemeData darktheme() {
       backgroundColor: baseFundoDark,
       foregroundColor: baseAppColor,
       surfaceTintColor: baseFundoDark,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: baseFundoDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontFamily: "Default-Thin",
+      ),
+      elevation: 10,
+      behavior: SnackBarBehavior.fixed,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(

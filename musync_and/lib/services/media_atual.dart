@@ -6,6 +6,7 @@ import 'package:musync_and/services/ekosystem.dart';
 
 class MediaAtual extends MediaItem {
   final Duration total;
+  final Duration? start;
   final ValueNotifier<Duration> position;
   static ValueNotifier<double> volume = ValueNotifier(50);
   double volumeatual = volume.value;
@@ -16,27 +17,18 @@ class MediaAtual extends MediaItem {
 
   MediaAtual({
     required this.total,
-    required String id,
-    required String title,
-    Duration? start,
-    String? album,
-    String? artist,
-    String? genre,
-    Uri? artUri,
+    required super.id,
+    required super.title,
+    this.start,
+    super.album,
+    super.artist,
+    super.genre,
+    super.artUri,
     Duration? duration,
-    Map<String, dynamic>? extras,
+    super.extras,
   }) : position = ValueNotifier(start ?? Duration.zero),
        isPlaying = ValueNotifier(true),
-       super(
-         id: id,
-         title: title,
-         album: album,
-         artist: artist,
-         genre: genre,
-         artUri: artUri,
-         duration: duration ?? total,
-         extras: extras,
-       ) {
+       super(duration: duration ?? total) {
     _startTimer();
   }
 

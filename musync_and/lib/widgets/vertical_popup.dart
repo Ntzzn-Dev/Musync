@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/popup_add.dart';
@@ -43,19 +45,41 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
     super.dispose();
   }
 
-  Widget _roundButton(IconData icon, String tip, VoidCallback onTap) {
+  Widget _roundButton(
+    IconData icon,
+    String tip,
+    VoidCallback onTap, {
+    String? label,
+  }) {
+    log((label != null).toString());
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(
         message: tip,
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0xFF181614),
-          ),
-          child: Icon(icon, color: Color(0xFFF3A022), size: 28),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF181614),
+              ),
+              child: Icon(icon, color: Color(0xFFF3A022), size: 28),
+            ),
+            if (label != null) ...[
+              const SizedBox(width: 8), // espaço entre botão e texto
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -105,15 +129,15 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
                         await _closePopup();
                       }
                     },
+                    label: 'Desconectar',
                   ),
                 ),
 
                 _roundButton(Icons.crop_square, 'Minimizar', () async {
-                  //Icons.remove
                   eko.sendMessage({'action': 'minimize_window'});
 
                   await _closePopup();
-                }),
+                }, label: 'Minimizar'),
 
                 SlideTransition(
                   position: _bottomAnimation,
@@ -126,7 +150,7 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
                       eko.sendMessage({'action': 'close_window'});
                       await _closePopup();
                     }
-                  }),
+                  }, label: 'Fechar'),
                 ),
               ],
             ),

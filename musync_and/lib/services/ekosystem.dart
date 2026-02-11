@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/audio_player_organize.dart';
 import 'package:musync_and/services/media_atual.dart';
-import 'package:musync_and/services/qrcode_helper.dart';
+import 'package:musync_and/helpers/qrcode_helper.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 
@@ -50,10 +50,10 @@ class Ekosystem {
   static void setEkosystem() async {
     Ekosystem.connectGlobal(host: hostDkt, porta: 8080);
 
-    audPl.pause();
+    mscAudPl.pause();
 
-    eko.sendEkoLoop(audPl.loopMode.value);
-    eko.sendEkoShuffle(audPl.shuffleMode.value);
+    eko.sendEkoLoop(mscAudPl.loopMode.value);
+    eko.sendEkoShuffle(mscAudPl.shuffleMode.value);
 
     eko.sendMessage({
       'action': 'playlist_name',
@@ -69,12 +69,13 @@ class Ekosystem {
 
     MusyncAudioHandler.mediaAtual = ValueNotifier(
       MediaAtual(
-        total: songsAtual[audPl.currentIndex.value].duration ?? Duration.zero,
-        id: songsAtual[audPl.currentIndex.value].id,
-        title: songsAtual[audPl.currentIndex.value].title,
-        artist: songsAtual[audPl.currentIndex.value].artist,
-        album: songsAtual[audPl.currentIndex.value].album,
-        artUri: songsAtual[audPl.currentIndex.value].artUri,
+        total:
+            songsAtual[mscAudPl.currentIndex.value].duration ?? Duration.zero,
+        id: songsAtual[mscAudPl.currentIndex.value].id,
+        title: songsAtual[mscAudPl.currentIndex.value].title,
+        artist: songsAtual[mscAudPl.currentIndex.value].artist,
+        album: songsAtual[mscAudPl.currentIndex.value].album,
+        artUri: songsAtual[mscAudPl.currentIndex.value].artUri,
       ),
     );
 
@@ -89,12 +90,12 @@ class Ekosystem {
 
           eko.sendAudios(
             MusyncAudioHandler.actlist.getMediaItemsFromQueue(),
-            audPl.currentIndex.value,
+            mscAudPl.currentIndex.value,
             listIds,
           );
-          Ekosystem.indexInitial = audPl.currentIndex.value;
+          Ekosystem.indexInitial = mscAudPl.currentIndex.value;
 
-          audPl.setMediaIndex(atualId);
+          mscAudPl.setMediaIndex(atualId);
           break;
         case 'position':
           final progress = Duration(milliseconds: msg?['data'].toInt());
@@ -107,26 +108,29 @@ class Ekosystem {
           MediaAtual.volume.value = msg?['data'].toDouble();
           break;
         case 'newloop':
-          audPl.loopMode.value = enumFromInt(msg?['data'], ModeLoopEnum.values);
+          mscAudPl.loopMode.value = enumFromInt(
+            msg?['data'],
+            ModeLoopEnum.values,
+          );
           break;
         case 'newshuffle':
-          audPl.shuffleMode.value = enumFromInt(
+          mscAudPl.shuffleMode.value = enumFromInt(
             msg?['data'],
             ModeShuffleEnum.values,
           );
           break;
         case 'newindex':
           int indexRelative = msg?['data'].toInt() + Ekosystem.indexInitial;
-          audPl.setMediaIndex(indexRelative);
+          mscAudPl.setMediaIndex(indexRelative);
           break;
         case 'newtemporaryorder':
-          audPl.reorganizeSongsAtual(msg?['data']);
+          mscAudPl.reorganizeSongsAtual(msg?['data']);
           break;
         case 'package_end':
           Ekosystem.indexInitial = 0;
           break;
         case 'wait_load':
-          audPl.sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
+          mscAudPl.sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
           break;
         case 'close_server':
           hostDkt = '';
@@ -174,6 +178,8 @@ class Ekosystem {
   }
 
   void sendMessage(Map<String, dynamic> act) {
+    if (!eko.conected.value) return;
+
     if (!act['action'].startsWith('audio_')) {
       log('========================================');
       log(act['action']);
