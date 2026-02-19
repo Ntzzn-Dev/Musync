@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/fetch_songs.dart';

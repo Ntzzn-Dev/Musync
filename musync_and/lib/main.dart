@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/pages/main_page.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'themes.dart';
 import 'services/audio_player.dart';

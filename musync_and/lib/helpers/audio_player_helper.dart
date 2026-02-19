@@ -12,28 +12,35 @@ int modoDeEnergia = 2;
 List<int> played = [];
 List<int> unplayed = [];
 
-void prepareShuffle() {
-  played.clear();
-  reshuffle();
-  played.add(mscAudPl.currentIndex.value);
-}
-
 void reshuffle() {
+  played.clear();
+
   int countSongs = mscAudPl.queue.value.length;
   unplayed = List.generate(countSongs, (i) => i)..shuffle();
+
+  played.add(mscAudPl.currentIndex.value);
+  unplayed.removeWhere((i) => i == mscAudPl.currentIndex.value);
 }
 
 /* PLAYS */
-Future<void> playNext() async {
-  final shouldStop = await repeatNormal();
+Future<void> playNext(bool auto) async {
+  final shouldStop = await shouldToStop();
   if (shouldStop) return;
 
-  if (mscAudPl.currentIndex.value + 1 <
-      MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+  int nextIndex = mscAudPl.currentIndex.value + 1;
+
+  if ((mscAudPl.shuffleMode.value == ModeShuffleEnum.shuffleNormal && auto) ||
+      (mscAudPl.shuffleMode.value != ModeShuffleEnum.shuffleOff && !auto)) {
+    nextIndex = unplayed.removeAt(0);
+
+    played.add(nextIndex);
+  }
+
+  if (nextIndex < MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
     if (eko.conected.value) {
-      mscAudPl.sendMediaIndex(mscAudPl.currentIndex.value + 1);
+      mscAudPl.sendMediaIndex(nextIndex);
     } else {
-      await mscAudPl.setCurrentTrack(index: mscAudPl.currentIndex.value + 1);
+      await mscAudPl.setCurrentTrack(index: nextIndex);
       mscAudPl.play();
     }
   }
@@ -45,82 +52,48 @@ Future<void> playNext() async {
 }
 
 Future<void> playPrevious() async {
-  final shouldStop = await repeatNormal();
+  final shouldStop = await shouldToStop();
   if (shouldStop) return;
 
+  int prevIndex = mscAudPl.currentIndex.value--;
+  if (mscAudPl.shuffleMode.value != ModeShuffleEnum.shuffleOff) {
+    if (played.length <= 1) return;
+
+    unplayed.add(played.last);
+    played.removeLast();
+
+    prevIndex = played.last;
+  }
+
   if (mscAudPl.currentIndex.value > 0) {
-    mscAudPl.currentIndex.value--;
     if (eko.conected.value) {
-      mscAudPl.sendMediaIndex(mscAudPl.currentIndex.value);
+      mscAudPl.sendMediaIndex(prevIndex);
     } else {
-      mscAudPl.setCurrentTrack(index: mscAudPl.currentIndex.value);
+      mscAudPl.setCurrentTrack(index: prevIndex);
       mscAudPl.play();
     }
   }
 }
 
-Future<void> playNextShuffled() async {
-  final shouldStop = await repeatShuffled();
-  if (shouldStop) return;
-
-  int nextIndex = unplayed.removeAt(0);
-
-  played.add(nextIndex);
-
-  if (eko.conected.value) {
-    mscAudPl.sendMediaIndex(nextIndex);
-  } else {
-    mscAudPl.setCurrentTrack(index: nextIndex);
-    mscAudPl.play();
-  }
-}
-
-Future<void> playPreviousShuffled() async {
-  if (played.length <= 1) return;
-
-  final shouldStop = await repeatShuffled();
-  if (shouldStop) return;
-
-  unplayed.add(played.last);
-  played.removeLast();
-
-  int prevIndex = played.last;
-  if (eko.conected.value) {
-    mscAudPl.sendMediaIndex(prevIndex);
-  } else {
-    mscAudPl.setCurrentTrack(index: prevIndex);
-    mscAudPl.play();
-  }
-}
-
 /* REPEATS */
-Future<bool> repeatNormal() async {
-  if (mscAudPl.loopMode.value == ModeLoopEnum.one) {
-    await mscAudPl.seek(Duration.zero);
-    mscAudPl.play();
-    return true;
-  } else if (mscAudPl.loopMode.value == ModeLoopEnum.all &&
-      mscAudPl.currentIndex.value + 1 >=
-          MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
-    mscAudPl.currentIndex.value = -1;
-    return false;
-  } else {
-    return false;
-  }
-}
-
-Future<bool> repeatShuffled() async {
+Future<bool> shouldToStop() async {
+  bool isShuffle = mscAudPl.shuffleMode.value != ModeShuffleEnum.shuffleOff;
   if (mscAudPl.loopMode.value == ModeLoopEnum.one) {
     await mscAudPl.seek(Duration.zero);
     mscAudPl.play();
     return true;
   } else if (mscAudPl.loopMode.value == ModeLoopEnum.all) {
-    if (unplayed.isEmpty) {
-      reshuffle();
+    if (isShuffle) {
+      if (unplayed.isEmpty) {
+        reshuffle();
+      }
+    } else if (mscAudPl.currentIndex.value + 1 >=
+        MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+      mscAudPl.currentIndex.value = -1;
     }
     return false;
   } else {
-    if (unplayed.isEmpty) return true;
+    if (isShuffle && unplayed.isEmpty) return true;
     return false;
   }
 }

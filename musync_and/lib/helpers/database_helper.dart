@@ -2,7 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
@@ -362,7 +362,7 @@ class DatabaseHelper {
     });
   }
 
-    Future<void> desupInPlaylist(
+  Future<void> desupInPlaylist(
     String idPlaylist,
     String idMusic,
     String title,
@@ -418,43 +418,50 @@ class DatabaseHelper {
     });
   }
 
-  Future<List<MediaItem>> reorderToUp(String idPlAtual, List<MediaItem> setList) async {
+  Future<List<MediaItem>> reorderToUp(
+    String idPlAtual,
+    List<MediaItem> setList,
+  ) async {
     log(idPlAtual);
     List<String> ordemDasUps = await DatabaseHelper().loadUpMusics(idPlAtual);
-    List<String> ordemDasDesups = await DatabaseHelper().loadDesupMusics(idPlAtual);
+    List<String> ordemDasDesups = await DatabaseHelper().loadDesupMusics(
+      idPlAtual,
+    );
 
-    final mapById = {
-      for (var item in setList)
-        item.id: item
-    };
+    final mapById = {for (var item in setList) item.id: item};
 
     log(setList.length.toString());
-    
-    List<MediaItem> resultadoUps = ordemDasUps.asMap().entries.map((entry) {
-      final index = ordemDasUps.length - (entry.key);
-      final id = entry.value;
 
-      final mediaItem = mapById[id]!;
+    List<MediaItem> resultadoUps =
+        ordemDasUps.asMap().entries.map((entry) {
+          final index = ordemDasUps.length - (entry.key);
+          final id = entry.value;
 
-      mediaItem.extras!['prioridade'] = index;
+          final mediaItem = mapById[id]!;
 
-      return mediaItem;
-    }).toList();
+          mediaItem.extras!['prioridade'] = index;
 
-    List<MediaItem> resultadoDesups = ordemDasDesups.asMap().entries.map((entry) {
-      final index = (entry.key) + 1;
-      final id = entry.value;
+          return mediaItem;
+        }).toList();
 
-      final mediaItem = mapById[id]!;
+    List<MediaItem> resultadoDesups =
+        ordemDasDesups.asMap().entries.map((entry) {
+          final index = (entry.key) + 1;
+          final id = entry.value;
 
-      mediaItem.extras!['prioridade'] = -index;
+          final mediaItem = mapById[id]!;
 
-      return mediaItem;
-    }).toList();
+          mediaItem.extras!['prioridade'] = -index;
 
-    List<MediaItem> resultadoResto = setList
-        .where((x) => !resultadoUps.contains(x) && !resultadoDesups.contains(x))
-        .toList();
+          return mediaItem;
+        }).toList();
+
+    List<MediaItem> resultadoResto =
+        setList
+            .where(
+              (x) => !resultadoUps.contains(x) && !resultadoDesups.contains(x),
+            )
+            .toList();
 
     List<MediaItem> restoReordenado = await reorderMusics(
       ModeOrderEnum.dataZA,

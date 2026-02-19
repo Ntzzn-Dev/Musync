@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
@@ -22,6 +22,7 @@ class ListContent extends StatefulWidget {
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
   final String idPlaylist;
+  final bool? showSlices;
   final bool? withReorder;
   final void Function(MediaItem)? aposClique;
   final Future<bool> Function(List<int>)? selecaoDeMusicas;
@@ -32,6 +33,7 @@ class ListContent extends StatefulWidget {
     required this.songsNow,
     required this.modeReorder,
     required this.idPlaylist,
+    this.showSlices,
     this.withReorder,
     this.aposClique,
     this.selecaoDeMusicas,
@@ -443,61 +445,66 @@ class _ListContentState extends State<ListContent> {
                         ? Color.fromARGB(96, 243, 159, 34)
                         : null;
 
-                String currentSlice = '';
-                String previousSlice = '';
-
-                if (mode == ModeOrderEnum.dataZA ||
-                    mode == ModeOrderEnum.dataAZ) {
-                  final lastModified = DateTime.parse(
-                    item.extras?['lastModified'],
-                  );
-                  currentSlice = getDateCategory(lastModified);
-                  previousSlice =
-                      index > 0
-                          ? getDateCategory(
-                            DateTime.parse(
-                              mutableSongs[index - 1].extras?['lastModified'],
-                            ),
-                          )
-                          : '';
-                } else if (mode == ModeOrderEnum.titleZA ||
-                    mode == ModeOrderEnum.titleAZ) {
-                  currentSlice = item.title[0].toUpperCase();
-                  previousSlice =
-                      index > 0
-                          ? mutableSongs[index - 1].title[0].toUpperCase()
-                          : '';
-                } else {
-                  currentSlice = '';
-                  previousSlice = '';
-                }
-
                 bool showSliceHeader =
-                    (index == 0 || currentSlice != previousSlice) &&
-                    (mode != ModeOrderEnum.manual && mode != ModeOrderEnum.up);
+                    (mode != ModeOrderEnum.manual &&
+                        mode != ModeOrderEnum.up) &&
+                    (widget.showSlices ?? true);
 
                 List<Widget> children = [];
 
                 if (showSliceHeader) {
-                  children.add(
-                    Container(
-                      height: 30,
-                      width: double.infinity,
-                      color: baseFundoDark,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        currentSlice,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 243, 160, 34),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                  String currentSlice = '';
+                  String previousSlice = '';
+
+                  if (mode == ModeOrderEnum.dataZA ||
+                      mode == ModeOrderEnum.dataAZ) {
+                    final lastModified = DateTime.parse(
+                      item.extras?['lastModified'],
+                    );
+                    currentSlice = getDateCategory(lastModified);
+                    previousSlice =
+                        index > 0
+                            ? getDateCategory(
+                              DateTime.parse(
+                                mutableSongs[index - 1].extras?['lastModified'],
+                              ),
+                            )
+                            : '';
+                  } else if (mode == ModeOrderEnum.titleZA ||
+                      mode == ModeOrderEnum.titleAZ) {
+                    currentSlice = item.title[0].toUpperCase();
+                    previousSlice =
+                        index > 0
+                            ? mutableSongs[index - 1].title[0].toUpperCase()
+                            : '';
+                  } else {
+                    currentSlice = '';
+                    previousSlice = '';
+                  }
+
+                  showSliceHeader = index == 0 || currentSlice != previousSlice;
+
+                  if (showSliceHeader) {
+                    children.add(
+                      Container(
+                        height: 30,
+                        width: double.infinity,
+                        color: baseFundoDark,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          currentSlice,
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 243, 160, 34),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
 
                 children.add(

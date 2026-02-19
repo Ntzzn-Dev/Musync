@@ -7,7 +7,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/services/actionlist.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
@@ -122,9 +122,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
     switch (name) {
       case 'random':
-        shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
-        prepareShuffle();
-        _broadcastState();
+        setShuffleModeEnabled();
         break;
       case 'up':
         upAtualMedia();
@@ -320,7 +318,8 @@ class MusyncAudioHandler extends BaseAudioHandler
       queue.add(songs);
 
       if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-        prepareShuffle();
+        log('recriar shuffle ${played.length} - ${unplayed.length}');
+        reshuffle();
       }
     }
     return true;
@@ -338,7 +337,8 @@ class MusyncAudioHandler extends BaseAudioHandler
     queue.add(songs);
 
     if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      prepareShuffle();
+      log('reorganizar shuffle ${played.length} - ${unplayed.length}');
+      reshuffle();
     }
   }
 
@@ -358,7 +358,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   void setShuffleModeEnabled() {
     shuffleMode.value = enumNext(shuffleMode.value, ModeShuffleEnum.values);
-    prepareShuffle();
+    reshuffle();
     _broadcastState();
 
     if (eko.conected.value) {
@@ -413,7 +413,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     } else {
       setCurrentTrack(index: index);
       if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-        prepareShuffle();
+        reshuffle();
       }
       play();
     }
@@ -463,27 +463,17 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToNext() async {
-    if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      playNextShuffled();
-    } else {
-      await playNext();
-    }
+    await playNext(false);
   }
 
   void skipToNextAuto() {
-    if (shuffleMode.value == ModeShuffleEnum.shuffleNormal) {
-      playNextShuffled();
-    } else {
-      playNext();
-    }
+    playNext(true);
   }
 
   @override
   Future<void> skipToPrevious() async {
     if (audPl.position > Duration(seconds: 5)) {
       await audPl.seek(Duration.zero);
-    } else if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      playPreviousShuffled();
     } else {
       playPrevious();
     }

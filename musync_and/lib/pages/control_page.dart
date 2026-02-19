@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:musync_and/helpers/control_helper.dart';
 import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 import 'package:musync_and/widgets/player.dart';

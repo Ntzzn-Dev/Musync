@@ -397,7 +397,15 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Otimização, organização e padronização de codigo.  
 - Adição de dois botões trocaveis no SuperControl, mas não funcionando completamente ainda.  
 
+### version 5.15.2  
+- Correção no modo aleatório, agora a musica inicial não sera tocada novamente.  
+- Otimização nos slices de listContent.  
+- Removido os slices das listas de playlists.  
+- Otimização de codigo em cima dos shuffles.  
+- Alteração na maneira que a musica é adicionada nas listas depois de um download, sendo o arquivo original e não um pseudo-arquivo.  
+  
 ### TO FUTURE VERSIONS  
++ Adicionar um trigger para que quando uma musica seja apagada, todas as instancias dela no banco de dados seja deletada junto.  
 + Repensar conceito de setList dinamica.
 
 + Corrigir indices não recebidos quando o item ainda for clicado manualmente no android. Verificar se não foi clicado no botão de next com o shuffle ativo, e mostrar mensagem na tela dizendo que o indice ainda não foi enviado para o desktop, alem de retornar a musica anterior. [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  

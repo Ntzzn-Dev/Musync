@@ -4,7 +4,7 @@ import 'package:musync_and/pages/control_page.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/helpers/download_helper.dart';
 import 'package:musync_and/services/playlists.dart';

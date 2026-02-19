@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -263,6 +263,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       widget.pl?.id.toString() ??
                       MusyncAudioHandler.actlist.mainPlaylist.tag,
                   withReorder: true,
+                  showSlices: false,
                   aposClique: (item) async {
                     bool recriou = await widget.audioHandler.recreateQueue(
                       songs: songsNowTranslated,

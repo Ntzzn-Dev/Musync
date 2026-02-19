@@ -4,7 +4,7 @@ import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/services/audio_player.dart';
-import 'package:musync_and/services/audio_player_organize.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 
 class Playlists {

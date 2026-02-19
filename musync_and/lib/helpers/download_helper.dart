@@ -7,7 +7,9 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:http/http.dart' as http;
@@ -141,26 +143,61 @@ class DownloadSpecs {
       atualizarProgresso(progressAtual);
       log('4');
 
-      final fileStat = await File(mp3path).stat();
-      final lastModified = fileStat.modified.toIso8601String();
-      final uri = Uri.file(mp3path).toString();
+      await onAudioQuery.scanMedia(mp3path);
+      final song = await waitForMediaStore(mp3path);
 
-      MediaItem musicBaixada = MediaItem(
-        id: uri,
-        title: title,
-        artist: artist,
-        duration: video.duration ?? Duration.zero,
-        extras: {'lastModified': lastModified, 'path': mp3path},
-        artUri: Uri.parse(url),
-      );
+      if (song != null) {
+        final fileStat = await File(mp3path).stat();
+        final lastModified = fileStat.modified.toIso8601String();
 
-      MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
-      MusyncAudioHandler.actlist.songsAllPlaylist.add(musicBaixada);
+        final musicBaixada = MediaItem(
+          id: song.uri!,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          genre: song.genre,
+          duration: Duration(milliseconds: song.duration ?? 0),
+          artUri: Uri.parse(url),
+
+          extras: {'lastModified': lastModified, 'path': song.data},
+        );
+
+        MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
+        MusyncAudioHandler.actlist.songsAllPlaylist.add(musicBaixada);
+
+        log('✅ Música adicionada: ${musicBaixada.title} ${musicBaixada.id}');
+        log(
+          '${MusyncAudioHandler.actlist.songsAll.last.title} - ${MusyncAudioHandler.actlist.songsAll.first.title}',
+        );
+      }
 
       await Playlists.atualizarNoMediaStore(mp3path);
       atualizarProgresso(progressAtual);
       log('5');
     });
+  }
+
+  Future<SongModel?> waitForMediaStore(
+    String path, {
+    int attempts = 5,
+    Duration delay = const Duration(seconds: 1),
+  }) async {
+    await onAudioQuery.scanMedia(path);
+
+    final nullSong = SongModel({});
+    for (int i = 0; i < attempts; i++) {
+      final songs = await onAudioQuery.querySongs();
+      final song = songs.firstWhere(
+        (s) => s.data == path,
+        orElse: () => nullSong,
+      );
+
+      if (song != nullSong) return song;
+
+      await Future.delayed(delay);
+    }
+
+    return null;
   }
 
   Future<String> fetchThumbnailUrl(String videoId) async {
