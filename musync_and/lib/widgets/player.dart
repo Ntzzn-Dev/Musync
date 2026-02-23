@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
@@ -8,9 +9,7 @@ import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 
 class Player extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
-
-  const Player({super.key, required this.audioHandler});
+  const Player({super.key});
 
   static String formatDuration(Duration d, bool h) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -56,7 +55,7 @@ class _PlayerState extends State<Player> {
 
   Widget buildShuffleButton() {
     return ValueListenableBuilder<ModeShuffleEnum>(
-      valueListenable: widget.audioHandler.shuffleMode,
+      valueListenable: mscAudPl.shuffleMode,
       builder: (context, shuffleMode, child) {
         return ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -66,7 +65,7 @@ class _PlayerState extends State<Player> {
             shape: const CircleBorder(),
           ),
           onPressed: () {
-            widget.audioHandler.setShuffleModeEnabled();
+            mscAudPl.setShuffleModeEnabled();
           },
           child:
               shuffleMode != ModeShuffleEnum.shuffleOptional
@@ -88,7 +87,7 @@ class _PlayerState extends State<Player> {
 
   Widget buildLoopButton() {
     return ValueListenableBuilder<ModeLoopEnum>(
-      valueListenable: widget.audioHandler.loopMode,
+      valueListenable: mscAudPl.loopMode,
       builder: (context, value, child) {
         return ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -98,7 +97,7 @@ class _PlayerState extends State<Player> {
             shape: const CircleBorder(),
           ),
           onPressed: () async {
-            widget.audioHandler.setLoopModeEnabled();
+            mscAudPl.setLoopModeEnabled();
           },
           child: Icon(
             value == ModeLoopEnum.off
@@ -124,7 +123,7 @@ class _PlayerState extends State<Player> {
         child: Column(
           children: [
             StreamBuilder<MediaItem?>(
-              stream: widget.audioHandler.mediaItem,
+              stream: mscAudPl.mediaItem,
               builder: (context, snapshot) {
                 final mediaItem = snapshot.data;
 
@@ -213,10 +212,10 @@ class _PlayerState extends State<Player> {
                   },
                 )
                 : StreamBuilder<Duration>(
-                  stream: widget.audioHandler.positionStream,
+                  stream: mscAudPl.positionStream,
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
-                    final total = widget.audioHandler.duration ?? Duration.zero;
+                    final total = mscAudPl.duration ?? Duration.zero;
 
                     return Column(
                       children: [
@@ -240,7 +239,7 @@ class _PlayerState extends State<Player> {
                                       .clamp(0, total.inMilliseconds)
                                       .toDouble(),
                               onChanged: (value) {
-                                widget.audioHandler.seek(
+                                mscAudPl.seek(
                                   Duration(milliseconds: value.toInt()),
                                 );
                               },
@@ -281,7 +280,7 @@ class _PlayerState extends State<Player> {
                     shape: const CircleBorder(),
                   ),
                   onPressed: () async {
-                    await widget.audioHandler.skipToPrevious();
+                    await mscAudPl.skipToPrevious();
                   },
                   child: Icon(Icons.keyboard_double_arrow_left_sharp),
                 ),
@@ -314,7 +313,7 @@ class _PlayerState extends State<Player> {
                       },
                     )
                     : StreamBuilder<bool>(
-                      stream: widget.audioHandler.playingStream,
+                      stream: mscAudPl.playingStream,
                       builder: (context, snapshot) {
                         final isPlaying = snapshot.data ?? false;
                         return ElevatedButton(
@@ -325,9 +324,7 @@ class _PlayerState extends State<Player> {
                             shape: const CircleBorder(),
                           ),
                           onPressed: () {
-                            isPlaying
-                                ? widget.audioHandler.pause()
-                                : widget.audioHandler.play();
+                            isPlaying ? mscAudPl.pause() : mscAudPl.play();
                           },
                           child: Icon(
                             isPlaying
@@ -339,7 +336,7 @@ class _PlayerState extends State<Player> {
                     ),
                 const SizedBox(width: 16),
                 ValueListenableBuilder<ModeShuffleEnum>(
-                  valueListenable: widget.audioHandler.shuffleMode,
+                  valueListenable: mscAudPl.shuffleMode,
                   builder: (context, value, child) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -349,7 +346,7 @@ class _PlayerState extends State<Player> {
                         shape: const CircleBorder(),
                       ),
                       onPressed: () async {
-                        await widget.audioHandler.skipToNext();
+                        await mscAudPl.skipToNext();
                       },
                       child:
                           value != ModeShuffleEnum.shuffleOptional

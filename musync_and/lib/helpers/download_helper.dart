@@ -6,13 +6,13 @@ import 'package:audiotags/audiotags.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:http/http.dart' as http;
+import 'package:musync_and/helpers/audio_player_helper.dart';
 
 class DownloadSpecs {
   static final DownloadSpecs _instance = DownloadSpecs._internal();
@@ -162,12 +162,12 @@ class DownloadSpecs {
           extras: {'lastModified': lastModified, 'path': song.data},
         );
 
-        MusyncAudioHandler.actlist.songsAll.add(musicBaixada);
-        MusyncAudioHandler.actlist.songsAllPlaylist.add(musicBaixada);
+        mscAudPl.actlist.songsAll.add(musicBaixada);
+        mscAudPl.actlist.songsAllPlaylist.add(musicBaixada);
 
         log('✅ Música adicionada: ${musicBaixada.title} ${musicBaixada.id}');
         log(
-          '${MusyncAudioHandler.actlist.songsAll.last.title} - ${MusyncAudioHandler.actlist.songsAll.first.title}',
+          '${mscAudPl.actlist.songsAll.last.title} - ${mscAudPl.actlist.songsAll.first.title}',
         );
       }
 

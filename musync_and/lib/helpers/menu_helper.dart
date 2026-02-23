@@ -398,7 +398,7 @@ List<Widget> routesMenu({
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => SettingsPage(audioHandler: mscAudPl),
+            builder: (context) => SettingsPage(),
             settings: RouteSettings(name: 'settings'),
           ),
         );

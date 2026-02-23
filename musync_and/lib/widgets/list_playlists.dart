@@ -1,16 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:musync_and/helpers/menu_helper.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 
 class ListPlaylist extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
   final void Function(Playlists)? escolhaDePlaylist;
   final void Function(String)? escolhaDeArtista;
   final void Function(String)? escolhaDePasta;
@@ -19,7 +18,6 @@ class ListPlaylist extends StatefulWidget {
 
   const ListPlaylist({
     super.key,
-    required this.audioHandler,
     this.escolhaDePlaylist,
     this.escolhaDeArtista,
     this.escolhaDePasta,
@@ -97,7 +95,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
 
   void carregarPlaylists() async {
     final playlists = await DatabaseHelper().loadPlaylists();
-    final allSongs = MusyncAudioHandler.actlist.songsAll;
+    final allSongs = mscAudPl.actlist.songsAll;
 
     List<List<String>> artists = [];
     List<String> folders = ['/Todas'];
@@ -175,6 +173,30 @@ class _ListPlaylistState extends State<ListPlaylist> {
             label: 'Tornar principal',
             icon: Icons.emoji_events,
             funct: () async {
+              final turnMain = await showPopupAdd(
+                context,
+                'Tornar ${item.title} a playlist principal?',
+                [],
+              );
+
+              if (turnMain) {
+                final prefs = await SharedPreferences.getInstance();
+                setState(() {
+                  mainPlaylist = '${item.id}';
+                  prefs.setString('playlist_main', '${item.id}');
+                  widget.trocaDeMain?.call('${item.id}');
+                });
+              }
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Editar Playlist',
+            icon: Icons.edit,
+            funct: () async {
               await showPopupAdd(
                 context,
                 'Editar Playlist',
@@ -203,30 +225,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
           ),
         ],
       ),
-      OptionItem(
-        actions: [
-          OptionAction(
-            label: 'Tornar principal',
-            icon: Icons.edit,
-            funct: () async {
-              final turnMain = await showPopupAdd(
-                context,
-                'Tornar ${item.title} a playlist principal?',
-                [],
-              );
 
-              if (turnMain) {
-                final prefs = await SharedPreferences.getInstance();
-                setState(() {
-                  mainPlaylist = '${item.id}';
-                  prefs.setString('playlist_main', '${item.id}');
-                  widget.trocaDeMain?.call('${item.id}');
-                });
-              }
-            },
-          ),
-        ],
-      ),
       OptionItem(
         actions: [
           OptionAction(
@@ -265,7 +264,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               onConfirm: (valores) async {
                 DatabaseHelper().insertPlaylist(valores[0], valores[1], 1);
 
-                widget.audioHandler.searchPlaylists();
+                mscAudPl.searchPlaylists();
                 carregarPlaylists();
               },
             );

@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/themes.dart';
@@ -12,9 +11,7 @@ import 'package:musync_and/widgets/popup_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
-
-  const SettingsPage({super.key, required this.audioHandler});
+  const SettingsPage({super.key});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -179,16 +176,12 @@ class _SettingsPageState extends State<SettingsPage> {
                               onPressed: () async {
                                 bool pode = await showPopupAdd(
                                   context,
-                                  "Deseja remover todos os ups de \"${MusyncAudioHandler.actlist.atualPlaylist.value.title}\"",
+                                  "Deseja remover todos os ups de \"${mscAudPl.actlist.atualPlaylist.value.title}\"",
                                   [],
                                 );
                                 if (pode) {
                                   await DatabaseHelper().unupInPlaylist(
-                                    MusyncAudioHandler
-                                        .actlist
-                                        .atualPlaylist
-                                        .value
-                                        .tag,
+                                    mscAudPl.actlist.atualPlaylist.value.tag,
                                   );
                                 }
                               },

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/download_helper.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
@@ -8,6 +7,7 @@ import 'package:musync_and/widgets/popup_add.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -24,7 +24,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   List<Map<String, dynamic>> videos = [];
   final List<String> caminhos =
-      MusyncAudioHandler.actlist.songsAll
+      mscAudPl.actlist.songsAll
           .map((item) => item.extras?['path'] as String?)
           .where((path) => path != null)
           .cast<String>()

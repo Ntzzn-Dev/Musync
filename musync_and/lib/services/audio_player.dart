@@ -40,7 +40,8 @@ class MusyncAudioHandler extends BaseAudioHandler
   ValueNotifier<int> currentIndex = ValueNotifier(0);
   final _equality = const DeepCollectionEquality();
 
-  static ActionList actlist = ActionList();
+  final actlist = ActionList();
+  static LastList checkpoint = LastList.initEmpty();
 
   late List<Playlists> playlists;
 
@@ -184,11 +185,11 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  void savePl(SetList SetList) async {
+  void savePl(SetList setList) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('pl_last', SetList.tag);
+    prefs.setString('pl_last', setList.tag);
 
-    actlist.setSetList(SetListType.atual, SetList);
+    actlist.setSetList(SetListType.atual, setList);
   }
 
   void returnToCheckpoint() {
@@ -233,6 +234,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> setCurrentTrack({int? index}) async {
+    log('id = $index');
     if (index != null) {
       saveInd(index);
     } else {
@@ -241,19 +243,37 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (actlist.queueIsEmpty()) return;
     currentIndex.value = index;
     final item = actlist.queueList[index];
+    //logTop30(queueList: actlist.queueList);
     item.execute();
+  }
+
+  void logTop30({required List queueList}) {
+    log('================ QUEUE LIST (TOP 30) ================');
+    log('================  ================');
+    log('================================');
+
+    for (int i = 0; i < queueList.length && i < 30; i++) {
+      var item;
+      if (queueList[i] is MusicItem)
+        item = (queueList[i] as MusicItem).mediaItem;
+      else
+        item = queueList[i] as MediaItem;
+      log('[QL][$i] | ${item.title}');
+    }
+
+    log('========================================================');
   }
 
   bool _executando = false;
 
   Future<void> executeMusic(ProgressiveAudioSource src, MediaItem item) async {
+    log("Musica no index: ${actlist.getMusicAtual(currentIndex.value).title}");
     if (!_executando) {
       _executando = true;
       await audPl.pause();
       await audPl.setAudioSource(src);
       mediaItem.add(item);
       _executando = false;
-      log(item.title);
 
       if (item.id != actlist.getMusicAtual(currentIndex.value).id) {
         log("executando correção");
@@ -286,7 +306,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
     final currentSetListQueue = actlist.getMediaItemsFromQueue();
-
+    log('recreateChamado()');
     if (_equality.equals(
           songs.map((e) => e.id).toList(),
           currentQueue.map((e) => e.id).toList(),
@@ -299,10 +319,15 @@ class MusyncAudioHandler extends BaseAudioHandler
       return false;
     }
 
+    //logTop30(queueList: songs);
+
     final idAtual =
         (actlist.queueList[currentIndex.value] as MusicItem).mediaItem.id;
 
-    actlist.setMusicListAtual(songs);
+    actlist.setMusicListAtual(
+      songs,
+    ); // - ISSO NAO PERMITE A ORDEM FUNCIONAR NAS PLAYLISTS
+    //USAR O SETMUSICLISTATUAL AO REORDENAR AS PLAYLISTS
 
     if (eko.conected.value) {
       eko.sendMessage({'action': 'request_data', 'data': ''});
@@ -331,13 +356,13 @@ class MusyncAudioHandler extends BaseAudioHandler
     );
 
     actlist.setMusicListAtual(songs);
+    //logTop30(queueList: songs);
 
     currentIndex.value = songs.indexOf(songAtual);
 
     queue.add(songs);
 
     if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-      log('reorganizar shuffle ${played.length} - ${unplayed.length}');
       reshuffle();
     }
   }

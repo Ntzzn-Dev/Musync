@@ -37,10 +37,9 @@ class ActionList {
   }
 
   void setMusicListAtual(List<MediaItem> songs) {
-    final List<MusicItem> songsF =
-        songs.map((media) => MusicItem(mediaItem: media)).toList();
-
-    queueList = [...songsF];
+    queueList
+      ..clear()
+      ..addAll(songs.map((media) => MusicItem(mediaItem: media)));
   }
 
   void setSetList(SetListType type, SetList list) {
@@ -111,4 +110,13 @@ class SetList {
       subtitle: map['subtitle'],
     );
   }
+}
+
+class LastList {
+  int idMusic;
+  String idSetList;
+
+  LastList({required this.idMusic, required this.idSetList});
+
+  LastList.initEmpty({this.idMusic = -1, this.idSetList = ''});
 }

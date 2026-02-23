@@ -58,7 +58,7 @@ class Playlists {
     final futuros =
         idsAlvo.map((id) async {
           try {
-            return MusyncAudioHandler.actlist.songsAll.firstWhere(
+            return mscAudPl.actlist.songsAll.firstWhere(
               (mediaItem) => mediaItem.id == id,
             );
           } catch (e) {

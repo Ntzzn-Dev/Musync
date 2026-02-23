@@ -1,11 +1,12 @@
 import 'dart:developer';
-
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/material.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 
-MusyncAudioHandler mscAudPl = MusyncAudioHandler();
+late final MusyncAudioHandler mscAudPl;
 int modoDeEnergia = 2;
 
 /* SHUFFLES */
@@ -36,7 +37,7 @@ Future<void> playNext(bool auto) async {
     played.add(nextIndex);
   }
 
-  if (nextIndex < MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+  if (nextIndex < mscAudPl.actlist.getLengthActionsListAtual()) {
     if (eko.conected.value) {
       mscAudPl.sendMediaIndex(nextIndex);
     } else {
@@ -55,7 +56,7 @@ Future<void> playPrevious() async {
   final shouldStop = await shouldToStop();
   if (shouldStop) return;
 
-  int prevIndex = mscAudPl.currentIndex.value--;
+  int prevIndex = mscAudPl.currentIndex.value - 1;
   if (mscAudPl.shuffleMode.value != ModeShuffleEnum.shuffleOff) {
     if (played.length <= 1) return;
 
@@ -65,11 +66,12 @@ Future<void> playPrevious() async {
     prevIndex = played.last;
   }
 
-  if (mscAudPl.currentIndex.value > 0) {
+  if (prevIndex >= 0) {
     if (eko.conected.value) {
       mscAudPl.sendMediaIndex(prevIndex);
     } else {
       mscAudPl.setCurrentTrack(index: prevIndex);
+      log('c ${mscAudPl.currentIndex.value}');
       mscAudPl.play();
     }
   }
@@ -88,7 +90,7 @@ Future<bool> shouldToStop() async {
         reshuffle();
       }
     } else if (mscAudPl.currentIndex.value + 1 >=
-        MusyncAudioHandler.actlist.getLengthActionsListAtual()) {
+        mscAudPl.actlist.getLengthActionsListAtual()) {
       mscAudPl.currentIndex.value = -1;
     }
     return false;
@@ -172,10 +174,47 @@ Future<List<MediaItem>> reorderMusics(
       break;
     case ModeOrderEnum.up:
       ordenadas = await DatabaseHelper().reorderToUp(
-        MusyncAudioHandler.actlist.viewingPlaylist.tag.toString(),
+        mscAudPl.actlist.viewingPlaylist.tag.toString(),
         songs,
       );
       break;
   }
   return ordenadas;
+}
+
+/* DELETE */
+Future<void> deletarMusicas(
+  List<MediaItem> itensOriginal, {
+  required Function(MediaItem) removeLists,
+  VoidCallback? aoFinal,
+}) async {
+  final itens = List<MediaItem>.from(itensOriginal);
+  for (MediaItem item in itens) {
+    final path = item.extras?['path'];
+
+    if (path == null) {
+      continue;
+    }
+
+    final file = File(path);
+
+    try {
+      final exists = await file.exists();
+
+      if (!exists) {
+        continue;
+      }
+
+      removeLists.call(item);
+
+      await mscAudPl.stop();
+      await Future.delayed(const Duration(milliseconds: 200));
+      await file.delete();
+
+      await DatabaseHelper().deleteMusicTrigger(item.id);
+    } catch (e, stack) {
+      log('Erro: $e | $stack');
+    }
+  }
+  aoFinal?.call();
 }

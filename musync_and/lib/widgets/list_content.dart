@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
@@ -18,7 +19,6 @@ import 'package:collection/collection.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ListContent extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
   final String idPlaylist;
@@ -29,7 +29,6 @@ class ListContent extends StatefulWidget {
 
   const ListContent({
     super.key,
-    required this.audioHandler,
     required this.songsNow,
     required this.modeReorder,
     required this.idPlaylist,
@@ -58,7 +57,7 @@ class _ListContentState extends State<ListContent> {
     _scrollController = ScrollController();
     listaEmUso = const ListEquality().equals(
       widget.songsNow,
-      MusyncAudioHandler.actlist.getMediaItemsFromQueue(),
+      mscAudPl.actlist.getMediaItemsFromQueue(),
     );
     idsSelecoes = [];
     mutableSongs = List.from(widget.songsNow);
@@ -177,16 +176,16 @@ class _ListContentState extends State<ListContent> {
                     'genre': valores[3],
                   });
 
-                  int indexSongAll = MusyncAudioHandler.actlist.songsAll
-                      .indexWhere((e) => e.id == item.id);
+                  int indexSongAll = mscAudPl.actlist.songsAll.indexWhere(
+                    (e) => e.id == item.id,
+                  );
 
                   int indexSongNow = mutableSongs.indexWhere(
                     (e) => e.id == item.id,
                   );
 
                   if (indexSongAll != -1) {
-                    final antigo =
-                        MusyncAudioHandler.actlist.songsAll[indexSongAll];
+                    final antigo = mscAudPl.actlist.songsAll[indexSongAll];
 
                     final musicEditada = antigo.copyWith(
                       title: valores[0],
@@ -200,8 +199,7 @@ class _ListContentState extends State<ListContent> {
                       },
                     );
 
-                    MusyncAudioHandler.actlist.songsAll[indexSongAll] =
-                        musicEditada;
+                    mscAudPl.actlist.songsAll[indexSongAll] = musicEditada;
                     mutableSongs[indexSongNow] = musicEditada;
 
                     setState(() {});
@@ -247,18 +245,40 @@ class _ListContentState extends State<ListContent> {
     required String itemTitle,
     required Future<void> Function(String tag, String id, String title) action,
   }) async {
-    final tag = MusyncAudioHandler.actlist.viewingPlaylist.tag;
+    final tag = mscAudPl.actlist.viewingPlaylist.tag;
 
     await action(tag, itemId, itemTitle);
 
-    MusyncAudioHandler.actlist.songsAllPlaylist = await reorderMusics(
-      ModeOrderEnum.up,
-      mutableSongs,
-    );
+    final reordered = await reorderMusics(ModeOrderEnum.up, mutableSongs);
+
+    mscAudPl.actlist.setMusicListAtual(reordered);
+
+    if (!mounted) return;
 
     setState(() {
-      mutableSongs = MusyncAudioHandler.actlist.songsAllPlaylist;
+      mutableSongs = mscAudPl.actlist.getMediaItemsFromQueue();
+      mscAudPl.reorganizeQueue(songs: mutableSongs);
     });
+  }
+
+  void logTop30({
+    required List<MediaItem> mutableSongs,
+    required List queueList,
+  }) {
+    log('================ MUTABLE SONGS (TOP 30) ================');
+
+    for (int i = 0; i < mutableSongs.length && i < 30; i++) {
+      log('[MS][$i] | ${mutableSongs[i].title}');
+    }
+
+    log('================ QUEUE LIST (TOP 30) ================');
+
+    for (int i = 0; i < queueList.length && i < 30; i++) {
+      final item = queueList[i] as MusicItem;
+      log('[QL][$i] | ${item.mediaItem.title}');
+    }
+
+    log('========================================================');
   }
 
   void showSpec(MediaItem item) {
@@ -294,9 +314,9 @@ class _ListContentState extends State<ListContent> {
       try {
         setState(() {
           mutableSongs.remove(item);
-          MusyncAudioHandler.actlist.songsAll.remove(item);
+          mscAudPl.actlist.songsAll.remove(item);
         });
-        await widget.audioHandler.recreateQueue(songs: mutableSongs);
+        await mscAudPl.recreateQueue(songs: mutableSongs);
         await file.delete();
       } catch (e) {
         log('Erro ao deletar: $e');
@@ -384,7 +404,7 @@ class _ListContentState extends State<ListContent> {
 
       await DatabaseHelper().updateOrderMusics(mutableSongs, id);
 
-      widget.audioHandler.reorganizeQueue(songs: mutableSongs);
+      mscAudPl.reorganizeQueue(songs: mutableSongs);
     }
 
     List<Widget> imgs =
@@ -413,7 +433,7 @@ class _ListContentState extends State<ListContent> {
         }).toList();
 
     return ValueListenableBuilder<int>(
-      valueListenable: widget.audioHandler.currentIndex,
+      valueListenable: mscAudPl.currentIndex,
       builder: (context, value, child) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients && listaEmUso) {
@@ -435,12 +455,9 @@ class _ListContentState extends State<ListContent> {
                         ? Color.fromARGB(95, 243, 34, 34)
                         : value != -1 &&
                             value <
-                                MusyncAudioHandler.actlist
-                                    .getLengthMusicListAtual() &&
+                                mscAudPl.actlist.getLengthMusicListAtual() &&
                             mutableSongs[index] ==
-                                MusyncAudioHandler.actlist.getMusicAtual(
-                                  value,
-                                ) &&
+                                mscAudPl.actlist.getMusicAtual(value) &&
                             listaEmUso
                         ? Color.fromARGB(96, 243, 159, 34)
                         : null;

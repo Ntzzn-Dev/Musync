@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
-import 'dart:io';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,13 +16,11 @@ import 'package:musync_and/widgets/popup_add.dart';
 
 class PlaylistPage extends StatefulWidget {
   final String plTitle;
-  final MusyncAudioHandler audioHandler;
   final List<MediaItem> songsPL;
   final Playlists? pl;
   const PlaylistPage({
     super.key,
     required this.plTitle,
-    required this.audioHandler,
     required this.songsPL,
     this.pl,
   });
@@ -55,7 +50,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
 
     playlistUpdateNotifier.addListener(_onPlaylistChanged);
 
-    MusyncAudioHandler.actlist.setSetList(
+    mscAudPl.actlist.setSetList(
       SetListType.view,
       SetList(
         title: widget.pl?.title ?? widget.plTitle.replaceAll('/', ''),
@@ -100,26 +95,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
     }
   }
 
-  Future<void> deletarMusicas(List<MediaItem> itens) async {
-    for (MediaItem item in itens) {
-      final file = File(item.extras?['path']);
-      if (await file.exists()) {
-        try {
-          setState(() {
-            songsNowTranslated.remove(item);
-            MusyncAudioHandler.actlist.songsAll.remove(item);
-          });
-          await widget.audioHandler.recreateQueue(songs: songsNowTranslated);
-          await file.delete();
-        } catch (e) {
-          log('Erro ao deletar: $e');
-        }
-      } else {
-        log('Arquivo não encontrado');
-      }
-    }
-  }
-
   Future<bool> moreOptionsSelected(List<int> indexMsc) async {
     final completer = Completer<bool>();
     if (indexMsc.isNotEmpty) {
@@ -142,6 +117,25 @@ class _PlaylistPageState extends State<PlaylistPage> {
               )) {
                 await deletarMusicas(
                   indexMsc.map((i) => songsNowTranslated[i]).toList(),
+                  removeLists: (item) async {
+                    setState(() {
+                      songsNowTranslated.removeWhere((e) => e.id == item.id);
+                      mscAudPl.actlist.songsAll.removeWhere(
+                        (e) => e.id == item.id,
+                      );
+                      mscAudPl.actlist.songsAllPlaylist.removeWhere(
+                        (e) => e.id == item.id,
+                      );
+
+                      if (mscAudPl.actlist.songsAllPlaylist.contains(item)) {
+                        mscAudPl.actlist.songsAllPlaylist.remove(item);
+                      }
+                    });
+
+                    await mscAudPl.recreateQueue(
+                      songs: songsNowTranslated,
+                    ); // tentar com o reorganize
+                  },
                 );
                 completer.complete(true);
               }
@@ -256,33 +250,37 @@ class _PlaylistPageState extends State<PlaylistPage> {
               ),
               Expanded(
                 child: ListContent(
-                  audioHandler: widget.audioHandler,
                   songsNow: songsPlaylist,
                   modeReorder: modeAtual,
                   idPlaylist:
                       widget.pl?.id.toString() ??
-                      MusyncAudioHandler.actlist.mainPlaylist.tag,
+                      mscAudPl.actlist.mainPlaylist.tag,
                   withReorder: true,
                   showSlices: false,
                   aposClique: (item) async {
-                    bool recriou = await widget.audioHandler.recreateQueue(
-                      songs: songsNowTranslated,
+                    List<MediaItem> songsNowReordered = await reorderMusics(
+                      modeAtual,
+                      songsNowTranslated,
                     );
 
-                    widget.audioHandler.savePl(
+                    bool recriou = await mscAudPl.recreateQueue(
+                      songs: songsNowReordered,
+                    );
+
+                    mscAudPl.savePl(
                       SetList(
                         title: widget.pl?.title ?? widget.plTitle,
                         subtitle: widget.pl?.subtitle ?? '',
                         tag: (widget.pl?.id ?? widget.plTitle).toString(),
                       ),
                     );
-                    int indiceCerto = songsNowTranslated.indexWhere(
+                    int indiceCerto = songsNowReordered.indexWhere(
                       (t) => t == item,
                     );
                     if ((eko.conected.value) && recriou) {
                       Ekosystem.indexInitial = indiceCerto;
                     }
-                    await widget.audioHandler.skipToQueueItem(indiceCerto);
+                    await mscAudPl.skipToQueueItem(indiceCerto);
                   },
                   selecaoDeMusicas: (indexMsc) async {
                     return await moreOptionsSelected(indexMsc);
@@ -308,7 +306,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     right: 0,
                     child: GestureDetector(
                       onTap: _toggleBottom,
-                      child: Player(audioHandler: widget.audioHandler),
+                      child: Player(),
                     ),
                   );
                 },

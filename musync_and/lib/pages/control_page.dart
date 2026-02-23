@@ -175,7 +175,7 @@ class _ControlPageState extends State<ControlPage> {
                 SoundControl(),
                 const SizedBox(height: 10),
                 ValueListenableBuilder(
-                  valueListenable: MusyncAudioHandler.actlist.atualPlaylist,
+                  valueListenable: mscAudPl.actlist.atualPlaylist,
                   builder: (context, playlist, _) {
                     return SizedBox(
                       height: 130,
@@ -290,7 +290,7 @@ class _ControlPageState extends State<ControlPage> {
                                                       alignment:
                                                           Alignment.bottomRight,
                                                       child: Text(
-                                                        '${MusyncAudioHandler.actlist.getLengthMusicListAtual()}',
+                                                        '${mscAudPl.actlist.getLengthMusicListAtual()}',
                                                         style: TextStyle(
                                                           fontSize: 15,
                                                           fontWeight:

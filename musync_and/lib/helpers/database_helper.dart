@@ -111,6 +111,7 @@ class DatabaseHelper {
     log('Banco de dados deletado com sucesso.');
   }
 
+  /* PLAYLISTS */
   Future<int> insertPlaylist(String title, String subtitle, int ordem) async {
     final db = await database;
 
@@ -306,6 +307,7 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
+  /* UP */
   Future<void> upInPlaylist(
     String idPlaylist,
     String idMusic,
@@ -362,6 +364,7 @@ class DatabaseHelper {
     });
   }
 
+  /* DESUP */
   Future<void> desupInPlaylist(
     String idPlaylist,
     String idMusic,
@@ -469,5 +472,29 @@ class DatabaseHelper {
     );
 
     return [...resultadoUps, ...restoReordenado, ...resultadoDesups];
+  }
+
+  /* TRIGGER */
+  Future<void> deleteMusicTrigger(String idMusic) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'playlists_musics',
+        where: 'id_music = ?',
+        whereArgs: [idMusic],
+      );
+
+      await txn.delete(
+        'up_musics',
+        where: 'id_music = ?',
+        whereArgs: [idMusic],
+      );
+
+      await txn.delete(
+        'desup_musics',
+        where: 'id_music = ?',
+        whereArgs: [idMusic],
+      );
+    });
   }
 }

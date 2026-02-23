@@ -57,15 +57,15 @@ class Ekosystem {
 
     eko.sendMessage({
       'action': 'playlist_name',
-      'title': MusyncAudioHandler.actlist.atualPlaylist.value.title,
-      'subtitle': MusyncAudioHandler.actlist.atualPlaylist.value.subtitle,
+      'title': mscAudPl.actlist.atualPlaylist.value.title,
+      'subtitle': mscAudPl.actlist.atualPlaylist.value.subtitle,
     });
 
     if (eko.conected.value) {
       eko.sendMessage({'action': 'request_data', 'data': ''});
     }
 
-    final songsAtual = MusyncAudioHandler.actlist.getMediaItemsFromQueue();
+    final songsAtual = mscAudPl.actlist.getMediaItemsFromQueue();
 
     MusyncAudioHandler.mediaAtual = ValueNotifier(
       MediaAtual(
@@ -89,7 +89,7 @@ class Ekosystem {
           final listIds = allIds.split(',');
 
           eko.sendAudios(
-            MusyncAudioHandler.actlist.getMediaItemsFromQueue(),
+            mscAudPl.actlist.getMediaItemsFromQueue(),
             mscAudPl.currentIndex.value,
             listIds,
           );
