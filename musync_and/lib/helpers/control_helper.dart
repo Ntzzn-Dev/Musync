@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/player.dart';
-
-enum ButtonTypes { prev, next, shuffle, repeat }
-
-enum ExtraButtonTypes { nextBtn, prevBtn, modal }
 
 Widget buildSliderMusic() {
   if (eko.conected.value) {
@@ -227,16 +224,20 @@ Widget buildButton(
   Widget icon,
   VoidCallback onPressed,
   double aspect,
-  int flex,
-) {
+  int flex, {
+  Color? backgroundColor,
+  Color? foregroundColor,
+}) {
   return Expanded(
     flex: flex,
     child: AspectRatio(
       aspectRatio: aspect,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.all(15),
+          padding: const EdgeInsets.all(15),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

@@ -3,9 +3,9 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 
 class Playlists {
   int id;
@@ -53,7 +53,7 @@ class Playlists {
   }
 
   Future<List<MediaItem>> findMusics() async {
-    List<String> idsAlvo = await DatabaseHelper().loadPlaylistMusics(id);
+    List<String> idsAlvo = await DatabaseHelper.instance.loadPlaylistMusics(id);
 
     final futuros =
         idsAlvo.map((id) async {

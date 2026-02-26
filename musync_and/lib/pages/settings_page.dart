@@ -144,7 +144,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                   [],
                                 );
                                 if (pode) {
-                                  await DatabaseHelper().unupInAllPlaylists();
+                                  await DatabaseHelper.instance
+                                      .unupInAllPlaylists();
                                 }
                               },
                               child: Icon(Icons.close),
@@ -180,7 +181,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                   [],
                                 );
                                 if (pode) {
-                                  await DatabaseHelper().unupInPlaylist(
+                                  await DatabaseHelper.instance.unupInPlaylist(
                                     mscAudPl.actlist.atualPlaylist.value.tag,
                                   );
                                 }

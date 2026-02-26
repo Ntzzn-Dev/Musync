@@ -15,13 +15,8 @@ import 'package:http/http.dart' as http;
 import 'package:musync_and/helpers/audio_player_helper.dart';
 
 class DownloadSpecs {
-  static final DownloadSpecs _instance = DownloadSpecs._internal();
-
-  factory DownloadSpecs() {
-    return _instance;
-  }
-
   DownloadSpecs._internal();
+  static final DownloadSpecs instance = DownloadSpecs._internal();
 
   ValueNotifier<double> progressAtual = ValueNotifier(0);
   List<Video> videos = [];

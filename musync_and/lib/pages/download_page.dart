@@ -51,7 +51,7 @@ class _DownloadPageState extends State<DownloadPage> {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('playlist_principal') ?? '';
     String directory = prefs.getString('dir_download') ?? '';
-    DownloadSpecs().setDirectory(directory);
+    DownloadSpecs.instance.setDirectory(directory);
 
     if (directory == '') {
       showPopupAdd(
@@ -90,15 +90,16 @@ class _DownloadPageState extends State<DownloadPage> {
 
   Future<void> buscarVideo(String link) async {
     try {
-      DownloadSpecs().situacao.value = 'Situação: Carregando.';
+      DownloadSpecs.instance.situacao.value = 'Situação: Carregando.';
       url = link;
 
       var video = await yt.videos.get(link);
 
-      DownloadSpecs().titleAtual.value = video.title;
-      DownloadSpecs().authorAtual.value = video.author;
+      DownloadSpecs.instance.titleAtual.value = video.title;
+      DownloadSpecs.instance.authorAtual.value = video.author;
 
-      DownloadSpecs().situacao.value = 'Situação: Música pronta para baixar.';
+      DownloadSpecs.instance.situacao.value =
+          'Situação: Música pronta para baixar.';
     } catch (e) {
       procurarPlaylist(link);
     }
@@ -267,7 +268,7 @@ class _DownloadPageState extends State<DownloadPage> {
                     child: Column(
                       children: [
                         ValueListenableBuilder<String>(
-                          valueListenable: DownloadSpecs().titleAtual,
+                          valueListenable: DownloadSpecs.instance.titleAtual,
                           builder: (context, title, _) {
                             /*return Player.titleText(
                               "DESATIVADO TEMPORÁRIAMENTE",
@@ -277,7 +278,7 @@ class _DownloadPageState extends State<DownloadPage> {
                           },
                         ),
                         ValueListenableBuilder<String>(
-                          valueListenable: DownloadSpecs().authorAtual,
+                          valueListenable: DownloadSpecs.instance.authorAtual,
                           builder: (context, artist, _) {
                             return Text(
                               artist,
@@ -290,7 +291,7 @@ class _DownloadPageState extends State<DownloadPage> {
                           },
                         ),
                         ValueListenableBuilder<String>(
-                          valueListenable: DownloadSpecs().situacao,
+                          valueListenable: DownloadSpecs.instance.situacao,
                           builder: (context, stt, _) {
                             return Text(
                               stt,
@@ -323,7 +324,7 @@ class _DownloadPageState extends State<DownloadPage> {
                     ),
                   ),
                   ValueListenableBuilder<double>(
-                    valueListenable: DownloadSpecs().progressAtual,
+                    valueListenable: DownloadSpecs.instance.progressAtual,
                     builder: (context, pgr, _) {
                       if (pgr == 0.0) {
                         return SizedBox.shrink();
@@ -410,11 +411,11 @@ class _DownloadPageState extends State<DownloadPage> {
                         .toList();
 
                 if (videosEscolhidos.isEmpty) {
-                  DownloadSpecs().configurarDownloads([
+                  DownloadSpecs.instance.configurarDownloads([
                     await yt.videos.get(url),
                   ]);
                 } else {
-                  DownloadSpecs().configurarDownloads(
+                  DownloadSpecs.instance.configurarDownloads(
                     videosEscolhidos.reversed.toList(),
                   );
                 }

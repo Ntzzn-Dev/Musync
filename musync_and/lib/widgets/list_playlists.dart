@@ -94,7 +94,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
   }
 
   void carregarPlaylists() async {
-    final playlists = await DatabaseHelper().loadPlaylists();
+    final playlists = await DatabaseHelper.instance.loadPlaylists();
     final allSongs = mscAudPl.actlist.songsAll;
 
     List<List<String>> artists = [];
@@ -206,13 +206,13 @@ class _ListPlaylistState extends State<ListPlaylist> {
                 ],
                 fieldValues: [item.title, item.subtitle],
                 onConfirm: (valores) async {
-                  await DatabaseHelper().updatePlaylist(
+                  await DatabaseHelper.instance.updatePlaylist(
                     item.id,
                     title: valores[0],
                     subtitle: valores[1],
                   );
 
-                  plsBase = await DatabaseHelper().loadPlaylists();
+                  plsBase = await DatabaseHelper.instance.loadPlaylists();
                   pls = plsBase;
 
                   setState(() {});
@@ -233,9 +233,9 @@ class _ListPlaylistState extends State<ListPlaylist> {
             icon: Icons.delete_forever,
             funct: () async {
               if (await showPopupAdd(context, 'Deletar playlist?', [])) {
-                await DatabaseHelper().removePlaylist(item.id);
+                await DatabaseHelper.instance.removePlaylist(item.id);
 
-                pls = await DatabaseHelper().loadPlaylists();
+                pls = await DatabaseHelper.instance.loadPlaylists();
 
                 setState(() {});
 
@@ -262,7 +262,11 @@ class _ListPlaylistState extends State<ListPlaylist> {
                 ContentItem(value: 'Subtitulo', type: ContentTypeEnum.text),
               ],
               onConfirm: (valores) async {
-                DatabaseHelper().insertPlaylist(valores[0], valores[1], 1);
+                DatabaseHelper.instance.insertPlaylist(
+                  valores[0],
+                  valores[1],
+                  1,
+                );
 
                 mscAudPl.searchPlaylists();
                 carregarPlaylists();

@@ -2,9 +2,12 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
+import 'package:musync_and/widgets/list_playlists.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 
 late final MusyncAudioHandler mscAudPl;
 int modoDeEnergia = 2;
@@ -173,7 +176,7 @@ Future<List<MediaItem>> reorderMusics(
       }
       break;
     case ModeOrderEnum.up:
-      ordenadas = await DatabaseHelper().reorderToUp(
+      ordenadas = await DatabaseHelper.instance.reorderToUp(
         mscAudPl.actlist.viewingPlaylist.tag.toString(),
         songs,
       );
@@ -211,10 +214,67 @@ Future<void> deletarMusicas(
       await Future.delayed(const Duration(milliseconds: 200));
       await file.delete();
 
-      await DatabaseHelper().deleteMusicTrigger(item.id);
+      await DatabaseHelper.instance.deleteMusicTrigger(item.id);
     } catch (e, stack) {
       log('Erro: $e | $stack');
     }
   }
   aoFinal?.call();
+}
+
+void loadAnyPlaylist({
+  required String ultimaPlaylist,
+  required int ultimaMusica,
+}) async {
+  List<MediaItem> newsongs = [];
+
+  log('$ultimaPlaylist -=- $ultimaMusica');
+
+  final id = int.tryParse(ultimaPlaylist);
+
+  if (id != null) {
+    final pl = await DatabaseHelper.instance.loadPlaylist(id);
+    newsongs = await pl?.findMusics() ?? [];
+
+    mscAudPl.actlist.setSetList(
+      SetListType.atual,
+      SetList(
+        title: pl?.title ?? ultimaPlaylist,
+        subtitle: pl?.subtitle ?? '',
+        tag: (pl?.id ?? ultimaPlaylist).toString(),
+      ),
+    );
+  } else if (ultimaPlaylist.contains('/')) {
+    if (ultimaPlaylist == '/Todas') {
+      newsongs = mscAudPl.actlist.songsAll;
+    } else {
+      newsongs =
+          mscAudPl.actlist.songsAll.where((item) {
+            final songFolders = ListPlaylist.getFolderName(
+              item.extras?['path'],
+            );
+
+            return songFolders == ultimaPlaylist;
+          }).toList();
+    }
+
+    mscAudPl.actlist.setSetList(
+      SetListType.atual,
+      SetList(title: ultimaPlaylist, subtitle: '', tag: ultimaPlaylist),
+    );
+  } else {
+    newsongs =
+        mscAudPl.actlist.songsAll
+            .where(
+              (item) => (item.artist ?? '').trim().contains(ultimaPlaylist),
+            )
+            .toList();
+    mscAudPl.actlist.setSetList(
+      SetListType.atual,
+      SetList(title: ultimaPlaylist, subtitle: '', tag: ultimaPlaylist),
+    );
+  }
+
+  await mscAudPl.recreateQueue(songs: newsongs);
+  await mscAudPl.skipToQueueItem(ultimaMusica);
 }

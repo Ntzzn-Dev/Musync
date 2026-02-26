@@ -129,7 +129,7 @@ Future<bool> showPopupAdd(
                       for (int i in matchingIndicesTitle) {
                         String value = values[i];
                         if (value.trim() !=
-                            (await DatabaseHelper().verifyPlaylistTitle(
+                            (await DatabaseHelper.instance.verifyPlaylistTitle(
                               value,
                             )).trim()) {
                           setState(() {

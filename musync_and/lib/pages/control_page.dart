@@ -9,6 +9,7 @@ import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/themes.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 
 class ControlPage extends StatefulWidget {
   final MusyncAudioHandler audioHandler;
@@ -25,12 +26,12 @@ class _ControlPageState extends State<ControlPage> {
     });
   }
 
-  bool swapBtns = false;
+  SwapBtns swapBtns = SwapBtns.playlist;
 
   @override
   void initState() {
     super.initState();
-    swapBtns = eko.conected.value ? true : false;
+    swapBtns = eko.conected.value ? SwapBtns.up : SwapBtns.playlist;
   }
 
   @override
@@ -41,61 +42,103 @@ class _ControlPageState extends State<ControlPage> {
   Widget buildExtraPlayerButtons(ExtraButtonTypes type) {
     switch (type) {
       case ExtraButtonTypes.nextBtn:
-        if (swapBtns) {
-          return buildButton(
-            Icon(Icons.favorite, size: 45),
-            () async {
-              await mscAudPl.skipPlaylist(true);
-              setState(() {});
-            },
-            2 / 2,
-            1,
-          );
-        } else {
-          return buildButton(
-            Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
-            () async {
-              await mscAudPl.skipPlaylist(true);
-              setState(() {});
-            },
-            2 / 2,
-            1,
-          );
+        switch (swapBtns) {
+          case SwapBtns.up:
+            return buildButton(
+              Icon(Icons.heart_broken, size: 45),
+              () async {
+                await mscAudPl.skipPlaylist(true);
+                setState(() {});
+              },
+              2 / 2,
+              1,
+            );
+          case SwapBtns.playlist:
+            return buildButton(
+              Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
+              () async {
+                await mscAudPl.skipPlaylist(true);
+                setState(() {});
+              },
+              2 / 2,
+              1,
+            );
+          case SwapBtns.checkpoint:
+            return ValueListenableBuilder<int>(
+              valueListenable: mscAudPl.currentIndex,
+              builder: (_, currentMusic, __) {
+                final isSelected = mscAudPl.checkpoint.isCheckpoint(
+                  currentMusic: currentMusic,
+                  currentSetList: mscAudPl.actlist.atualPlaylist.value.tag,
+                );
+
+                return buildButton(
+                  Icon(Icons.adjust, size: 45),
+                  () async {
+                    mscAudPl.checkpoint.setNewLast(
+                      idMusic: mscAudPl.currentIndex.value,
+                      idSetList: mscAudPl.actlist.atualPlaylist.value.tag,
+                    );
+                    setState(() {});
+                  },
+                  2 / 2,
+                  1,
+                  backgroundColor: isSelected ? baseAppColor : baseElementDark,
+                  foregroundColor: isSelected ? baseElementDark : baseAppColor,
+                );
+              },
+            );
         }
       case ExtraButtonTypes.prevBtn:
-        if (swapBtns) {
-          return buildButton(
-            Icon(Icons.track_changes_rounded, size: 45),
-            () async {
-              await mscAudPl.skipPlaylist(false);
-              setState(() {});
-            },
-            2 / 2,
-            1,
-          );
-        } else {
-          return buildButton(
-            Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
-            () async {
-              await mscAudPl.skipPlaylist(false);
-              setState(() {});
-            },
-            2 / 2,
-            1,
-          );
+        switch (swapBtns) {
+          case SwapBtns.up:
+            return buildButton(
+              Icon(Icons.favorite, size: 45),
+              () async {
+                await mscAudPl.skipPlaylist(false);
+                setState(() {});
+              },
+              2 / 2,
+              1,
+            );
+          case SwapBtns.playlist:
+            return buildButton(
+              Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),
+              () async {
+                await mscAudPl.skipPlaylist(false);
+                setState(() {});
+              },
+              2 / 2,
+              1,
+            );
+          case SwapBtns.checkpoint:
+            return buildButton(
+              Icon(Icons.track_changes_rounded, size: 45),
+              () async {
+                loadAnyPlaylist(
+                  ultimaPlaylist: mscAudPl.checkpoint.idSetList,
+                  ultimaMusica: mscAudPl.checkpoint.idMusic,
+                );
+                setState(() {});
+              },
+              2 / 2,
+              1,
+            );
         }
       case ExtraButtonTypes.modal:
         return buildButton(
           Icon(Icons.swap_horiz_rounded, size: 45),
           () async {
-            if (!eko.conected.value) {
-              setState(() {
-                swapBtns = !swapBtns;
-              });
-            } else {
-              showSnack('Indisponível enquanto conectado ao desktop', context);
-            }
-            //mscAudPl.returnToCheckpoint();
+            setState(() {
+              swapBtns = enumNext(swapBtns, SwapBtns.values);
+              if (eko.conected.value && swapBtns == SwapBtns.playlist) {
+                showSnack(
+                  'Indisponível enquanto conectado ao desktop',
+                  context,
+                );
+                swapBtns = enumNext(swapBtns, SwapBtns.values);
+              }
+            });
           },
           2 / 2,
           1,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/pages/control_page.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/helpers/download_helper.dart';
@@ -66,7 +66,7 @@ Future<bool> selectPlaylistMenu(
   BuildContext context,
   List<String> idsMscs,
 ) async {
-  List<Playlists> playlists = await DatabaseHelper().loadPlaylists(
+  List<Playlists> playlists = await DatabaseHelper.instance.loadPlaylists(
     idsMusic: idsMscs,
   );
 
@@ -112,13 +112,14 @@ Future<bool> selectPlaylistMenu(
                             ),
                           ],
                           onConfirm: (valores) async {
-                            DatabaseHelper().insertPlaylist(
+                            DatabaseHelper.instance.insertPlaylist(
                               valores[0],
                               valores[1],
                               1,
                             );
 
-                            playlists = await DatabaseHelper().loadPlaylists();
+                            playlists =
+                                await DatabaseHelper.instance.loadPlaylists();
                           },
                         );
                       },
@@ -140,12 +141,10 @@ Future<bool> selectPlaylistMenu(
                             onTap: () async {
                               for (String id in idsMscs) {
                                 if (playlist.haveMusic ?? false) {
-                                  await DatabaseHelper().removeFromPlaylist(
-                                    playlist.id,
-                                    id,
-                                  );
+                                  await DatabaseHelper.instance
+                                      .removeFromPlaylist(playlist.id, id);
                                 } else {
-                                  await DatabaseHelper().addToPlaylist(
+                                  await DatabaseHelper.instance.addToPlaylist(
                                     playlist.id,
                                     id,
                                   );
@@ -266,7 +265,7 @@ Widget searchMenu(
 
 Widget downloadVisualizerMenu({required void Function() onFinalize}) {
   return ValueListenableBuilder<int>(
-    valueListenable: DownloadSpecs().isDownloading,
+    valueListenable: DownloadSpecs.instance.isDownloading,
     builder: (context, value, child) {
       if (value == 1) {
         return ElevatedButton(
@@ -277,15 +276,18 @@ Widget downloadVisualizerMenu({required void Function() onFinalize}) {
               [
                 InfoItem(
                   info: 'Situação',
-                  value: DownloadSpecs().situacao.value.split('Situação: ')[1],
+                  value:
+                      DownloadSpecs.instance.situacao.value.split(
+                        'Situação: ',
+                      )[1],
                 ),
                 InfoItem(
                   info: 'Musica Atual',
-                  value: DownloadSpecs().titleAtual.value,
+                  value: DownloadSpecs.instance.titleAtual.value,
                 ),
                 InfoItem(
                   info: 'Artista Atual',
-                  value: DownloadSpecs().authorAtual.value,
+                  value: DownloadSpecs.instance.authorAtual.value,
                 ),
               ],
               InfoLabelSpecs(
@@ -327,7 +329,7 @@ Widget downloadVisualizerMenu({required void Function() onFinalize}) {
               message: 'Suas músicas foram baixadas com sucesso.',
               icon: Icons.music_note,
             );
-            DownloadSpecs().finish();
+            DownloadSpecs.instance.finish();
             onFinalize();
           },
           style: ButtonStyle(

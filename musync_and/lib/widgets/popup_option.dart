@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:musync_and/helpers/audio_player_helper.dart';
+import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/letreiro.dart';
 
 class OptionAction {
@@ -20,13 +22,15 @@ class OptionItem {
 
   bool get isSingle => actions.length == 1;
   bool get isDouble => actions.length == 2;
+  bool get isTriple => actions.length == 3;
 }
 
 Future<void> showPopupOptions(
   BuildContext context,
   String label,
-  List<OptionItem> options,
-) async {
+  List<OptionItem> options, {
+  int? indexMsc,
+}) async {
   await showDialog<void>(
     context: context,
     builder: (BuildContext context) {
@@ -49,84 +53,112 @@ Future<void> showPopupOptions(
                 children: List.generate(options.length, (index) {
                   final option = options[index];
 
-                  final IconData iconData = option.actions.first.icon;
-                  final String label = option.actions.first.label;
-
-                  IconData? iconData2;
-                  String? label2;
-
-                  if (option.isDouble) {
-                    iconData2 = option.actions[1].icon;
-                    label2 = option.actions[1].label;
-                  }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
-                      children: [
-                        Expanded(
+                      children: List.generate(option.actions.length, (
+                        actionIndex,
+                      ) {
+                        final action = option.actions[actionIndex];
+                        final isCheck = mscAudPl.checkpoint.isCheckpoint(
+                          currentMusic: indexMsc ?? -1,
+                          currentSetList: mscAudPl.actlist.viewingPlaylist.tag,
+                        );
+
+                        final isCheckAction = action.label == 'Check';
+
+                        return Expanded(
                           child: InkWell(
                             onTap: () {
-                              options[index].actions.first.funct.call();
+                              action.funct;
                             },
                             child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    iconData,
-                                    size: 18,
-                                    color:
-                                        Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium?.color,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Text(
-                                    label,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
                               ),
-                            ),
-                          ),
-                        ),
-                        if (options[index].isDouble) ...[
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                options[index].actions[1].funct.call();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      iconData2,
-                                      size: 18,
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    action.funct();
+                                    setState(() {});
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
                                       color:
-                                          Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium?.color,
+                                          isCheck && isCheckAction
+                                              ? baseAppColor
+                                              : null,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    const SizedBox(width: 16),
-                                    Text(
-                                      label2 ?? '',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0,
+                                        vertical: 16.0,
                                       ),
+                                      child:
+                                          !option.isTriple
+                                              ? Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    action.icon,
+                                                    size: 18,
+                                                    color:
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .titleMedium
+                                                            ?.color,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    action.label,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
+                                                  ),
+                                                ],
+                                              )
+                                              : Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    action.icon,
+                                                    size: 24,
+                                                    color:
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .titleMedium
+                                                            ?.color,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    action.label,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ],
+                        );
+                      }),
                     ),
                   );
                 }),

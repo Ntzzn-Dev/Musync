@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';

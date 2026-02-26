@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as mt;
 import 'package:collection/collection.dart';
-
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -14,26 +14,6 @@ import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum ModeShuffleEnum { shuffleOff, shuffleNormal, shuffleOptional }
-
-enum ModeOrderEnum { titleAZ, titleZA, dataAZ, dataZA, manual, up }
-
-enum ModeLoopEnum { off, all, one }
-
-T enumNext<T extends Enum>(T value, List<T> values) {
-  final limit = values.length;
-  final nextIndex = (value.index + 1) % limit;
-  return values[nextIndex];
-}
-
-T enumFromInt<T extends Enum>(int i, List<T> values) {
-  return values[i - 1];
-}
-
-int enumToInt<T extends Enum>(T value) {
-  return value.index + 1;
-}
-
 class MusyncAudioHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
@@ -41,7 +21,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   final _equality = const DeepCollectionEquality();
 
   final actlist = ActionList();
-  static LastList checkpoint = LastList.initEmpty();
+  LastList checkpoint = LastList.initEmpty();
 
   late List<Playlists> playlists;
 
@@ -136,7 +116,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   void upAtualMedia() async {
     MediaItem song = actlist.getMusicAtual(currentIndex.value);
-    await DatabaseHelper().upInPlaylist(
+    await DatabaseHelper.instance.upInPlaylist(
       actlist.atualPlaylist.value.title,
       song.id,
       song.title,
@@ -152,7 +132,7 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> searchPlaylists() async {
-    playlists = await DatabaseHelper().loadPlaylists();
+    playlists = await DatabaseHelper.instance.loadPlaylists();
 
     if (!playlists.any((pl) => pl.title == actlist.mainPlaylist.title)) {
       int id = int.tryParse(actlist.mainPlaylist.tag) ?? 0;
@@ -234,7 +214,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Future<void> setCurrentTrack({int? index}) async {
-    log('id = $index');
     if (index != null) {
       saveInd(index);
     } else {
@@ -243,25 +222,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     if (actlist.queueIsEmpty()) return;
     currentIndex.value = index;
     final item = actlist.queueList[index];
-    //logTop30(queueList: actlist.queueList);
     item.execute();
-  }
-
-  void logTop30({required List queueList}) {
-    log('================ QUEUE LIST (TOP 30) ================');
-    log('================  ================');
-    log('================================');
-
-    for (int i = 0; i < queueList.length && i < 30; i++) {
-      var item;
-      if (queueList[i] is MusicItem)
-        item = (queueList[i] as MusicItem).mediaItem;
-      else
-        item = queueList[i] as MediaItem;
-      log('[QL][$i] | ${item.title}');
-    }
-
-    log('========================================================');
   }
 
   bool _executando = false;

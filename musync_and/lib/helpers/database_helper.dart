@@ -1,13 +1,16 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
+  DatabaseHelper._internal();
+  static final DatabaseHelper instance = DatabaseHelper._internal();
+
   static Database? _database;
 
   Future<Database> get database async {
@@ -336,18 +339,28 @@ class DatabaseHelper {
   }
 
   Future<void> unupInPlaylist(String idplaylist) async {
-    log(idplaylist);
     final db = await database;
-    await db.delete(
-      'up_musics',
-      where: 'id_playlist = ?',
-      whereArgs: [idplaylist],
-    );
+
+    await db.transaction((txn) async {
+      await txn.delete(
+        'up_musics',
+        where: 'id_playlist = ?',
+        whereArgs: [idplaylist],
+      );
+      await txn.delete(
+        'desup_musics',
+        where: 'id_playlist = ?',
+        whereArgs: [idplaylist],
+      );
+    });
   }
 
   Future<void> unupInAllPlaylists() async {
     final db = await database;
-    await db.delete('up_musics');
+    await db.transaction((txn) async {
+      await txn.delete('up_musics');
+      await txn.delete('desup_musics');
+    });
   }
 
   Future<List<String>> loadUpMusics(String idplaylist) async {
@@ -392,21 +405,6 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> undesupInPlaylist(String idplaylist) async {
-    log(idplaylist);
-    final db = await database;
-    await db.delete(
-      'desup_musics',
-      where: 'id_playlist = ?',
-      whereArgs: [idplaylist],
-    );
-  }
-
-  Future<void> undesupInAllPlaylists() async {
-    final db = await database;
-    await db.delete('desup_musics');
-  }
-
   Future<List<String>> loadDesupMusics(String idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
@@ -426,10 +424,8 @@ class DatabaseHelper {
     List<MediaItem> setList,
   ) async {
     log(idPlAtual);
-    List<String> ordemDasUps = await DatabaseHelper().loadUpMusics(idPlAtual);
-    List<String> ordemDasDesups = await DatabaseHelper().loadDesupMusics(
-      idPlAtual,
-    );
+    List<String> ordemDasUps = await instance.loadUpMusics(idPlAtual);
+    List<String> ordemDasDesups = await instance.loadDesupMusics(idPlAtual);
 
     final mapById = {for (var item in setList) item.id: item};
 

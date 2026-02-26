@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/pages/playlist_page.dart';
 import 'package:musync_and/services/actionlist.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
@@ -20,6 +19,7 @@ import 'package:musync_and/widgets/vertical_popup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:diacritic/diacritic.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 
 class MusicPage extends StatefulWidget {
   const MusicPage({super.key});
@@ -53,14 +53,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
       });
     });
     _initFetchSongs();
-    funcSuperiores.value = [
-      ElevatedButton(
-        onPressed: () {
-          _loadLastPlaylist();
-        },
-        child: Icon(Icons.play_arrow_rounded),
-      ),
-    ];
+    funcSuperiores.value = [lastOrCheck()];
 
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -106,7 +99,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     await mscAudPl.searchPlaylists();
     int idpl = int.tryParse(mscAudPl.actlist.mainPlaylist.tag) ?? -1;
     if (idpl != -1) {
-      final pl = await DatabaseHelper().loadPlaylist(idpl);
+      final pl = await DatabaseHelper.instance.loadPlaylist(idpl);
       if (pl != null) {
         final newsongs = await pl.findMusics();
         if (newsongs.isNotEmpty) {
@@ -177,65 +170,39 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _loadCheckpoint() async {
+    loadAnyPlaylist(
+      ultimaMusica: mscAudPl.checkpoint.idMusic,
+      ultimaPlaylist: mscAudPl.checkpoint.idSetList,
+    );
+  }
+
   Future<void> _loadLastPlaylist() async {
     final prefs = await SharedPreferences.getInstance();
     final ultimaPlaylist = prefs.getString('pl_last');
-    final ultimaMusica = prefs.getInt('msc_last');
+    final ultimaMusica = prefs.getInt('msc_last') ?? 0;
 
     if (ultimaPlaylist == null) return;
 
-    MusyncAudioHandler.checkpoint = LastList(
-      idMusic: ultimaMusica ?? 0,
+    mscAudPl.checkpoint.setNewLast(
+      idMusic: ultimaMusica,
       idSetList: ultimaPlaylist,
     );
 
-    funcSuperiores.value = [
-      ElevatedButton(
-        onPressed: () {
-          _loadLastPlaylist(); //ADD FUNC
-        },
-        child: Icon(Icons.track_changes_rounded),
+    funcSuperiores.value = [lastOrCheck()];
+
+    loadAnyPlaylist(ultimaMusica: ultimaMusica, ultimaPlaylist: ultimaPlaylist);
+  }
+
+  Widget lastOrCheck() {
+    final empty = mscAudPl.checkpoint.isEmpty;
+
+    return ElevatedButton(
+      onPressed: empty ? _loadLastPlaylist : _loadCheckpoint,
+      child: Icon(
+        empty ? Icons.play_arrow_outlined : Icons.track_changes_outlined,
       ),
-    ];
-
-    List<MediaItem> newsongs = [];
-
-    final id = int.tryParse(ultimaPlaylist);
-
-    if (id != null) {
-      final pl = await DatabaseHelper().loadPlaylist(id);
-      newsongs = await pl?.findMusics() ?? [];
-
-      mscAudPl.actlist.setSetList(
-        SetListType.atual,
-        SetList(
-          title: pl?.title ?? ultimaPlaylist,
-          subtitle: pl?.subtitle ?? '',
-          tag: (pl?.id ?? ultimaPlaylist).toString(),
-        ),
-      );
-    } else if (ultimaPlaylist == 'Todas') {
-      newsongs = mscAudPl.actlist.songsAll;
-
-      mscAudPl.actlist.setSetList(
-        SetListType.atual,
-        mscAudPl.actlist.viewingPlaylist,
-      );
-    } else {
-      newsongs =
-          mscAudPl.actlist.songsAll
-              .where(
-                (item) => (item.artist ?? '').trim().contains(ultimaPlaylist),
-              )
-              .toList();
-      mscAudPl.actlist.setSetList(
-        SetListType.atual,
-        SetList(title: ultimaPlaylist, subtitle: '', tag: ultimaPlaylist),
-      );
-    }
-
-    await mscAudPl.recreateQueue(songs: newsongs);
-    await mscAudPl.skipToQueueItem(ultimaMusica ?? 0);
+    );
   }
 
   Widget pageSelect(int pageIndex) {
@@ -261,14 +228,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           },
         );
       case 1:
-        funcSuperiores.value = [
-          ElevatedButton(
-            onPressed: () {
-              _loadLastPlaylist();
-            },
-            child: Icon(Icons.play_arrow_rounded),
-          ),
-        ];
+        funcSuperiores.value = [lastOrCheck()];
         return ListPlaylist(
           searchController: _searchController,
           escolhaDePlaylist: (pl) async {
@@ -338,7 +298,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     List<MediaItem> songsPl = [...songs];
     Playlists? pl;
     if (idPl != null) {
-      pl = await DatabaseHelper().loadPlaylist(idPl);
+      pl = await DatabaseHelper.instance.loadPlaylist(idPl);
     }
 
     Navigator.push(
@@ -373,14 +333,18 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
                 }
                 break;
               case 'upall':
-                upAll(context, idsMscs, action: DatabaseHelper().upInPlaylist);
+                upAll(
+                  context,
+                  idsMscs,
+                  action: DatabaseHelper.instance.upInPlaylist,
+                );
                 completer.complete(true);
                 break;
               case 'desupall':
                 upAll(
                   context,
                   idsMscs,
-                  action: DatabaseHelper().desupInPlaylist,
+                  action: DatabaseHelper.instance.desupInPlaylist,
                 );
                 completer.complete(true);
                 break;
@@ -472,14 +436,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
         ),
       ];
     } else {
-      funcSuperiores.value = [
-        ElevatedButton(
-          onPressed: () {
-            _loadLastPlaylist();
-          },
-          child: Icon(Icons.play_arrow_rounded),
-        ),
-      ];
+      funcSuperiores.value = [lastOrCheck()];
     }
     return completer.future;
   }

@@ -4,8 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:musync_and/services/actionlist.dart';
-import 'package:musync_and/services/audio_player.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -98,8 +97,15 @@ class _ListContentState extends State<ListContent> {
               await handlePlaylistAction(
                 itemId: item.id,
                 itemTitle: item.title,
-                action: DatabaseHelper().upInPlaylist,
+                action: DatabaseHelper.instance.upInPlaylist,
               );
+            },
+          ),
+          OptionAction(
+            label: 'Check',
+            icon: Icons.adjust,
+            funct: () async {
+              await handleCheckPointAction(itemId: mutableSongs.indexOf(item));
             },
           ),
           OptionAction(
@@ -109,9 +115,18 @@ class _ListContentState extends State<ListContent> {
               await handlePlaylistAction(
                 itemId: item.id,
                 itemTitle: item.title,
-                action: DatabaseHelper().desupInPlaylist,
+                action: DatabaseHelper.instance.desupInPlaylist,
               );
             },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Informações',
+            icon: Icons.info_outline,
+            funct: () => showSpec(item),
           ),
         ],
       ),
@@ -228,16 +243,14 @@ class _ListContentState extends State<ListContent> {
           ),
         ],
       ),
-      OptionItem(
-        actions: [
-          OptionAction(
-            label: 'Informações',
-            icon: Icons.info_outline,
-            funct: () => showSpec(item),
-          ),
-        ],
-      ),
     ];
+  }
+
+  Future<void> handleCheckPointAction({required int itemId}) async {
+    mscAudPl.checkpoint.setNewLast(
+      idMusic: itemId,
+      idSetList: mscAudPl.actlist.viewingPlaylist.tag,
+    );
   }
 
   Future<void> handlePlaylistAction({
@@ -259,26 +272,6 @@ class _ListContentState extends State<ListContent> {
       mutableSongs = mscAudPl.actlist.getMediaItemsFromQueue();
       mscAudPl.reorganizeQueue(songs: mutableSongs);
     });
-  }
-
-  void logTop30({
-    required List<MediaItem> mutableSongs,
-    required List queueList,
-  }) {
-    log('================ MUTABLE SONGS (TOP 30) ================');
-
-    for (int i = 0; i < mutableSongs.length && i < 30; i++) {
-      log('[MS][$i] | ${mutableSongs[i].title}');
-    }
-
-    log('================ QUEUE LIST (TOP 30) ================');
-
-    for (int i = 0; i < queueList.length && i < 30; i++) {
-      final item = queueList[i] as MusicItem;
-      log('[QL][$i] | ${item.mediaItem.title}');
-    }
-
-    log('========================================================');
   }
 
   void showSpec(MediaItem item) {
@@ -400,9 +393,12 @@ class _ListContentState extends State<ListContent> {
 
       int id = int.tryParse(widget.idPlaylist.toString()) ?? 0;
 
-      await DatabaseHelper().updatePlaylist(id, orderMode: enumToInt(mode));
+      await DatabaseHelper.instance.updatePlaylist(
+        id,
+        orderMode: enumToInt(mode),
+      );
 
-      await DatabaseHelper().updateOrderMusics(mutableSongs, id);
+      await DatabaseHelper.instance.updateOrderMusics(mutableSongs, id);
 
       mscAudPl.reorganizeQueue(songs: mutableSongs);
     }
@@ -619,6 +615,7 @@ class _ListContentState extends State<ListContent> {
                                           context,
                                           item.title,
                                           moreOptions(context, item),
+                                          indexMsc: index,
                                         );
                                       },
                                     ),

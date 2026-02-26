@@ -412,6 +412,19 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Adição de up/desup na seleção de musicas.  
 - Correção de reordem nas playlists.  
   
+### version 5.15.4  
+- Junção do desup aos dois botões de deletar todos os ups nas configurações.  
+- Adição de mais um modo no SuperControl.
+  - Botão de marcar como chekpoint.  
+  - Botão de Voltar ao checkpoint.  
+  - Botão de Up.  
+  - Botão de Desup.  
+  - Botão de proxima playlist.  
+  - Botão de playlist anterior.  
+- Modificação no menu das músicas para aceitar o botão de checkpoint.  
+- Botão interativo de Checkpoint na lista.  
+- Mudança de declaração de classe helper.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 
