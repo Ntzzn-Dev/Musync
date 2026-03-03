@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'themes.dart';
 import 'services/audio_player.dart';
 import 'package:intl/date_symbol_data_local.dart';
-//import 'services/databasehelper.dart';
+//import 'package:musync_and/helpers/database_helper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +35,7 @@ Future<void> main() async {
   );
 
   await initializeDateFormatting('pt_BR', null);
-  //await DatabaseHelper().deleteDatabaseFile();
+  //await DatabaseHelper.instance.deleteDatabaseFile();
   runApp(MyApp());
 }
 

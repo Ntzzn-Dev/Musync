@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/pages/playlist_page.dart';
@@ -165,6 +166,14 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
       modeAtual,
       mscAudPl.actlist.songsAllPlaylist,
     );
+
+    if (identical(
+      mscAudPl.actlist.atualPlaylist.value.tag,
+      mscAudPl.actlist.viewingPlaylist.tag,
+    )) {
+      mscAudPl.reorganizeQueue(songs: mscAudPl.actlist.songsAllPlaylist);
+    }
+
     setState(() {
       songsNow = mscAudPl.actlist.songsAllPlaylist;
     });
@@ -212,19 +221,37 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           songsNow: songsNow,
           modeReorder: modeAtual,
           idPlaylist: mscAudPl.actlist.mainPlaylist.tag.toString(),
-          aposClique: (item) async {
-            await mscAudPl.recreateQueue(
-              songs: mscAudPl.actlist.songsAllPlaylist,
+          onClick: (item) async {
+            List<MediaItem> songsNowReordered = await reorderMusics(
+              modeAtual,
+              songsNow,
             );
+
+            log('CLICOU AQUI HEIN');
+            log('---------========================================------');
+            for (final song in songsNowReordered) {
+              log('- ${song.title}');
+            }
+            log('---------========================================------');
+
+            await mscAudPl.recreateQueue(songs: songsNowReordered);
             mscAudPl.savePl(mscAudPl.actlist.mainPlaylist);
-            int indiceCerto = mscAudPl.actlist.songsAllPlaylist.indexWhere(
-              (t) => t == item,
-            );
+            int indiceCerto = songsNowReordered.indexWhere((t) => t == item);
+
+            log('chamado');
 
             await mscAudPl.skipToQueueItem(indiceCerto);
           },
-          selecaoDeMusicas: (indexMsc) async {
+          onSelectMsc: (indexMsc) async {
             return await moreOptionsSelected(indexMsc);
+          },
+          onModeChanged: (novoModo) {
+            setState(() {
+              modeAtual = novoModo;
+            });
+          },
+          onCheckedPoint: () {
+            funcSuperiores.value = [lastOrCheck()];
           },
         );
       case 1:

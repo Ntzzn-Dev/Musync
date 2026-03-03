@@ -11,7 +11,6 @@ class Playlists {
   int id;
   String title;
   String subtitle;
-  int ordem;
   int orderMode;
   bool? haveMusic;
 
@@ -19,7 +18,6 @@ class Playlists {
     required this.id,
     required this.title,
     required this.subtitle,
-    required this.ordem,
     required this.orderMode,
     this.haveMusic,
   });
@@ -28,7 +26,6 @@ class Playlists {
     int? id,
     String? title,
     String? subtitle,
-    int? ordem,
     int? orderMode,
     bool? haveMusic,
   }) {
@@ -36,7 +33,6 @@ class Playlists {
       id: id ?? this.id,
       title: title ?? this.title,
       subtitle: subtitle ?? this.subtitle,
-      ordem: ordem ?? this.ordem,
       orderMode: orderMode ?? this.orderMode,
       haveMusic: haveMusic ?? this.haveMusic,
     );
@@ -47,7 +43,6 @@ class Playlists {
       id: map['id'],
       title: map['title'],
       subtitle: map['subtitle'],
-      ordem: map['ordem'],
       orderMode: map['order_mode'],
     );
   }

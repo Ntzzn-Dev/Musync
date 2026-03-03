@@ -66,7 +66,7 @@ Future<bool> selectPlaylistMenu(
   BuildContext context,
   List<String> idsMscs,
 ) async {
-  List<Playlists> playlists = await DatabaseHelper.instance.loadPlaylists(
+  List<Playlists> playlists = await DatabaseHelper.instance.searchPlaylists(
     idsMusic: idsMscs,
   );
 
@@ -115,11 +115,10 @@ Future<bool> selectPlaylistMenu(
                             DatabaseHelper.instance.insertPlaylist(
                               valores[0],
                               valores[1],
-                              1,
                             );
 
                             playlists =
-                                await DatabaseHelper.instance.loadPlaylists();
+                                await DatabaseHelper.instance.searchPlaylists();
                           },
                         );
                       },
@@ -403,7 +402,9 @@ List<Widget> routesMenu({
             builder: (context) => SettingsPage(),
             settings: RouteSettings(name: 'settings'),
           ),
-        );
+        ).then((_) {
+          onSwitchMode(modeAtual);
+        });
       },
     ),
     MenuItemButton(

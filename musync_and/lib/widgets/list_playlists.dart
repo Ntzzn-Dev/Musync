@@ -94,7 +94,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
   }
 
   void carregarPlaylists() async {
-    final playlists = await DatabaseHelper.instance.loadPlaylists();
+    final playlists = await DatabaseHelper.instance.searchPlaylists();
     final allSongs = mscAudPl.actlist.songsAll;
 
     List<List<String>> artists = [];
@@ -212,7 +212,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
                     subtitle: valores[1],
                   );
 
-                  plsBase = await DatabaseHelper.instance.loadPlaylists();
+                  plsBase = await DatabaseHelper.instance.searchPlaylists();
                   pls = plsBase;
 
                   setState(() {});
@@ -235,7 +235,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
               if (await showPopupAdd(context, 'Deletar playlist?', [])) {
                 await DatabaseHelper.instance.removePlaylist(item.id);
 
-                pls = await DatabaseHelper.instance.loadPlaylists();
+                pls = await DatabaseHelper.instance.searchPlaylists();
 
                 setState(() {});
 
@@ -262,11 +262,7 @@ class _ListPlaylistState extends State<ListPlaylist> {
                 ContentItem(value: 'Subtitulo', type: ContentTypeEnum.text),
               ],
               onConfirm: (valores) async {
-                DatabaseHelper.instance.insertPlaylist(
-                  valores[0],
-                  valores[1],
-                  1,
-                );
+                DatabaseHelper.instance.insertPlaylist(valores[0], valores[1]);
 
                 mscAudPl.searchPlaylists();
                 carregarPlaylists();

@@ -425,14 +425,19 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Botão interativo de Checkpoint na lista.  
 - Mudança de declaração de classe helper.  
 
+### version 5.16  
+- Otimização do banco de dados, para melhor consistência.  
+- Reorganização efetiva caso escutando a playlist, mas reorganização visual, caso esteja ouvindo outra.  
+- Correção para verificação do indice atual na lista, tornou-se mais rigido.  
+- Atualização externa de modo alterado ao upar uma música na lista.  
+- Botão de up na notificação habilitado e operante.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 
 + Corrigir indices não recebidos quando o item ainda for clicado manualmente no android. Verificar se não foi clicado no botão de next com o shuffle ativo, e mostrar mensagem na tela dizendo que o indice ainda não foi enviado para o desktop, alem de retornar a musica anterior. [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
 + Corrigir separação de indices não recebidos enviados pelo desktop para o android na segunda metade [O erro ocorre no android side, função SendMediaIndexShuffleOutOfLimits].  
-+ Criar checkpoint para reiniciar músicas.  
 + Atualizar o README para explicar novas adições.  
 + Criar formato de fila dinamica, para guardar musicas, organização, tipo de reprodução de stack [aleatorio/repetir], agrupamento de musicas iguais / semelhantes [slowed/spedup] TO v6.0.   
-+ Criar notificador para quando uma música for upada.  
 + Corrigir inicio de musica ao recriar lista no desktop.  
 + Dividir lista de ids de musicas ja baixadas no desktop para não ocupar toda a memoria do socket.  

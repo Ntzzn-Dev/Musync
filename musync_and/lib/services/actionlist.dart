@@ -15,7 +15,8 @@ class ActionList {
   ValueNotifier<SetList> atualPlaylist = ValueNotifier(SetList());
 
   bool queueIsEmpty() {
-    return queueList.isEmpty;
+    final List<MusicItem> songs = queueList.whereType<MusicItem>().toList();
+    return songs.isEmpty;
   }
 
   int getLengthActionsListAtual() {

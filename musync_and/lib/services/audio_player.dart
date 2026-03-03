@@ -58,15 +58,27 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  MediaControl get upButton {
+  Future<MediaControl> getUpButton() async {
+    bool lastUped = false;
+
+    if (!actlist.queueIsEmpty()) {
+      final song = actlist.getMusicAtual(currentIndex.value);
+
+      lastUped = await DatabaseHelper.instance.isLastUped(
+        idMsc: song.id,
+        idPlaylist: actlist.atualPlaylist.value.tag,
+      );
+    }
+
     return MediaControl.custom(
-      androidIcon: 'drawable/ic_random_off', //MUDAR ICON
+      androidIcon:
+          lastUped ? 'drawable/ic_up_pressed' : 'drawable/ic_up_default',
       label: 'Upar',
       name: 'up',
     );
   }
 
-  void _broadcastState([PlaybackEvent? event]) {
+  void _broadcastState([PlaybackEvent? event]) async {
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
@@ -74,7 +86,7 @@ class MusyncAudioHandler extends BaseAudioHandler
           MediaControl.skipToPrevious,
           if (audPl.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
-          upButton,
+          await getUpButton(),
         ],
         systemActions: const {
           MediaAction.seek,
@@ -107,7 +119,6 @@ class MusyncAudioHandler extends BaseAudioHandler
         break;
       case 'up':
         upAtualMedia();
-        _broadcastState();
         break;
       default:
         log('Ação customizada desconhecida: $name');
@@ -115,24 +126,17 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   void upAtualMedia() async {
+    final tag = mscAudPl.actlist.atualPlaylist.value.tag;
+
     MediaItem song = actlist.getMusicAtual(currentIndex.value);
-    await DatabaseHelper.instance.upInPlaylist(
-      actlist.atualPlaylist.value.title,
-      song.id,
-      song.title,
-    );
 
-    actlist.songsAllPlaylist = await reorderMusics(
-      ModeOrderEnum.up,
-      actlist.getMediaItemsFromQueue(),
-    );
-    actlist.setMusicListAtual(actlist.songsAllPlaylist);
+    await DatabaseHelper.instance.upInPlaylist(tag, song.id, song.title);
 
-    setCurrentTrack(index: 0);
+    _broadcastState();
   }
 
   Future<void> searchPlaylists() async {
-    playlists = await DatabaseHelper.instance.loadPlaylists();
+    playlists = await DatabaseHelper.instance.searchPlaylists();
 
     if (!playlists.any((pl) => pl.title == actlist.mainPlaylist.title)) {
       int id = int.tryParse(actlist.mainPlaylist.tag) ?? 0;
@@ -143,7 +147,6 @@ class MusyncAudioHandler extends BaseAudioHandler
           id: id,
           title: actlist.mainPlaylist.title,
           subtitle: actlist.mainPlaylist.subtitle,
-          ordem: 0,
           orderMode: 0,
         ),
       );
@@ -158,7 +161,6 @@ class MusyncAudioHandler extends BaseAudioHandler
           id: id,
           title: actlist.atualPlaylist.value.title,
           subtitle: actlist.atualPlaylist.value.subtitle,
-          ordem: 0,
           orderMode: 0,
         ),
       );
@@ -170,10 +172,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     prefs.setString('pl_last', setList.tag);
 
     actlist.setSetList(SetListType.atual, setList);
-  }
-
-  void returnToCheckpoint() {
-    log("has retornado al checkpoint");
   }
 
   Future<void> skipPlaylist(bool next) async {
@@ -267,7 +265,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
     final currentQueue = queue.value;
     final currentSetListQueue = actlist.getMediaItemsFromQueue();
-    log('recreateChamado()');
     if (_equality.equals(
           songs.map((e) => e.id).toList(),
           currentQueue.map((e) => e.id).toList(),
@@ -280,15 +277,16 @@ class MusyncAudioHandler extends BaseAudioHandler
       return false;
     }
 
-    //logTop30(queueList: songs);
+    log('Carregou errado');
+    log('---------------');
+    for (final song in songs) {
+      log('- ${song.title}');
+    }
 
     final idAtual =
         (actlist.queueList[currentIndex.value] as MusicItem).mediaItem.id;
 
-    actlist.setMusicListAtual(
-      songs,
-    ); // - ISSO NAO PERMITE A ORDEM FUNCIONAR NAS PLAYLISTS
-    //USAR O SETMUSICLISTATUAL AO REORDENAR AS PLAYLISTS
+    actlist.setMusicListAtual(songs);
 
     if (eko.conected.value) {
       eko.sendMessage({'action': 'request_data', 'data': ''});
@@ -304,7 +302,6 @@ class MusyncAudioHandler extends BaseAudioHandler
       queue.add(songs);
 
       if (shuffleMode.value != ModeShuffleEnum.shuffleOff) {
-        log('recriar shuffle ${played.length} - ${unplayed.length}');
         reshuffle();
       }
     }
@@ -317,7 +314,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     );
 
     actlist.setMusicListAtual(songs);
-    //logTop30(queueList: songs);
 
     currentIndex.value = songs.indexOf(songAtual);
 

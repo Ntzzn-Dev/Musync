@@ -79,12 +79,19 @@ class _PlaylistPageState extends State<PlaylistPage> {
     toDown.value = !toDown.value;
   }
 
-  void reorderPlaylist(ModeOrderEnum mode) async {
-    final novaLista = await reorderMusics(mode, songsNowTranslated);
+  void switchOrderPlaylist(ModeOrderEnum mode) async {
+    final newOrder = await reorderMusics(mode, songsNowTranslated);
+
+    if (identical(
+      mscAudPl.actlist.atualPlaylist.value.tag,
+      mscAudPl.actlist.viewingPlaylist.tag,
+    )) {
+      mscAudPl.reorganizeQueue(songs: newOrder);
+    }
 
     setState(() {
       modeAtual = mode;
-      songsPlaylist = novaLista;
+      songsPlaylist = newOrder;
     });
 
     if (widget.pl != null) {
@@ -214,7 +221,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
             menuChildren: reorderMenu(
               modeAtual: modeAtual,
               context: context,
-              onChange: reorderPlaylist,
+              onChange: switchOrderPlaylist,
             ),
           ),
         ],
@@ -257,16 +264,14 @@ class _PlaylistPageState extends State<PlaylistPage> {
                       mscAudPl.actlist.mainPlaylist.tag,
                   withReorder: true,
                   showSlices: false,
-                  aposClique: (item) async {
+                  onClick: (item) async {
                     List<MediaItem> songsNowReordered = await reorderMusics(
                       modeAtual,
                       songsNowTranslated,
                     );
-
                     bool recriou = await mscAudPl.recreateQueue(
                       songs: songsNowReordered,
                     );
-
                     mscAudPl.savePl(
                       SetList(
                         title: widget.pl?.title ?? widget.plTitle,
@@ -282,8 +287,13 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     }
                     await mscAudPl.skipToQueueItem(indiceCerto);
                   },
-                  selecaoDeMusicas: (indexMsc) async {
+                  onSelectMsc: (indexMsc) async {
                     return await moreOptionsSelected(indexMsc);
+                  },
+                  onModeChanged: (novoModo) {
+                    setState(() {
+                      modeAtual = novoModo;
+                    });
                   },
                 ),
               ),

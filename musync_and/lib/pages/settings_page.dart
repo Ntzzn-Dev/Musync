@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,8 +40,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final modoEnergia = prefs.getInt('modo_energia') ?? modoDeEnergia;
 
     modeBattery.value = List.generate(3, (index) => index == modoEnergia);
-    log(modeBattery.value[modoEnergia].toString() + 'ligado ou des');
-    log(modoEnergia.toString());
 
     _playlistDefault.text = plDefault;
     _dirDownload.text = dirDownload;

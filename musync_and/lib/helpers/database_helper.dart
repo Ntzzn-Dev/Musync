@@ -65,45 +65,49 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            subtitle TEXT,
-            ordem INTEGER,
-            order_mode INTEGER
-          )
-        ''');
+        await db.transaction((txn) async {
+          await txn.execute('''
+            CREATE TABLE playlists (
+              id INTEGER NOT NULL,
+              title TEXT NOT NULL,
+              subtitle TEXT,
+              order_mode INTEGER NOT NULL DEFAULT 4,
+              CONSTRAINT pk_playlists PRIMARY KEY (id),
+              CONSTRAINT uk_playlists_title UNIQUE (title) 
+            );
+          ''');
 
-        await db.execute('''
-          CREATE TABLE playlists_musics (
-            id_playlist INTEGER,
-            id_music TEXT,
-            ordem INTEGER,
-            FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE,
-            PRIMARY KEY (id_playlist, id_music)
-          )
-        ''');
+          await txn.execute('''
+            CREATE TABLE playlists_musics (
+              id_playlist INTEGER NOT NULL,
+              id_music TEXT NOT NULL,
+              ordem INTEGER,
+              CONSTRAINT pk_playlists_musics PRIMARY KEY (id_playlist, id_music),
+              CONSTRAINT ck_playlists_musics CHECK (ordem >= 0 AND ordem <= 4),
+              CONSTRAINT fk_playlists_musics_id_playlist FOREIGN KEY (id_playlist) REFERENCES playlists(id) ON DELETE CASCADE
+            );
+          ''');
 
-        await db.execute('''
-          CREATE TABLE up_musics (
-            id_playlist TEXT,
-            id_music TEXT,
-            added_at INTEGER,
-            title TEXT,
-            PRIMARY KEY (id_playlist, id_music)
-          )
-        ''');
+          await txn.execute('''
+            CREATE TABLE up_musics (
+              id_playlist TEXT NOT NULL,
+              id_music TEXT NOT NULL,
+              added_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+              title TEXT,
+              CONSTRAINT pk_up_musics PRIMARY KEY (id_playlist, id_music)
+            );
+          ''');
 
-        await db.execute('''
-          CREATE TABLE desup_musics (
-            id_playlist TEXT,
-            id_music TEXT,
-            added_at INTEGER,
-            title TEXT,
-            PRIMARY KEY (id_playlist, id_music)
-          )
-        ''');
+          await txn.execute('''
+            CREATE TABLE desup_musics (
+              id_playlist TEXT NOT NULL,
+              id_music TEXT NOT NULL,
+              added_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000),
+              title TEXT,
+              CONSTRAINT pk_up_musics PRIMARY KEY (id_playlist, id_music)
+            );
+          ''');
+        });
       },
     );
   }
@@ -115,14 +119,12 @@ class DatabaseHelper {
   }
 
   /* PLAYLISTS */
-  Future<int> insertPlaylist(String title, String subtitle, int ordem) async {
+  Future<int> insertPlaylist(String title, String subtitle) async {
     final db = await database;
 
     final id = await db.insert('playlists', {
       'title': title,
       'subtitle': subtitle,
-      'ordem': ordem,
-      'order_mode': 4,
     });
     return id;
   }
@@ -136,7 +138,6 @@ class DatabaseHelper {
     int id, {
     String? title,
     String? subtitle,
-    int? ordem,
     int? orderMode,
   }) async {
     final db = await database;
@@ -145,7 +146,6 @@ class DatabaseHelper {
 
     if (title != null) sql['title'] = title;
     if (subtitle != null) sql['subtitle'] = subtitle;
-    if (ordem != null) sql['ordem'] = ordem;
     if (orderMode != null) sql['order_mode'] = orderMode;
 
     await db.update('playlists', sql, where: 'id = ?', whereArgs: [id]);
@@ -174,14 +174,13 @@ class DatabaseHelper {
     playlistUpdateNotifier.notifyPlaylistChanged();
   }
 
-  Future<List<Playlists>> loadPlaylists({
+  Future<List<Playlists>> searchPlaylists({
     String? idMusic,
     List<String>? idsMusic,
   }) async {
     final db = await database;
     final List<Map<String, dynamic>> playlistsFromDB = await db.query(
       'playlists',
-      orderBy: 'ordem ASC',
     );
 
     if (idMusic == null && idsMusic == null) {
@@ -206,7 +205,6 @@ class DatabaseHelper {
             id: idPlaylist,
             title: playlist['title'],
             subtitle: playlist['subtitle'],
-            ordem: playlist['ordem'],
             orderMode: playlist['order_mode'],
             haveMusic: hasMusic,
           );
@@ -230,7 +228,6 @@ class DatabaseHelper {
           id: idPlaylist,
           title: playlist['title'],
           subtitle: playlist['subtitle'],
-          ordem: playlist['ordem'],
           orderMode: playlist['order_mode'],
           haveMusic: hasMusic,
         );
@@ -255,31 +252,38 @@ class DatabaseHelper {
 
   Future<String> verifyPlaylistTitle(String baseTitle) async {
     final db = await database;
-    String title = baseTitle.trim();
+    final trimmed = baseTitle.trim();
+
+    final result = await db.query(
+      'playlists',
+      columns: ['title'],
+      where: 'title LIKE ?',
+      whereArgs: ['$trimmed%'],
+    );
+
+    if (result.isEmpty) return trimmed;
+
+    final existingTitles = result.map((e) => e['title'] as String).toSet();
+
+    if (!existingTitles.contains(trimmed)) {
+      return trimmed;
+    }
+
     int counter = 1;
-
-    while (true) {
-      final result = await db.query(
-        'playlists',
-        where: 'title = ?',
-        whereArgs: [title],
-      );
-
-      if (result.isEmpty) {
-        break;
-      }
-
-      title = '${baseTitle.trim()} ($counter)';
+    while (existingTitles.contains('$trimmed ($counter)')) {
       counter++;
     }
 
-    return title;
+    return '$trimmed ($counter)';
   }
+
+  /* PLAYLISTS_MUSICS */
 
   Future<List<String>> loadPlaylistMusics(int idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
       'playlists_musics',
+      columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
       orderBy: 'ordem ASC',
@@ -293,8 +297,6 @@ class DatabaseHelper {
   Future<void> updateOrderMusics(List<MediaItem> songs, int idPlaylist) async {
     final db = await database;
     final batch = db.batch();
-
-    log(songs.map((msc) => msc.title).toList().toString());
 
     int cont = 0;
     for (MediaItem song in songs) {
@@ -317,25 +319,34 @@ class DatabaseHelper {
     String title,
   ) async {
     final db = await database;
-    await db.transaction((txn) async {
-      await txn.delete(
-        'up_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: [idMusic, idPlaylist],
-      );
-      await txn.delete(
-        'desup_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: [idMusic, idPlaylist],
-      );
-    });
+
+    await retireUpDesup([idMusic, idPlaylist]);
 
     await db.insert('up_musics', {
       'id_playlist': idPlaylist,
       'id_music': idMusic,
-      'added_at': DateTime.now().millisecondsSinceEpoch,
       'title': title,
     });
+  }
+
+  Future<bool> isLastUped({
+    required String idMsc,
+    required String idPlaylist,
+  }) async {
+    final db = await database;
+
+    final result = await db.query(
+      'up_musics',
+      columns: ['id_music'],
+      where: 'id_playlist = ?',
+      whereArgs: [idPlaylist],
+      orderBy: 'added_at DESC',
+      limit: 1,
+    );
+
+    if (result.isEmpty) return false;
+
+    return result.first['id_music'] == idMsc;
   }
 
   Future<void> unupInPlaylist(String idplaylist) async {
@@ -367,6 +378,7 @@ class DatabaseHelper {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
       'up_musics',
+      columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
       orderBy: 'added_at DESC',
@@ -384,31 +396,41 @@ class DatabaseHelper {
     String title,
   ) async {
     final db = await database;
-    await db.transaction((txn) async {
-      await txn.delete(
-        'up_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: [idMusic, idPlaylist],
-      );
-      await txn.delete(
-        'desup_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: [idMusic, idPlaylist],
-      );
-    });
+
+    await retireUpDesup([idMusic, idPlaylist]);
 
     await db.insert('desup_musics', {
       'id_playlist': idPlaylist,
       'id_music': idMusic,
-      'added_at': DateTime.now().millisecondsSinceEpoch,
       'title': title,
     });
+  }
+
+  Future<bool> isLastDesuped({
+    required String idMsc,
+    required String idPlaylist,
+  }) async {
+    final db = await database;
+
+    final result = await db.query(
+      'desup_musics',
+      columns: ['id_music'],
+      where: 'id_playlist = ?',
+      whereArgs: [idPlaylist],
+      orderBy: 'added_at DESC',
+      limit: 1,
+    );
+
+    if (result.isEmpty) return false;
+
+    return result.first['id_music'] == idMsc;
   }
 
   Future<List<String>> loadDesupMusics(String idplaylist) async {
     final db = await database;
     final List<Map<String, dynamic>> idsFromPlaylists = await db.query(
       'desup_musics',
+      columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
       orderBy: 'added_at ASC',
@@ -419,22 +441,39 @@ class DatabaseHelper {
     });
   }
 
+  Future<void> retireUpDesup(List<Object> ids) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'up_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: ids,
+      );
+      await txn.delete(
+        'desup_musics',
+        where: 'id_music = ? AND id_playlist = ?',
+        whereArgs: ids,
+      );
+    });
+  }
+
   Future<List<MediaItem>> reorderToUp(
     String idPlAtual,
     List<MediaItem> setList,
   ) async {
-    log(idPlAtual);
     List<String> ordemDasUps = await instance.loadUpMusics(idPlAtual);
     List<String> ordemDasDesups = await instance.loadDesupMusics(idPlAtual);
 
     final mapById = {for (var item in setList) item.id: item};
 
-    log(setList.length.toString());
-
     List<MediaItem> resultadoUps =
         ordemDasUps.asMap().entries.map((entry) {
           final index = ordemDasUps.length - (entry.key);
           final id = entry.value;
+
+          //log(
+          //  '+ MUSICA: $id ${mscAudPl.actlist.songsAll.where((a) => a.id == id).first.title}',
+          //);
 
           final mediaItem = mapById[id]!;
 
@@ -447,6 +486,10 @@ class DatabaseHelper {
         ordemDasDesups.asMap().entries.map((entry) {
           final index = (entry.key) + 1;
           final id = entry.value;
+
+          //log(
+          //  '- MUSICA: $id ${mscAudPl.actlist.songsAll.where((a) => a.id == id).first.title}',
+          //);
 
           final mediaItem = mapById[id]!;
 
@@ -471,6 +514,7 @@ class DatabaseHelper {
   }
 
   /* TRIGGER */
+
   Future<void> deleteMusicTrigger(String idMusic) async {
     final db = await database;
     await db.transaction((txn) async {

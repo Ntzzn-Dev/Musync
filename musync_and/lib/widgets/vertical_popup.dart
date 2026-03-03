@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/popup_add.dart';
@@ -51,7 +49,6 @@ class _VerticalPopupMenuState extends State<VerticalPopupMenu>
     VoidCallback onTap, {
     String? label,
   }) {
-    log((label != null).toString());
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(

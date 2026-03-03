@@ -21,20 +21,24 @@ class ListContent extends StatefulWidget {
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
   final String idPlaylist;
+  final void Function(ModeOrderEnum) onModeChanged;
   final bool? showSlices;
   final bool? withReorder;
-  final void Function(MediaItem)? aposClique;
-  final Future<bool> Function(List<int>)? selecaoDeMusicas;
+  final void Function(MediaItem)? onClick;
+  final Future<bool> Function(List<int>)? onSelectMsc;
+  final void Function()? onCheckedPoint;
 
   const ListContent({
     super.key,
     required this.songsNow,
     required this.modeReorder,
     required this.idPlaylist,
+    required this.onModeChanged,
     this.showSlices,
     this.withReorder,
-    this.aposClique,
-    this.selecaoDeMusicas,
+    this.onClick,
+    this.onSelectMsc,
+    this.onCheckedPoint,
   });
 
   @override
@@ -251,6 +255,8 @@ class _ListContentState extends State<ListContent> {
       idMusic: itemId,
       idSetList: mscAudPl.actlist.viewingPlaylist.tag,
     );
+
+    widget.onCheckedPoint?.call();
   }
 
   Future<void> handlePlaylistAction({
@@ -264,13 +270,14 @@ class _ListContentState extends State<ListContent> {
 
     final reordered = await reorderMusics(ModeOrderEnum.up, mutableSongs);
 
-    mscAudPl.actlist.setMusicListAtual(reordered);
+    widget.onModeChanged(ModeOrderEnum.up);
 
     if (!mounted) return;
 
     setState(() {
+      mscAudPl.reorganizeQueue(songs: reordered);
+      log('${reordered.length} Reorganizou ${reordered.last.title}');
       mutableSongs = mscAudPl.actlist.getMediaItemsFromQueue();
-      mscAudPl.reorganizeQueue(songs: mutableSongs);
     });
   }
 
@@ -370,10 +377,10 @@ class _ListContentState extends State<ListContent> {
       idsSelecoes.remove(index);
     }
 
-    if (await widget.selecaoDeMusicas?.call(idsSelecoes) ?? false) {
+    if (await widget.onSelectMsc?.call(idsSelecoes) ?? false) {
       idsSelecoes = [];
       musicasSelecionadas.value = List.filled(mutableSongs.length, false);
-      widget.selecaoDeMusicas?.call(idsSelecoes);
+      widget.onSelectMsc?.call(idsSelecoes);
     }
   }
 
@@ -411,21 +418,21 @@ class _ListContentState extends State<ListContent> {
             if (artUri.scheme == 'file') {
               return Image.file(
                 File(artUri.toFilePath()),
-                width: 45,
+                width: 55,
                 height: 45,
                 fit: BoxFit.cover,
               );
             } else if (artUri.scheme == 'http' || artUri.scheme == 'https') {
               return Image.network(
                 artUri.toString(),
-                width: 45,
+                width: 55,
                 height: 45,
                 fit: BoxFit.cover,
               );
             }
           }
 
-          return SizedBox(width: 45, height: 45, child: Icon(Icons.music_note));
+          return SizedBox(width: 55, height: 45, child: Icon(Icons.music_note));
         }).toList();
 
     return ValueListenableBuilder<int>(
@@ -446,16 +453,22 @@ class _ListContentState extends State<ListContent> {
               itemCount: mutableSongs.length,
               itemBuilder: (context, index) {
                 MediaItem item = mutableSongs[index];
-                final corFundo =
-                    index < selecionada.length && selecionada[index]
-                        ? Color.fromARGB(95, 243, 34, 34)
-                        : value != -1 &&
-                            value <
-                                mscAudPl.actlist.getLengthMusicListAtual() &&
-                            mutableSongs[index] ==
-                                mscAudPl.actlist.getMusicAtual(value) &&
-                            listaEmUso
-                        ? Color.fromARGB(96, 243, 159, 34)
+                final currentMusic = mscAudPl.actlist.getMusicAtual(value);
+
+                final bool isSelecionada =
+                    index < selecionada.length && selecionada[index];
+
+                final bool isTocando =
+                    value != -1 &&
+                    value < mscAudPl.actlist.getLengthMusicListAtual() &&
+                    listaEmUso &&
+                    mutableSongs[index].id == currentMusic.id;
+
+                Color? corFundo =
+                    isSelecionada
+                        ? const Color.fromARGB(95, 243, 34, 34)
+                        : isTocando
+                        ? const Color.fromARGB(96, 243, 159, 34)
                         : null;
 
                 bool showSliceHeader =
@@ -508,7 +521,7 @@ class _ListContentState extends State<ListContent> {
                         child: Text(
                           currentSlice,
                           style: const TextStyle(
-                            color: Color.fromARGB(255, 243, 160, 34),
+                            color: Color.fromARGB(255, 243, 145, 34),
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
@@ -542,7 +555,7 @@ class _ListContentState extends State<ListContent> {
                                       listaEmUso = true;
                                     });
                                   }
-                                  widget.aposClique?.call(mutableSongs[index]);
+                                  widget.onClick?.call(mutableSongs[index]);
                                 } catch (e) {
                                   log('Erro ao tocar música: $e');
                                 }
@@ -610,12 +623,46 @@ class _ListContentState extends State<ListContent> {
                                                 .extension<CustomColors>()!
                                                 .textForce,
                                       ),
-                                      onPressed: () {
+                                      onPressed: () async {
+                                        final tag =
+                                            mscAudPl
+                                                .actlist
+                                                .viewingPlaylist
+                                                .tag;
+                                        final isUp = await DatabaseHelper
+                                            .instance
+                                            .isLastUped(
+                                              idMsc:
+                                                  mscAudPl.actlist
+                                                      .getMusicAtual(index)
+                                                      .id,
+                                              idPlaylist: tag,
+                                            );
+                                        final isCheck = mscAudPl.checkpoint
+                                            .isCheckpoint(
+                                              currentMusic: index,
+                                              currentSetList: tag,
+                                            );
+
+                                        final isDesup = await DatabaseHelper
+                                            .instance
+                                            .isLastDesuped(
+                                              idMsc:
+                                                  mscAudPl.actlist
+                                                      .getMusicAtual(index)
+                                                      .id,
+                                              idPlaylist: tag,
+                                            );
+
                                         showPopupOptions(
                                           context,
                                           item.title,
                                           moreOptions(context, item),
-                                          indexMsc: index,
+                                          actionState: ActionState(
+                                            isUp: isUp,
+                                            isCheck: isCheck,
+                                            isDesup: isDesup,
+                                          ),
                                         );
                                       },
                                     ),

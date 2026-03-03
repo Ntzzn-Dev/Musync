@@ -74,7 +74,6 @@ Future<void> playPrevious() async {
       mscAudPl.sendMediaIndex(prevIndex);
     } else {
       mscAudPl.setCurrentTrack(index: prevIndex);
-      log('c ${mscAudPl.currentIndex.value}');
       mscAudPl.play();
     }
   }
