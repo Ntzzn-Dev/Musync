@@ -27,6 +27,8 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   static late ValueNotifier<MediaAtual> mediaAtual;
 
+  StreamSubscription<ProcessingState>? auto;
+
   void reorganizeSongsAtual(Map<String, dynamic> ordem) {
     //songsAtual.sort((a, b) {
     //  final posA = ordem[a.id.split('/').last] ?? 0;
@@ -243,6 +245,34 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
+  Future<void> executeMusicBlank(MediaItem item) async {
+    if (!_executando) {
+      final src = ProgressiveAudioSource(Uri.parse(item.id));
+      _executando = true;
+      await audPl.pause();
+      await audPl.setAudioSource(src);
+      _executando = false;
+
+      play();
+
+      mscAudPl.desativeAuto();
+    }
+  }
+
+  Future<void> ativeAuto() async {
+    await auto?.cancel();
+    auto = audPl.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed) {
+        playNext(true);
+      }
+    });
+  }
+
+  Future<void> desativeAuto() async {
+    await auto?.cancel();
+    auto = null;
+  }
+
   Future<void> initSongs({required List<MediaItem> songs}) async {
     actlist.setSetList(SetListType.atual, actlist.mainPlaylist);
     await searchPlaylists();
@@ -255,11 +285,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     queue.add(actlist.getMediaItemsFromQueue());
 
-    audPl.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        skipToNextAuto();
-      }
-    });
+    await ativeAuto();
   }
 
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
@@ -275,12 +301,6 @@ class MusyncAudioHandler extends BaseAudioHandler
         )) {
       log('Fila já está atualizada, não será recriada.');
       return false;
-    }
-
-    log('Carregou errado');
-    log('---------------');
-    for (final song in songs) {
-      log('- ${song.title}');
     }
 
     final idAtual =
@@ -325,6 +345,10 @@ class MusyncAudioHandler extends BaseAudioHandler
   }
 
   Stream<Duration> get positionStream => audPl.positionStream;
+
+  Stream<PlayerState> get playerStateStream => audPl.playerStateStream;
+
+  Duration? get position => audPl.position;
 
   Duration? get duration => audPl.duration;
 
@@ -385,7 +409,7 @@ class MusyncAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> seek(Duration position) async {
-    audPl.seek(position);
+    await audPl.seek(position);
   }
 
   @override
@@ -446,10 +470,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   @override
   Future<void> skipToNext() async {
     await playNext(false);
-  }
-
-  void skipToNextAuto() {
-    playNext(true);
   }
 
   @override

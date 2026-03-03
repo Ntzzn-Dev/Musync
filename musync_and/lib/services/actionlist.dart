@@ -63,7 +63,7 @@ class ActionList {
 }
 
 class SetItem {
-  void execute() {}
+  Future<void> execute() async {}
 }
 
 class MusicItem extends SetItem {
@@ -72,9 +72,9 @@ class MusicItem extends SetItem {
   MusicItem({required this.mediaItem});
 
   @override
-  void execute() {
+  Future<void> execute() async {
     final src = ProgressiveAudioSource(Uri.parse(mediaItem.id));
-    mscAudPl.executeMusic(src, mediaItem);
+    await mscAudPl.executeMusic(src, mediaItem);
   }
 }
 
@@ -84,7 +84,7 @@ class ActionItem extends SetItem {
   ActionItem(this.action);
 
   @override
-  void execute() {
+  Future<void> execute() async {
     action();
   }
 }

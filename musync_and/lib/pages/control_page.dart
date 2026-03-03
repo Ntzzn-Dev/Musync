@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:musync_and/helpers/control_helper.dart';
 import 'package:musync_and/helpers/menu_helper.dart';
-import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/sound_control.dart';
@@ -12,8 +11,7 @@ import 'package:musync_and/themes.dart';
 import 'package:musync_and/helpers/enum_helpers.dart';
 
 class ControlPage extends StatefulWidget {
-  final MusyncAudioHandler audioHandler;
-  const ControlPage({super.key, required this.audioHandler});
+  const ControlPage({super.key});
 
   @override
   State<ControlPage> createState() => _ControlPageState();
@@ -168,7 +166,7 @@ class _ControlPageState extends State<ControlPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         StreamBuilder<MediaItem?>(
-                          stream: widget.audioHandler.mediaItem,
+                          stream: mscAudPl.mediaItem,
                           builder: (context, snapshot) {
                             final mediaItem = snapshot.data;
 
@@ -354,7 +352,7 @@ class _ControlPageState extends State<ControlPage> {
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Text(
-                                                  '${widget.audioHandler.currentIndex.value + 1}',
+                                                  '${mscAudPl.currentIndex.value + 1}',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.black,

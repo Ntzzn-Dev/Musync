@@ -1,7 +1,9 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
+import 'package:musync_and/pages/swipe_page.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/widgets/popup_option.dart';
@@ -221,6 +223,52 @@ class _ListPlaylistState extends State<ListPlaylist> {
                 },
               );
               Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+      OptionItem(
+        actions: [
+          OptionAction(
+            label: 'Escolher músicas',
+            icon: Icons.music_note,
+            funct: () async {
+              final m = mscAudPl.position ?? Duration.zero;
+
+              final newsongs = await item.findMusics();
+              final songs =
+                  mscAudPl.actlist.songsAllPlaylist
+                      .where((song) => !newsongs.contains(song))
+                      .toList();
+
+              songs.shuffle();
+
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => SwipePage(
+                        songsToPlaylist: songs,
+                        playlistInicial: item,
+                        onAccept: (msc, idpl) async {
+                          log('musica aceita ${msc.title}');
+                          await DatabaseHelper.instance.addToPlaylist(
+                            idpl,
+                            msc.id,
+                          );
+                        },
+                      ),
+                  settings: const RouteSettings(name: 'swipes'),
+                ),
+              );
+              mscAudPl.ativeAuto();
+
+              final musica =
+                  mscAudPl.actlist.queueList[mscAudPl.currentIndex.value];
+              await musica.execute();
+
+              mscAudPl.play();
+              await mscAudPl.seek(m);
             },
           ),
         ],

@@ -42,7 +42,7 @@ Future<void> showPopupOptions(
   List<OptionItem> options, {
   ActionState? actionState,
 }) async {
-  bool _isActive(String label) {
+  bool isActive(String label) {
     switch (label) {
       case 'Up':
         return actionState?.isUp ?? false;
@@ -112,7 +112,7 @@ Future<void> showPopupOptions(
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color:
-                                        _isActive(action.label)
+                                        isActive(action.label)
                                             ? baseAppColor
                                             : null,
                                     borderRadius: BorderRadius.circular(12),

@@ -4,7 +4,6 @@ import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/pages/control_page.dart';
 import 'package:musync_and/pages/download_page.dart';
 import 'package:musync_and/pages/settings_page.dart';
-import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/helpers/download_helper.dart';
 import 'package:musync_and/services/playlists.dart';
@@ -418,7 +417,7 @@ List<Widget> routesMenu({
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ControlPage(audioHandler: mscAudPl),
+            builder: (context) => ControlPage(),
             settings: RouteSettings(name: 'control'),
           ),
         ).then((_) {

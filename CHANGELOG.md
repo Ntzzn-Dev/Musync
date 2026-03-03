@@ -432,6 +432,12 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Atualização externa de modo alterado ao upar uma música na lista.  
 - Botão de up na notificação habilitado e operante.  
 
+### version 6.0  
+- Nova tela adicionada, onde a lista de músicas aparece como se fosse uma pilha de cartas.  
+- Botão de escolher musicas adicionado ao mais opções das playlists.  
+  - Arrastar para a direita adiciona a música a playlist.  
+  - Arrastar para a esquerda ignora a música e passa pra proxima.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 

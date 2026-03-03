@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musync_and/pages/playlist_page.dart';
@@ -227,18 +226,9 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
               songsNow,
             );
 
-            log('CLICOU AQUI HEIN');
-            log('---------========================================------');
-            for (final song in songsNowReordered) {
-              log('- ${song.title}');
-            }
-            log('---------========================================------');
-
             await mscAudPl.recreateQueue(songs: songsNowReordered);
             mscAudPl.savePl(mscAudPl.actlist.mainPlaylist);
             int indiceCerto = songsNowReordered.indexWhere((t) => t == item);
-
-            log('chamado');
 
             await mscAudPl.skipToQueueItem(indiceCerto);
           },
@@ -262,6 +252,11 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
             final newsongs = await pl.findMusics();
             if (newsongs.isNotEmpty) {
               _abrirPlaylist(title: pl.title, songs: newsongs, idPl: pl.id);
+            } else {
+              showSnack(
+                'A playlist está vazia, preencha para que possa abrir',
+                context,
+              );
             }
           },
           escolhaDeArtista: (art) {
