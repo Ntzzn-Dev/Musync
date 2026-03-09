@@ -61,7 +61,132 @@ List<Widget> reorderMenu({
   ];
 }
 
-Future<bool> selectPlaylistMenu(
+Future<Playlists?> selectPlaylistMenu(
+  BuildContext context,
+  Playlists plAtual,
+) async {
+  List<Playlists> playlists = await DatabaseHelper.instance.searchPlaylists();
+
+  Playlists? pl;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return FractionallySizedBox(
+            heightFactor: 0.45,
+            child: Container(
+              padding: const EdgeInsets.only(top: 20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        showPopupAdd(
+                          context,
+                          'Adicionar Playlist',
+                          [
+                            ContentItem(
+                              value: 'Título',
+                              type: ContentTypeEnum.title,
+                            ),
+                            ContentItem(
+                              value: 'Subtitulo',
+                              type: ContentTypeEnum.text,
+                            ),
+                          ],
+                          onConfirm: (valores) async {
+                            DatabaseHelper.instance.insertPlaylist(
+                              valores[0],
+                              valores[1],
+                            );
+
+                            playlists =
+                                await DatabaseHelper.instance.searchPlaylists();
+                          },
+                        );
+                      },
+                      child: const Text("Adicionar playlist"),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: playlists.length,
+                      itemBuilder: (context, index) {
+                        final playlist = playlists[index];
+                        return Container(
+                          color:
+                              plAtual.id == playlist.id ? baseAppColor : null,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () async {
+                              pl = playlist;
+
+                              Navigator.of(context).pop();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    playlist.title,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    playlist.subtitle,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 3,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+  return pl;
+}
+
+Future<bool> insertPlaylistMenu(
   BuildContext context,
   List<String> idsMscs,
 ) async {
@@ -262,89 +387,89 @@ Widget searchMenu(
 }
 
 Widget downloadVisualizerMenu({required void Function() onFinalize}) {
-  return ValueListenableBuilder<int>(
+  return ValueListenableBuilder<DownloadStates>(
     valueListenable: DownloadSpecs.instance.isDownloading,
-    builder: (context, value, child) {
-      if (value == 1) {
-        return ElevatedButton(
-          onPressed: () async {
-            showPopupList(
-              context,
-              'Fazendo Downloads ',
-              [
-                InfoItem(
-                  info: 'Situação',
-                  value:
-                      DownloadSpecs.instance.situacao.value.split(
-                        'Situação: ',
-                      )[1],
+    builder: (context, downState, child) {
+      switch (downState) {
+        case DownloadStates.downloading:
+          return ElevatedButton(
+            onPressed: () async {
+              showPopupList(
+                context,
+                'Fazendo Downloads ',
+                [
+                  InfoItem(
+                    info: 'Situação',
+                    value:
+                        DownloadSpecs.instance.situacao.value.split(
+                          'Situação: ',
+                        )[1],
+                  ),
+                  InfoItem(
+                    info: 'Musica Atual',
+                    value: DownloadSpecs.instance.titleAtual.value,
+                  ),
+                  InfoItem(
+                    info: 'Artista Atual',
+                    value: DownloadSpecs.instance.authorAtual.value,
+                  ),
+                ],
+                InfoLabelSpecs(
+                  info: InfoLabel(
+                    name: '',
+                    flex: 2,
+                    centralize: true,
+                    bold: true,
+                  ),
+                  value: InfoLabel(
+                    name: '',
+                    flex: 3,
+                    centralize: true,
+                    bold: false,
+                  ),
                 ),
-                InfoItem(
-                  info: 'Musica Atual',
-                  value: DownloadSpecs.instance.titleAtual.value,
-                ),
-                InfoItem(
-                  info: 'Artista Atual',
-                  value: DownloadSpecs.instance.authorAtual.value,
-                ),
-              ],
-              InfoLabelSpecs(
-                info: InfoLabel(
-                  name: '',
-                  flex: 2,
-                  centralize: true,
-                  bold: true,
-                ),
-                value: InfoLabel(
-                  name: '',
-                  flex: 3,
-                  centralize: true,
-                  bold: false,
-                ),
+              );
+            },
+            style: ButtonStyle(
+              shape: WidgetStateProperty.all(const CircleBorder()),
+              padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
+              backgroundColor: WidgetStateProperty.all(
+                Theme.of(context).appBarTheme.foregroundColor,
               ),
-            );
-          },
-          style: ButtonStyle(
-            shape: WidgetStateProperty.all(const CircleBorder()),
-            padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
-            backgroundColor: WidgetStateProperty.all(
-              Theme.of(context).appBarTheme.foregroundColor,
+              foregroundColor: WidgetStateProperty.all(
+                Theme.of(context).cardTheme.color,
+              ),
+              elevation: WidgetStateProperty.all(3),
             ),
-            foregroundColor: WidgetStateProperty.all(
-              Theme.of(context).cardTheme.color,
+            child: Icon(Icons.download_rounded),
+          );
+        case DownloadStates.finished:
+          return ElevatedButton(
+            onPressed: () async {
+              showPopupInfo(
+                context,
+                title: 'Downloads finalizados!',
+                message: 'Suas músicas foram baixadas com sucesso.',
+                icon: Icons.music_note,
+              );
+              DownloadSpecs.instance.finish();
+              onFinalize();
+            },
+            style: ButtonStyle(
+              shape: WidgetStateProperty.all(const CircleBorder()),
+              padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
+              backgroundColor: WidgetStateProperty.all(
+                Theme.of(context).appBarTheme.foregroundColor,
+              ),
+              foregroundColor: WidgetStateProperty.all(
+                Theme.of(context).cardTheme.color,
+              ),
+              elevation: WidgetStateProperty.all(3),
             ),
-            elevation: WidgetStateProperty.all(3),
-          ),
-          child: Icon(Icons.download_rounded),
-        );
-      }
-      if (value == 2) {
-        return ElevatedButton(
-          onPressed: () async {
-            showPopupInfo(
-              context,
-              title: 'Downloads finalizados!',
-              message: 'Suas músicas foram baixadas com sucesso.',
-              icon: Icons.music_note,
-            );
-            DownloadSpecs.instance.finish();
-            onFinalize();
-          },
-          style: ButtonStyle(
-            shape: WidgetStateProperty.all(const CircleBorder()),
-            padding: WidgetStateProperty.all(const EdgeInsets.all(8)),
-            backgroundColor: WidgetStateProperty.all(
-              Theme.of(context).appBarTheme.foregroundColor,
-            ),
-            foregroundColor: WidgetStateProperty.all(
-              Theme.of(context).cardTheme.color,
-            ),
-            elevation: WidgetStateProperty.all(3),
-          ),
-          child: Icon(Icons.download_done_rounded),
-        );
-      } else {
-        return SizedBox.shrink();
+            child: Icon(Icons.download_done_rounded),
+          );
+        case DownloadStates.waiting:
+          return SizedBox.shrink();
       }
     },
   );

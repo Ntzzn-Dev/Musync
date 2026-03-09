@@ -6,7 +6,6 @@ import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/widgets/sound_control.dart';
-import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/helpers/enum_helpers.dart';
 
@@ -180,8 +179,8 @@ class _ControlPageState extends State<ControlPage> {
                               ),
                               child: Column(
                                 children: [
-                                  Player.titleText(mediaItem.title, 20),
-                                  Player.titleText(mediaItem.artist ?? '', 13),
+                                  titleText(mediaItem.title, 20),
+                                  titleText(mediaItem.artist ?? '', 13),
                                 ],
                               ),
                             );
@@ -287,11 +286,8 @@ class _ControlPageState extends State<ControlPage> {
                                       ),
                                       child: Column(
                                         children: [
-                                          Player.titleText(playlist.title, 20),
-                                          Player.titleText(
-                                            playlist.subtitle,
-                                            13,
-                                          ),
+                                          titleText(playlist.title, 20),
+                                          titleText(playlist.subtitle, 13),
                                         ],
                                       ),
                                     ),

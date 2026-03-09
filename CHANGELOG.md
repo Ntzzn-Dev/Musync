@@ -438,6 +438,12 @@ Todas as mudanças neste projeto serão documentadas aqui.
   - Arrastar para a direita adiciona a música a playlist.  
   - Arrastar para a esquerda ignora a música e passa pra proxima.  
 
+### version 6.1  
+- Alterado o uso do player de áudio para um local, sendo usado apenas durante o swipe.  
+- Adicionada a capacidade de mudar a playlist na qual está escolhendo músicas.  
+- Pequenas otimizações de código.  
+- Adição de classes extensoras para melhor consistência.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 

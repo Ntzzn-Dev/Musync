@@ -6,6 +6,7 @@ import 'package:musync_and/services/actionlist.dart';
 import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
+import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/list_playlists.dart';
 import 'package:musync_and/helpers/enum_helpers.dart';
 
@@ -276,4 +277,23 @@ void loadAnyPlaylist({
 
   await mscAudPl.recreateQueue(songs: newsongs);
   await mscAudPl.skipToQueueItem(ultimaMusica);
+}
+
+String formatDuration(Duration d, bool h) {
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  final hours = twoDigits(d.inHours);
+  final minutes = twoDigits(d.inMinutes.remainder(60));
+  final seconds = twoDigits(d.inSeconds.remainder(60));
+  return '${h ? '$hours:' : ''}$minutes:$seconds';
+}
+
+Widget titleText(String text, double fontsize) {
+  return Letreiro(
+    key: ValueKey(text),
+    texto: text,
+    blankSpace: 90,
+    fullTime: 12,
+    timeStoped: 1500,
+    fontSize: fontsize,
+  );
 }

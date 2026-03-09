@@ -10,6 +10,8 @@ enum ExtraButtonTypes { nextBtn, prevBtn, modal }
 
 enum SwapBtns { playlist, up, checkpoint }
 
+enum DownloadStates { waiting, downloading, finished }
+
 T enumNext<T extends Enum>(T value, List<T> values) {
   final limit = values.length;
   final nextIndex = (value.index + 1) % limit;

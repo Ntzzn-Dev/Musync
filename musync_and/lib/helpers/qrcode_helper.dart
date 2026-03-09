@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:musync_and/services/ekosystem.dart';
 
-String hostDkt = '';
+String? hostDkt;
 
 Future<void> openQrScanner(BuildContext context) async {
   await showDialog(
@@ -54,14 +54,14 @@ Future<void> openQrScanner(BuildContext context) async {
 }
 
 void scanToConnect(BuildContext context) async {
-  if (hostDkt == '') {
+  if (hostDkt == null) {
     await openQrScanner(context);
   }
   connectToDesktop(context);
 }
 
 void connectToDesktop(BuildContext context) async {
-  if (hostDkt != '') {
+  if (hostDkt != null) {
     Ekosystem.setEkosystem();
   }
 }

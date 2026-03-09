@@ -233,8 +233,6 @@ class _ListPlaylistState extends State<ListPlaylist> {
             label: 'Escolher músicas',
             icon: Icons.music_note,
             funct: () async {
-              final m = mscAudPl.position ?? Duration.zero;
-
               final newsongs = await item.findMusics();
               final songs =
                   mscAudPl.actlist.songsAllPlaylist
@@ -242,6 +240,8 @@ class _ListPlaylistState extends State<ListPlaylist> {
                       .toList();
 
               songs.shuffle();
+
+              mscAudPl.pause();
 
               await Navigator.push(
                 context,
@@ -261,14 +261,6 @@ class _ListPlaylistState extends State<ListPlaylist> {
                   settings: const RouteSettings(name: 'swipes'),
                 ),
               );
-              mscAudPl.ativeAuto();
-
-              final musica =
-                  mscAudPl.actlist.queueList[mscAudPl.currentIndex.value];
-              await musica.execute();
-
-              mscAudPl.play();
-              await mscAudPl.seek(m);
             },
           ),
         ],

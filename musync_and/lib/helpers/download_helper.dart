@@ -6,6 +6,7 @@ import 'package:audiotags/audiotags.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
+import 'package:musync_and/helpers/enum_helpers.dart';
 import 'package:musync_and/services/fetch_songs.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -24,28 +25,44 @@ class DownloadSpecs {
   ValueNotifier<String> situacao = ValueNotifier('Situação: Em espera.');
   ValueNotifier<String> titleAtual = ValueNotifier('Titulo');
   ValueNotifier<String> authorAtual = ValueNotifier('Artista');
-  ValueNotifier<int> isDownloading = ValueNotifier(
-    0,
-  ); //0 - não, 1 - sim, 2 - finalizado
+  ValueNotifier<DownloadStates> isDownloading = ValueNotifier(
+    DownloadStates.waiting,
+  );
 
   String directory = '';
   double incremento = 100 / 6;
 
-  var yt = YoutubeExplode();
+  late YoutubeExplode yt;
 
   void setDirectory(String dir) {
     directory = dir;
   }
 
-  void configurarDownloads(List<Video> newVideos) {
+  // init
+  void configurarDownloads(List<Video> newVideos) async {
+    yt = YoutubeExplode();
     videos = newVideos;
     qntDownloads = newVideos.length;
     situacao.value = 'Situação: Em espera.';
-    startDownloads();
+    try {
+      await startDownloads();
+    } finally {
+      yt.close();
+    }
   }
 
-  void startDownloads() async {
-    isDownloading.value = 1;
+  void finish() {
+    videos = [];
+    qntDownloads = 0;
+    situacao.value = 'Situação: Em espera.';
+    isDownloading.value = DownloadStates.waiting;
+    titleAtual.value = 'Titulo';
+    authorAtual.value = 'Artista';
+    progressAtual.value = 0;
+  }
+
+  Future<void> startDownloads() async {
+    isDownloading.value = DownloadStates.downloading;
 
     int qnt = 0;
     situacao.value = 'Situação: 0/${videos.length} Baixados';
@@ -58,17 +75,7 @@ class DownloadSpecs {
       situacao.value = 'Situação: $qnt/${videos.length} Baixados';
     }
 
-    isDownloading.value = 2;
-  }
-
-  void finish() {
-    videos = [];
-    qntDownloads = 0;
-    situacao.value = 'Situação: Em espera.';
-    isDownloading.value = 0;
-    titleAtual.value = 'Titulo';
-    authorAtual.value = 'Artista';
-    progressAtual.value = 0;
+    isDownloading.value = DownloadStates.finished;
   }
 
   void atualizarProgresso(ValueNotifier<double> p) {

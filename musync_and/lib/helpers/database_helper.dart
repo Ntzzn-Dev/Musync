@@ -467,36 +467,18 @@ class DatabaseHelper {
     final mapById = {for (var item in setList) item.id: item};
 
     List<MediaItem> resultadoUps =
-        ordemDasUps.asMap().entries.map((entry) {
-          final index = ordemDasUps.length - (entry.key);
-          final id = entry.value;
-
-          //log(
-          //  '+ MUSICA: $id ${mscAudPl.actlist.songsAll.where((a) => a.id == id).first.title}',
-          //);
-
-          final mediaItem = mapById[id]!;
-
-          mediaItem.extras!['prioridade'] = index;
-
-          return mediaItem;
-        }).toList();
+        ordemDasUps
+            .asMap()
+            .entries
+            .map((entry) => mapById[entry.value]!)
+            .toList();
 
     List<MediaItem> resultadoDesups =
-        ordemDasDesups.asMap().entries.map((entry) {
-          final index = (entry.key) + 1;
-          final id = entry.value;
-
-          //log(
-          //  '- MUSICA: $id ${mscAudPl.actlist.songsAll.where((a) => a.id == id).first.title}',
-          //);
-
-          final mediaItem = mapById[id]!;
-
-          mediaItem.extras!['prioridade'] = -index;
-
-          return mediaItem;
-        }).toList();
+        ordemDasDesups
+            .asMap()
+            .entries
+            .map((entry) => mapById[entry.value]!)
+            .toList();
 
     List<MediaItem> resultadoResto =
         setList

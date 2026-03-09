@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:musync_and/helpers/enum_helpers.dart';
@@ -49,7 +48,8 @@ class Ekosystem {
   }
 
   static void setEkosystem() async {
-    Ekosystem.connectGlobal(host: hostDkt, porta: 8080);
+    if (hostDkt == null) return;
+    Ekosystem.connectGlobal(host: hostDkt!, porta: 8080);
 
     mscAudPl.pause();
 
@@ -134,7 +134,7 @@ class Ekosystem {
           mscAudPl.sendMediaIndexShuffleOutOfLimits(msg?['min'], msg?['max']);
           break;
         case 'close_server':
-          hostDkt = '';
+          hostDkt = null;
           break;
       }
     });
@@ -172,7 +172,7 @@ class Ekosystem {
   }
 
   void tryToDisconect() {
-    hostDkt = '';
+    hostDkt = null;
     conected.value = false;
     status = "Desconectado";
     channel?.sink.close();

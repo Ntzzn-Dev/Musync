@@ -350,7 +350,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           onSelected: (value) async {
             switch (value) {
               case 'addtoplaylist':
-                if (await selectPlaylistMenu(context, idsMscs)) {
+                if (await insertPlaylistMenu(context, idsMscs)) {
                   completer.complete(true);
                 }
                 break;

@@ -5,7 +5,6 @@ import 'package:musync_and/helpers/audio_player_helper.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
-import 'package:musync_and/widgets/player.dart';
 
 Widget buildSliderMusic() {
   if (eko.conected.value) {
@@ -72,7 +71,7 @@ Widget _buildSlider(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              Player.formatDuration(position, false),
+              formatDuration(position, false),
               style: const TextStyle(fontFamily: 'Default-Thin'),
             ),
             if (eko.conected.value)
@@ -84,7 +83,7 @@ Widget _buildSlider(
                 ),
               ),
             Text(
-              Player.formatDuration(durationTotal, false),
+              formatDuration(durationTotal, false),
               style: const TextStyle(fontFamily: 'Default-Thin'),
             ),
           ],

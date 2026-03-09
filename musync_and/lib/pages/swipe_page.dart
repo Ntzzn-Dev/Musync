@@ -5,19 +5,19 @@ import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
-import 'package:musync_and/widgets/player.dart';
 
 class SwipePage extends StatefulWidget {
   final List<MediaItem> songsToPlaylist;
-  final Playlists? playlistInicial;
+  final Playlists playlistInicial;
   final void Function(MediaItem, int)? onAccept;
   final void Function(MediaItem, int)? onDeny;
   const SwipePage({
     super.key,
     required this.songsToPlaylist,
-    this.playlistInicial,
+    required this.playlistInicial,
     this.onAccept,
     this.onDeny,
   });
@@ -36,10 +36,16 @@ class _SwipePageState extends State<SwipePage>
   final Map<String, Uint8List?> _artCache = {};
   List<MediaItem> songs = [];
 
+  AudioPlayer audSwipe = AudioPlayer();
+  late Playlists playlistEmUso;
+
   @override
   void initState() {
     super.initState();
     songs = List.from(widget.songsToPlaylist);
+    playlistEmUso = widget.playlistInicial;
+
+    recreateSongs();
 
     _controller = AnimationController(
       vsync: this,
@@ -60,13 +66,33 @@ class _SwipePageState extends State<SwipePage>
         _preloadNextArts();
         resetCard();
 
-        mscAudPl.executeMusicBlank(songs.first);
+        initAud();
       }
     });
 
-    mscAudPl.executeMusicBlank(songs.first);
+    _preloadNextArts();
+  }
+
+  Future<void> recreateSongs() async {
+    final newsongs = await playlistEmUso.findMusics();
+    songs = List.from(
+      mscAudPl.actlist.songsAll
+          .where((song) => !newsongs.contains(song))
+          .toList(),
+    );
+
+    songs.shuffle();
 
     _preloadNextArts();
+
+    initAud();
+  }
+
+  Future<void> initAud() async {
+    final src = ProgressiveAudioSource(Uri.parse(songs.first.id));
+    await audSwipe.stop();
+    await audSwipe.setAudioSource(src);
+    await audSwipe.play();
   }
 
   void resetCard() {
@@ -90,7 +116,7 @@ class _SwipePageState extends State<SwipePage>
 
     isAnimating = true;
     _controller.forward().then((_) {
-      final id = widget.playlistInicial?.id ?? -1;
+      final id = playlistEmUso.id;
       if (toRight) {
         widget.onAccept?.call(msc, id);
       } else {
@@ -177,7 +203,7 @@ class _SwipePageState extends State<SwipePage>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.playlistInicial?.title ?? 'Playlist',
+                          playlistEmUso.title,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -196,8 +222,18 @@ class _SwipePageState extends State<SwipePage>
                       Icons.search_outlined,
                       color: Colors.white,
                     ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
+                    onPressed: () async {
+                      final pl = await selectPlaylistMenu(
+                        context,
+                        playlistEmUso,
+                      );
+
+                      if (pl != null) {
+                        setState(() {
+                          playlistEmUso = pl;
+                        });
+                        recreateSongs();
+                      }
                     },
                   ),
                 ],
@@ -205,7 +241,7 @@ class _SwipePageState extends State<SwipePage>
             ),
           ),
           Positioned(
-            bottom: 80,
+            bottom: 50,
             left: 20,
             right: 20,
             child: Row(
@@ -221,7 +257,7 @@ class _SwipePageState extends State<SwipePage>
                 ),
 
                 StreamBuilder<PlayerState>(
-                  stream: mscAudPl.playerStateStream,
+                  stream: audSwipe.playerStateStream,
                   builder: (context, snapshot) {
                     final playerState = snapshot.data;
                     final isPlaying = playerState?.playing ?? false;
@@ -234,9 +270,9 @@ class _SwipePageState extends State<SwipePage>
                       backgroundColor: baseFundoDark,
                       onPressed: () {
                         if (isPlaying) {
-                          mscAudPl.pause();
+                          audSwipe.pause();
                         } else {
-                          mscAudPl.play();
+                          audSwipe.play();
                         }
                       },
                       child: Icon(
@@ -306,7 +342,7 @@ class _SwipePageState extends State<SwipePage>
 
             if (msc.duration != null)
               Text(
-                Player.formatDuration(msc.duration!, false),
+                formatDuration(msc.duration!, false),
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade500,
@@ -323,7 +359,7 @@ class _SwipePageState extends State<SwipePage>
     final path = msc.extras?['path'];
     final bytes = path != null ? _artCache[path] : null;
 
-    final imageWidth = screenWidth - 20; // 10px margem esquerda + direita
+    final imageWidth = screenWidth - 20;
 
     if (bytes == null) {
       return Container(
@@ -380,6 +416,7 @@ class _SwipePageState extends State<SwipePage>
   @override
   void dispose() {
     _controller.dispose();
+    audSwipe.dispose();
     super.dispose();
   }
 }

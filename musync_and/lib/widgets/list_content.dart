@@ -10,7 +10,6 @@ import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:musync_and/themes.dart';
 import 'package:musync_and/helpers/menu_helper.dart';
-import 'package:musync_and/widgets/player.dart';
 import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
@@ -139,7 +138,7 @@ class _ListContentState extends State<ListContent> {
           OptionAction(
             label: 'Adicionar a Playlist',
             icon: Icons.playlist_add,
-            funct: () => selectPlaylistMenu(context, [item.id]),
+            funct: () => insertPlaylistMenu(context, [item.id]),
           ),
         ],
       ),
@@ -289,10 +288,7 @@ class _ListContentState extends State<ListContent> {
         InfoItem(info: 'Nome', value: item.title),
         InfoItem(info: 'Artista', value: item.artist ?? 'Artista desconhecido'),
         InfoItem(info: 'Album', value: item.album ?? 'Sem album'),
-        InfoItem(
-          info: 'Duração',
-          value: Player.formatDuration(item.duration!, true),
-        ),
+        InfoItem(info: 'Duração', value: formatDuration(item.duration!, true)),
         InfoItem(info: 'Caminho', value: item.extras?['path']),
         InfoItem(
           info: 'Data',

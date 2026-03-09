@@ -6,30 +6,10 @@ import 'package:musync_and/services/audio_player.dart';
 import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/themes.dart';
-import 'package:musync_and/widgets/letreiro.dart';
 import 'package:musync_and/widgets/sound_control.dart';
 
 class Player extends StatefulWidget {
   const Player({super.key});
-
-  static String formatDuration(Duration d, bool h) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(d.inHours);
-    final minutes = twoDigits(d.inMinutes.remainder(60));
-    final seconds = twoDigits(d.inSeconds.remainder(60));
-    return '${h ? '$hours:' : ''}$minutes:$seconds';
-  }
-
-  static Widget titleText(String text, double fontsize) {
-    return Letreiro(
-      key: ValueKey(text),
-      texto: text,
-      blankSpace: 90,
-      fullTime: 12,
-      timeStoped: 1500,
-      fontSize: fontsize,
-    );
-  }
 
   @override
   State<Player> createState() => _PlayerState();
@@ -138,8 +118,8 @@ class _PlayerState extends State<Player> {
                   ),
                   child: Column(
                     children: [
-                      Player.titleText(mediaItem.title, 16),
-                      Player.titleText(mediaItem.artist ?? '', 11),
+                      titleText(mediaItem.title, 16),
+                      titleText(mediaItem.artist ?? '', 11),
                     ],
                   ),
                 );
@@ -185,7 +165,7 @@ class _PlayerState extends State<Player> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    Player.formatDuration(pos, false),
+                                    formatDuration(pos, false),
                                     style: TextStyle(
                                       fontFamily: 'Default-Thin',
                                     ),
@@ -198,7 +178,7 @@ class _PlayerState extends State<Player> {
                                     ),
                                   ),
                                   Text(
-                                    Player.formatDuration(value.total, false),
+                                    formatDuration(value.total, false),
                                     style: TextStyle(
                                       fontFamily: 'Default-Thin',
                                     ),
@@ -253,11 +233,11 @@ class _PlayerState extends State<Player> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                Player.formatDuration(position, false),
+                                formatDuration(position, false),
                                 style: TextStyle(fontFamily: 'Default-Thin'),
                               ),
                               Text(
-                                Player.formatDuration(total, false),
+                                formatDuration(total, false),
                                 style: TextStyle(fontFamily: 'Default-Thin'),
                               ),
                             ],

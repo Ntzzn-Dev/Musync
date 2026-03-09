@@ -13,6 +13,7 @@ import 'package:musync_and/services/ekosystem.dart';
 import 'package:musync_and/services/media_atual.dart';
 import 'package:musync_and/services/playlists.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:musync_and/utils/lastlist.dart';
 
 class MusyncAudioHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
@@ -26,8 +27,6 @@ class MusyncAudioHandler extends BaseAudioHandler
   late List<Playlists> playlists;
 
   static late ValueNotifier<MediaAtual> mediaAtual;
-
-  StreamSubscription<ProcessingState>? auto;
 
   void reorganizeSongsAtual(Map<String, dynamic> ordem) {
     //songsAtual.sort((a, b) {
@@ -245,34 +244,6 @@ class MusyncAudioHandler extends BaseAudioHandler
     }
   }
 
-  Future<void> executeMusicBlank(MediaItem item) async {
-    if (!_executando) {
-      final src = ProgressiveAudioSource(Uri.parse(item.id));
-      _executando = true;
-      await audPl.pause();
-      await audPl.setAudioSource(src);
-      _executando = false;
-
-      play();
-
-      mscAudPl.desativeAuto();
-    }
-  }
-
-  Future<void> ativeAuto() async {
-    await auto?.cancel();
-    auto = audPl.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        playNext(true);
-      }
-    });
-  }
-
-  Future<void> desativeAuto() async {
-    await auto?.cancel();
-    auto = null;
-  }
-
   Future<void> initSongs({required List<MediaItem> songs}) async {
     actlist.setSetList(SetListType.atual, actlist.mainPlaylist);
     await searchPlaylists();
@@ -285,7 +256,11 @@ class MusyncAudioHandler extends BaseAudioHandler
 
     queue.add(actlist.getMediaItemsFromQueue());
 
-    await ativeAuto();
+    audPl.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed) {
+        playNext(true);
+      }
+    });
   }
 
   Future<bool> recreateQueue({required List<MediaItem> songs}) async {
