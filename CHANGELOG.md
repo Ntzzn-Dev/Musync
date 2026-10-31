@@ -444,6 +444,11 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Pequenas otimizações de código.  
 - Adição de classes extensoras para melhor consistência.  
 
+### version 6.2  
+- Correção da fila da tela inicial ao tocar uma música pesquisada, mantendo as demais faixas disponíveis para reprodução.  
+- Correção do espaçamento dos botões de remoção de UP nas configurações.  
+- Centralização das regras de arquivos ignorados no `.gitignore` da raiz.  
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 

@@ -122,12 +122,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       child: Padding(
-                        padding: EdgeInsetsGeometry.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Padding(
-                              padding: EdgeInsetsGeometry.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                               ),
                               child: Text("Remover Ups totais"),
@@ -159,12 +159,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       child: Padding(
-                        padding: EdgeInsetsGeometry.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Padding(
-                              padding: EdgeInsetsGeometry.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                               ),
                               child: Text("Remover Ups da playlist atual"),

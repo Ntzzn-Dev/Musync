@@ -223,12 +223,14 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           onClick: (item) async {
             List<MediaItem> songsNowReordered = await reorderMusics(
               modeAtual,
-              songsNow,
+              mscAudPl.actlist.songsAllPlaylist,
             );
 
             await mscAudPl.recreateQueue(songs: songsNowReordered);
             mscAudPl.savePl(mscAudPl.actlist.mainPlaylist);
-            int indiceCerto = songsNowReordered.indexWhere((t) => t == item);
+            int indiceCerto = songsNowReordered.indexWhere(
+              (song) => song.id == item.id,
+            );
 
             await mscAudPl.skipToQueueItem(indiceCerto);
           },
