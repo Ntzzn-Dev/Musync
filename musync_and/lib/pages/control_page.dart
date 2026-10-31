@@ -2,12 +2,13 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:musync_and/helpers/control_helper.dart';
-import 'package:musync_and/helpers/menu_helper.dart';
 import 'package:musync_and/helpers/audio_player_helper.dart';
-import 'package:musync_and/services/ekosystem.dart';
-import 'package:musync_and/widgets/sound_control.dart';
-import 'package:musync_and/themes.dart';
+import 'package:musync_and/helpers/database_helper.dart';
 import 'package:musync_and/helpers/enum_helpers.dart';
+import 'package:musync_and/helpers/menu_helper.dart';
+import 'package:musync_and/services/ekosystem.dart';
+import 'package:musync_and/themes.dart';
+import 'package:musync_and/widgets/sound_control.dart';
 
 class ControlPage extends StatefulWidget {
   const ControlPage({super.key});
@@ -36,20 +37,67 @@ class _ControlPageState extends State<ControlPage> {
     super.dispose();
   }
 
+  Widget _buildMarkerButton({required bool isUp}) {
+    return ValueListenableBuilder<int>(
+      valueListenable: mscAudPl.currentIndex,
+      builder: (context, currentIndex, _) {
+        final queue = mscAudPl.actlist.getMediaItemsFromQueue();
+        if (currentIndex < 0 || currentIndex >= queue.length) {
+          return buildButton(
+            Icon(isUp ? Icons.favorite_border : Icons.heart_broken, size: 45),
+            () async {
+              await mscAudPl.updateSongUpState(isUp: isUp);
+            },
+            2 / 2,
+            1,
+          );
+        }
+
+        final song = queue[currentIndex];
+        final playlistTag = mscAudPl.actlist.atualPlaylist.value.tag;
+        return ValueListenableBuilder<int>(
+          valueListenable: mscAudPl.queueOrderVersion,
+          builder: (context, _version, _child) => FutureBuilder<bool>(
+            future:
+                isUp
+                    ? DatabaseHelper.instance.isLastUped(
+                      idMsc: song.id,
+                      idPlaylist: playlistTag,
+                    )
+                    : DatabaseHelper.instance.isLastDesuped(
+                      idMsc: song.id,
+                      idPlaylist: playlistTag,
+                    ),
+            builder: (context, snapshot) {
+              final isActive = snapshot.data ?? false;
+              return buildButton(
+                Icon(
+                  isUp
+                      ? (isActive ? Icons.favorite : Icons.favorite_border)
+                      : Icons.heart_broken,
+                  size: 45,
+                ),
+                () async {
+                  await mscAudPl.updateSongUpState(isUp: isUp);
+                },
+                2 / 2,
+                1,
+                backgroundColor: isActive ? baseAppColor : null,
+                foregroundColor: isActive ? baseElementDark : null,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildExtraPlayerButtons(ExtraButtonTypes type) {
     switch (type) {
       case ExtraButtonTypes.nextBtn:
         switch (swapBtns) {
           case SwapBtns.up:
-            return buildButton(
-              Icon(Icons.heart_broken, size: 45),
-              () async {
-                await mscAudPl.skipPlaylist(true);
-                setState(() {});
-              },
-              2 / 2,
-              1,
-            );
+            return _buildMarkerButton(isUp: false);
           case SwapBtns.playlist:
             return buildButton(
               Icon(Icons.keyboard_double_arrow_right_sharp, size: 45),
@@ -89,15 +137,7 @@ class _ControlPageState extends State<ControlPage> {
       case ExtraButtonTypes.prevBtn:
         switch (swapBtns) {
           case SwapBtns.up:
-            return buildButton(
-              Icon(Icons.favorite, size: 45),
-              () async {
-                await mscAudPl.skipPlaylist(false);
-                setState(() {});
-              },
-              2 / 2,
-              1,
-            );
+            return _buildMarkerButton(isUp: true);
           case SwapBtns.playlist:
             return buildButton(
               Icon(Icons.keyboard_double_arrow_left_sharp, size: 45),

@@ -19,6 +19,7 @@ class MusyncAudioHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   AudioPlayer audPl = AudioPlayer();
   ValueNotifier<int> currentIndex = ValueNotifier(0);
+  final ValueNotifier<int> queueOrderVersion = ValueNotifier(0);
   final _equality = const DeepCollectionEquality();
 
   final actlist = ActionList();
@@ -119,21 +120,77 @@ class MusyncAudioHandler extends BaseAudioHandler
         setShuffleModeEnabled();
         break;
       case 'up':
-        upAtualMedia();
+        await updateSongUpState(isUp: true);
         break;
       default:
         log('Ação customizada desconhecida: $name');
     }
   }
 
-  void upAtualMedia() async {
-    final tag = mscAudPl.actlist.atualPlaylist.value.tag;
+  Future<List<MediaItem>?> updateSongUpState({
+    String? playlistTag,
+    MediaItem? song,
+    required bool isUp,
+    bool bulk = false,
+    bool updateQueue = true,
+  }) async {
+    final tag = playlistTag ?? actlist.atualPlaylist.value.tag;
+    final MediaItem targetSong;
+    if (song != null) {
+      targetSong = song;
+    } else {
+      final index = currentIndex.value;
+      final currentSongs = actlist.getMediaItemsFromQueue();
+      if (index < 0 || index >= currentSongs.length) return null;
+      targetSong = currentSongs[index];
+    }
 
-    MediaItem song = actlist.getMusicAtual(currentIndex.value);
+    if (isUp) {
+      if (bulk) {
+        await DatabaseHelper.instance.upInPlaylistForBulk(
+          tag,
+          targetSong.id,
+          targetSong.title,
+        );
+      } else {
+        await DatabaseHelper.instance.upInPlaylist(
+          tag,
+          targetSong.id,
+          targetSong.title,
+        );
+      }
+    } else {
+      await DatabaseHelper.instance.desupInPlaylist(
+        tag,
+        targetSong.id,
+        targetSong.title,
+      );
+    }
 
-    await DatabaseHelper.instance.upInPlaylist(tag, song.id, song.title);
+    final playlistId = int.tryParse(tag);
+    if (playlistId != null) {
+      await DatabaseHelper.instance.updatePlaylist(
+        playlistId,
+        orderMode: enumToInt(ModeOrderEnum.up),
+      );
+    }
 
+    if (!updateQueue || tag != actlist.atualPlaylist.value.tag) return null;
+
+    final reordered = await DatabaseHelper.instance.reorderToUp(
+      tag,
+      actlist.getMediaItemsFromQueue(),
+    );
+    if (reordered.isEmpty) return null;
+
+    reorganizeQueue(songs: reordered);
+    if (actlist.viewingPlaylist.tag == tag) {
+      actlist.songsAllPlaylist = reordered;
+    }
+
+    queueOrderVersion.value++;
     _broadcastState();
+    return reordered;
   }
 
   Future<void> searchPlaylists() async {

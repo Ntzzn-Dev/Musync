@@ -456,6 +456,11 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção do cálculo manual do scroll em listas com cabeçalhos de agrupamento.
 - Preservação da reordenação manual nas listas de playlists.
 
+### version 6.4
+- Unificação das ações de up e desup entre a lista, o SuperControl e a notificação.
+- Up e desup ativos podem ser removidos, retornando a música ao grupo restante.
+- Atualização visual dos botões e da ordem da lista após alterar o estado da música.
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 

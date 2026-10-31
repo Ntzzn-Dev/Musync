@@ -21,7 +21,7 @@ class ListContent extends StatefulWidget {
   final List<MediaItem> songsNow;
   final ModeOrderEnum modeReorder;
   final String idPlaylist;
-  final void Function(ModeOrderEnum) onModeChanged;
+  final Future<void> Function(ModeOrderEnum) onModeChanged;
   final bool? showSlices;
   final bool? withReorder;
   final void Function(MediaItem)? onClick;
@@ -58,6 +58,8 @@ class _ListContentState extends ListContentState {
 
   late List<MediaItem> mutableSongs;
   late ModeOrderEnum mode;
+  Set<String> _upSongIds = {};
+  Set<String> _desupSongIds = {};
   int? _lastScrolledIndex;
 
   @override
@@ -82,13 +84,42 @@ class _ListContentState extends ListContentState {
   void didUpdateWidget(covariant ListContent oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.songsNow != widget.songsNow) {
+    final songsChanged = oldWidget.songsNow != widget.songsNow;
+    final modeChanged = oldWidget.modeReorder != widget.modeReorder;
+    final playlistChanged = oldWidget.idPlaylist != widget.idPlaylist;
+
+    if (songsChanged || modeChanged) {
       setState(() {
-        mutableSongs = List.from(widget.songsNow);
+        if (songsChanged) {
+          mutableSongs = List.from(widget.songsNow);
+          musicasSelecionadas.value = List.filled(mutableSongs.length, false);
+        }
         mode = widget.modeReorder;
-        musicasSelecionadas.value = List.filled(mutableSongs.length, false);
       });
     }
+
+    if (mode == ModeOrderEnum.up &&
+        (songsChanged || modeChanged || playlistChanged)) {
+      _loadUpSlices();
+    } else if (modeChanged || playlistChanged) {
+      _upSongIds = {};
+      _desupSongIds = {};
+    }
+  }
+
+  Future<void> _loadUpSlices() async {
+    final playlistId = widget.idPlaylist;
+    final upIds = await DatabaseHelper.instance.loadUpMusics(playlistId);
+    final desupIds = await DatabaseHelper.instance.loadDesupMusics(playlistId);
+    if (!mounted ||
+        mode != ModeOrderEnum.up ||
+        widget.idPlaylist != playlistId) {
+      return;
+    }
+    setState(() {
+      _upSongIds = upIds.toSet();
+      _desupSongIds = desupIds.toSet();
+    });
   }
 
   @override
@@ -104,13 +135,7 @@ class _ListContentState extends ListContentState {
           OptionAction(
             label: 'Up',
             icon: Icons.favorite,
-            funct: () async {
-              await handlePlaylistAction(
-                itemId: item.id,
-                itemTitle: item.title,
-                action: DatabaseHelper.instance.upInPlaylist,
-              );
-            },
+            funct: () => handlePlaylistAction(item: item, isUp: true),
           ),
           OptionAction(
             label: 'Check',
@@ -122,13 +147,7 @@ class _ListContentState extends ListContentState {
           OptionAction(
             label: 'Desup',
             icon: Icons.heart_broken,
-            funct: () async {
-              await handlePlaylistAction(
-                itemId: item.id,
-                itemTitle: item.title,
-                action: DatabaseHelper.instance.desupInPlaylist,
-              );
-            },
+            funct: () => handlePlaylistAction(item: item, isUp: false),
           ),
         ],
       ),
@@ -267,25 +286,41 @@ class _ListContentState extends ListContentState {
   }
 
   Future<void> handlePlaylistAction({
-    required String itemId,
-    required String itemTitle,
-    required Future<void> Function(String tag, String id, String title) action,
+    required MediaItem item,
+    required bool isUp,
   }) async {
     final tag = mscAudPl.actlist.viewingPlaylist.tag;
+    final queueReordered = await mscAudPl.updateSongUpState(
+      playlistTag: tag,
+      song: item,
+      isUp: isUp,
+    );
 
-    await action(tag, itemId, itemTitle);
+    if (!mounted) return;
+    final visibleIds = mutableSongs.map((song) => song.id).toSet();
+    final songsToReorder =
+        listaEmUso ? mscAudPl.actlist.getMediaItemsFromQueue() : mutableSongs;
+    final reordered =
+        queueReordered ??
+        await DatabaseHelper.instance.reorderToUp(tag, songsToReorder);
 
-    final reordered = await reorderMusics(ModeOrderEnum.up, mutableSongs);
-
-    widget.onModeChanged(ModeOrderEnum.up);
-
+    if (!mounted) return;
+    await widget.onModeChanged(ModeOrderEnum.up);
     if (!mounted) return;
 
     setState(() {
-      mscAudPl.reorganizeQueue(songs: reordered);
-      log('${reordered.length} Reorganizou ${reordered.last.title}');
-      mutableSongs = mscAudPl.actlist.getMediaItemsFromQueue();
+      mode = ModeOrderEnum.up;
+      if (listaEmUso) {
+        if (queueReordered == null) {
+          mscAudPl.reorganizeQueue(songs: reordered);
+        }
+        mutableSongs =
+            reordered.where((song) => visibleIds.contains(song.id)).toList();
+      } else {
+        mutableSongs = reordered;
+      }
     });
+    await _loadUpSlices();
   }
 
   void showSpec(MediaItem item) {
@@ -376,9 +411,6 @@ class _ListContentState extends ListContentState {
     }
     if (!_scrollController.hasClients) return;
 
-    // Each song row has a fixed height; grouped lists add a 30px header at
-    // each boundary. Account for those headers instead of assuming every
-    // item occupies exactly 65px.
     final double position = _offsetForIndex(index);
     final maxExtent = _scrollController.position.maxScrollExtent;
     _scrollController.animateTo(
@@ -388,6 +420,7 @@ class _ListContentState extends ListContentState {
     );
   }
 
+  @override
   void scrollToCurrentSong() {
     final index = mscAudPl.currentIndex.value;
     if (index < 0 ||
@@ -404,9 +437,8 @@ class _ListContentState extends ListContentState {
 
   double _offsetForIndex(int index) {
     double offset = index * 65.0;
-    if (!(widget.showSlices ?? true) ||
-        mode == ModeOrderEnum.manual ||
-        mode == ModeOrderEnum.up) {
+    if (mode == ModeOrderEnum.manual ||
+        (mode != ModeOrderEnum.up && !(widget.showSlices ?? true))) {
       return offset;
     }
 
@@ -420,6 +452,11 @@ class _ListContentState extends ListContentState {
   }
 
   String _sliceFor(MediaItem item) {
+    if (mode == ModeOrderEnum.up) {
+      if (_upSongIds.contains(item.id)) return 'Up';
+      if (_desupSongIds.contains(item.id)) return 'Desup';
+      return 'Normal';
+    }
     if (mode == ModeOrderEnum.dataZA || mode == ModeOrderEnum.dataAZ) {
       return getDateCategory(DateTime.parse(item.extras?['lastModified']));
     }
@@ -521,245 +558,207 @@ class _ListContentState extends ListContentState {
               MediaItem item = mutableSongs[index];
               final currentMusic = mscAudPl.actlist.getMusicAtual(value);
 
-                final bool isSelecionada =
-                    index < selecionada.length && selecionada[index];
+              final bool isSelecionada =
+                  index < selecionada.length && selecionada[index];
 
-                final bool isTocando =
-                    value != -1 &&
-                    value < mscAudPl.actlist.getLengthMusicListAtual() &&
-                    listaEmUso &&
-                    mutableSongs[index].id == currentMusic.id;
+              final bool isTocando =
+                  value != -1 &&
+                  value < mscAudPl.actlist.getLengthMusicListAtual() &&
+                  listaEmUso &&
+                  mutableSongs[index].id == currentMusic.id;
 
-                Color? corFundo =
-                    isSelecionada
-                        ? const Color.fromARGB(95, 243, 34, 34)
-                        : isTocando
-                        ? const Color.fromARGB(96, 243, 159, 34)
-                        : null;
+              Color? corFundo =
+                  isSelecionada
+                      ? const Color.fromARGB(95, 243, 34, 34)
+                      : isTocando
+                      ? const Color.fromARGB(96, 243, 159, 34)
+                      : null;
 
-                bool showSliceHeader =
-                    (mode != ModeOrderEnum.manual &&
-                        mode != ModeOrderEnum.up) &&
-                    (widget.showSlices ?? true);
+              bool showSliceHeader =
+                  mode == ModeOrderEnum.up ||
+                  (mode != ModeOrderEnum.manual && (widget.showSlices ?? true));
 
-                List<Widget> children = [];
+              List<Widget> children = [];
+
+              if (showSliceHeader) {
+                final currentSlice = _sliceFor(item);
+                final previousSlice =
+                    index > 0 ? _sliceFor(mutableSongs[index - 1]) : '';
+                showSliceHeader = index == 0 || currentSlice != previousSlice;
 
                 if (showSliceHeader) {
-                  String currentSlice = '';
-                  String previousSlice = '';
-
-                  if (mode == ModeOrderEnum.dataZA ||
-                      mode == ModeOrderEnum.dataAZ) {
-                    final lastModified = DateTime.parse(
-                      item.extras?['lastModified'],
-                    );
-                    currentSlice = getDateCategory(lastModified);
-                    previousSlice =
-                        index > 0
-                            ? getDateCategory(
-                              DateTime.parse(
-                                mutableSongs[index - 1].extras?['lastModified'],
-                              ),
-                            )
-                            : '';
-                  } else if (mode == ModeOrderEnum.titleZA ||
-                      mode == ModeOrderEnum.titleAZ) {
-                    currentSlice = item.title[0].toUpperCase();
-                    previousSlice =
-                        index > 0
-                            ? mutableSongs[index - 1].title[0].toUpperCase()
-                            : '';
-                  } else {
-                    currentSlice = '';
-                    previousSlice = '';
-                  }
-
-                  showSliceHeader = index == 0 || currentSlice != previousSlice;
-
-                  if (showSliceHeader) {
-                    children.add(
-                      Container(
-                        height: 30,
-                        width: double.infinity,
-                        color: baseFundoDark,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          currentSlice,
-                          style: const TextStyle(
-                            color: Color.fromARGB(255, 243, 145, 34),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  children.add(
+                    Container(
+                      height: 30,
+                      width: double.infinity,
+                      color: baseFundoDark,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        currentSlice,
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 243, 145, 34),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    );
-                  }
+                    ),
+                  );
                 }
+              }
 
-                children.add(
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          color: corFundo,
-                          height: 65,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () async {
-                              if (selecionando) {
-                                toggleSelecao(musicasSelecionadas, index);
-                                if (!musicasSelecionadas.value.contains(true)) {
-                                  selecionando = false;
-                                }
-                              } else {
-                                try {
-                                  if (!listaEmUso) {
-                                    setState(() {
-                                      listaEmUso = true;
-                                    });
-                                  }
-                                  widget.onClick?.call(mutableSongs[index]);
-                                } catch (e) {
-                                  log('Erro ao tocar música: $e');
-                                }
-                              }
-                            },
-                            onLongPress: () {
+              children.add(
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        color: corFundo,
+                        height: 65,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            if (selecionando) {
                               toggleSelecao(musicasSelecionadas, index);
-                              if (selecionando &&
-                                  !musicasSelecionadas.value.contains(true)) {
+                              if (!musicasSelecionadas.value.contains(true)) {
                                 selecionando = false;
-                              } else {
-                                selecionando = true;
                               }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: _artworkFor(item),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
+                            } else {
+                              try {
+                                if (!listaEmUso) {
+                                  setState(() {
+                                    listaEmUso = true;
+                                  });
+                                }
+                                widget.onClick?.call(mutableSongs[index]);
+                              } catch (e) {
+                                log('Erro ao tocar música: $e');
+                              }
+                            }
+                          },
+                          onLongPress: () {
+                            toggleSelecao(musicasSelecionadas, index);
+                            if (selecionando &&
+                                !musicasSelecionadas.value.contains(true)) {
+                              selecionando = false;
+                            } else {
+                              selecionando = true;
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: _artworkFor(item),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        item.title,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          item.artist ?? "Artista desconhecido",
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 30,
-                                    height: 65,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.more_horiz_outlined,
-                                        color:
-                                            Theme.of(context)
-                                                .extension<CustomColors>()!
-                                                .textForce,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
-                                      onPressed: () async {
-                                        final tag =
-                                            mscAudPl
-                                                .actlist
-                                                .viewingPlaylist
-                                                .tag;
-                                        final isUp = await DatabaseHelper
-                                            .instance
-                                            .isLastUped(
-                                              idMsc:
-                                                  mscAudPl.actlist
-                                                      .getMusicAtual(index)
-                                                      .id,
-                                              idPlaylist: tag,
-                                            );
-                                        final isCheck = mscAudPl.checkpoint
-                                            .isCheckpoint(
-                                              currentMusic: index,
-                                              currentSetList: tag,
-                                            );
-
-                                        final isDesup = await DatabaseHelper
-                                            .instance
-                                            .isLastDesuped(
-                                              idMsc:
-                                                  mscAudPl.actlist
-                                                      .getMusicAtual(index)
-                                                      .id,
-                                              idPlaylist: tag,
-                                            );
-
-                                        showPopupOptions(
-                                          context,
-                                          item.title,
-                                          moreOptions(context, item),
-                                          actionState: ActionState(
-                                            isUp: isUp,
-                                            isCheck: isCheck,
-                                            isDesup: isDesup,
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.artist ?? "Artista desconhecido",
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                SizedBox(
+                                  width: 30,
+                                  height: 65,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      Icons.more_horiz_outlined,
+                                      color:
+                                          Theme.of(context)
+                                              .extension<CustomColors>()!
+                                              .textForce,
+                                    ),
+                                    onPressed: () async {
+                                      final tag =
+                                          mscAudPl.actlist.viewingPlaylist.tag;
+                                      final isUp = await DatabaseHelper.instance
+                                          .isLastUped(
+                                            idMsc: item.id,
+                                            idPlaylist: tag,
+                                          );
+                                      final isCheck = mscAudPl.checkpoint
+                                          .isCheckpoint(
+                                            currentMusic: index,
+                                            currentSetList: tag,
+                                          );
+
+                                      final isDesup = await DatabaseHelper
+                                          .instance
+                                          .isLastDesuped(
+                                            idMsc: item.id,
+                                            idPlaylist: tag,
+                                          );
+
+                                      showPopupOptions(
+                                        context,
+                                        item.title,
+                                        moreOptions(context, item),
+                                        actionState: ActionState(
+                                          isUp: isUp,
+                                          isCheck: isCheck,
+                                          isDesup: isDesup,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
+                    ),
 
-                      widget.withReorder ?? false
-                          ? ReorderableDragStartListener(
-                            index: index,
-                            child: Container(
-                              color: corFundo,
-                              width: 25,
-                              height: 65,
-                              child: Icon(
-                                Icons.unfold_more_sharp,
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).extension<CustomColors>()!.textForce,
-                              ),
+                    widget.withReorder ?? false
+                        ? ReorderableDragStartListener(
+                          index: index,
+                          child: Container(
+                            color: corFundo,
+                            width: 25,
+                            height: 65,
+                            child: Icon(
+                              Icons.unfold_more_sharp,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).extension<CustomColors>()!.textForce,
                             ),
-                          )
-                          : SizedBox.shrink(),
-                    ],
-                  ),
-                );
+                          ),
+                        )
+                        : SizedBox.shrink(),
+                  ],
+                ),
+              );
 
               return Column(
                 key: ValueKey(item.id),

@@ -30,7 +30,8 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
-  final GlobalKey<ListContentState> _mainListKey = GlobalKey<ListContentState>();
+  final GlobalKey<ListContentState> _mainListKey =
+      GlobalKey<ListContentState>();
   ValueNotifier<bool> toDown = ValueNotifier(false);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
@@ -55,6 +56,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     });
     _initFetchSongs();
     funcSuperiores.value = [lastOrCheck()];
+    mscAudPl.queueOrderVersion.addListener(_onQueueOrderChanged);
 
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -64,6 +66,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     mscAudPl.stop();
+    mscAudPl.queueOrderVersion.removeListener(_onQueueOrderChanged);
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -82,6 +85,36 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
 
   void _toggleTop() {
     topPosition.value = topPosition.value == 0 ? -68 : 0;
+  }
+
+  Future<void> _onQueueOrderChanged() async {
+    if (!mounted ||
+        mscAudPl.actlist.atualPlaylist.value.tag !=
+            mscAudPl.actlist.viewingPlaylist.tag) {
+      return;
+    }
+
+    final reordered = await DatabaseHelper.instance.reorderToUp(
+      mscAudPl.actlist.viewingPlaylist.tag,
+      mscAudPl.actlist.songsAllPlaylist,
+    );
+    if (!mounted) return;
+
+    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      modeAtual = ModeOrderEnum.up;
+      mscAudPl.actlist.songsAllPlaylist = reordered;
+      songsNow =
+          query.isEmpty
+              ? reordered
+              : reordered
+                  .where(
+                    (song) => removeDiacritics(
+                      song.title,
+                    ).toLowerCase().contains(query),
+                  )
+                  .toList();
+    });
   }
 
   Future<void> _initFetchSongs() async {
@@ -239,9 +272,27 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
           onSelectMsc: (indexMsc) async {
             return await moreOptionsSelected(indexMsc);
           },
-          onModeChanged: (novoModo) {
+          onModeChanged: (novoModo) async {
+            final reordered = await reorderMusics(
+              novoModo,
+              mscAudPl.actlist.songsAllPlaylist,
+            );
+            if (!mounted) return;
+            final query = _searchController.text.trim().toLowerCase();
+            final filtered =
+                query.isEmpty
+                    ? reordered
+                    : reordered
+                        .where(
+                          (song) => removeDiacritics(
+                            song.title,
+                          ).toLowerCase().contains(query),
+                        )
+                        .toList();
             setState(() {
               modeAtual = novoModo;
+              mscAudPl.actlist.songsAllPlaylist = reordered;
+              songsNow = filtered;
             });
           },
           onCheckedPoint: () {
@@ -359,19 +410,11 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
                 }
                 break;
               case 'upall':
-                upAll(
-                  context,
-                  idsMscs,
-                  action: DatabaseHelper.instance.upInPlaylist,
-                );
+                upAll(idsMscs, isUp: true);
                 completer.complete(true);
                 break;
               case 'desupall':
-                upAll(
-                  context,
-                  idsMscs,
-                  action: DatabaseHelper.instance.desupInPlaylist,
-                );
+                upAll(idsMscs, isUp: false);
                 completer.complete(true);
                 break;
               case 'delete':
@@ -467,26 +510,49 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     return completer.future;
   }
 
-  Future<void> upAll(
-    BuildContext context,
-    List<String> idsMscs, {
-    required Future<void> Function(String tag, String id, String title) action,
-  }) async {
-    for (String id in idsMscs) {
-      final tag = mscAudPl.actlist.viewingPlaylist.tag;
+  Future<void> upAll(List<String> idsMscs, {required bool isUp}) async {
+    final tag = mscAudPl.actlist.viewingPlaylist.tag;
+    final visibleIds = songsNow.map((song) => song.id).toSet();
 
-      await action(tag, id, id);
-
-      mscAudPl.actlist.songsAllPlaylist = await reorderMusics(
-        ModeOrderEnum.up,
-        songsNow,
+    for (final id in idsMscs) {
+      MediaItem? song;
+      for (final candidate in [
+        ...mscAudPl.actlist.songsAllPlaylist,
+        ...mscAudPl.actlist.songsAll,
+      ]) {
+        if (candidate.id == id) {
+          song = candidate;
+          break;
+        }
+      }
+      if (song == null) continue;
+      await mscAudPl.updateSongUpState(
+        playlistTag: tag,
+        song: song,
+        isUp: isUp,
+        bulk: isUp,
+        updateQueue: false,
       );
-
-      setState(() {
-        songsNow = mscAudPl.actlist.songsAllPlaylist;
-        mscAudPl.reorganizeQueue(songs: songsNow);
-      });
     }
+
+    final reordered = await DatabaseHelper.instance.reorderToUp(
+      tag,
+      mscAudPl.actlist.songsAllPlaylist,
+    );
+    if (!mounted) return;
+    final isCurrentPlaylist =
+        mscAudPl.actlist.atualPlaylist.value.tag ==
+        mscAudPl.actlist.viewingPlaylist.tag;
+
+    setState(() {
+      modeAtual = ModeOrderEnum.up;
+      mscAudPl.actlist.songsAllPlaylist = reordered;
+      songsNow =
+          reordered.where((song) => visibleIds.contains(song.id)).toList();
+      if (isCurrentPlaylist && reordered.isNotEmpty) {
+        mscAudPl.reorganizeQueue(songs: reordered);
+      }
+    });
   }
 
   void showVerticalPopup(BuildContext context) {

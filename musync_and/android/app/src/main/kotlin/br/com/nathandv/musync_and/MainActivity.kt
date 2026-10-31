@@ -2,10 +2,8 @@ package br.com.nathandv.musync_and
 
 import com.ryanheise.audioservice.AudioServiceActivity
 
-import android.os.Bundle
 import android.media.MediaScannerConnection
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.GeneratedPluginRegistrant
 
@@ -17,16 +15,30 @@ class MainActivity : AudioServiceActivity() {
 
         GeneratedPluginRegistrant.registerWith(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CHANNEL
+        ).setMethodCallHandler { call, result ->
             if (call.method == "scanFile") {
                 val path = call.argument<String>("path")
-                if (path != null) {
+                if (!path.isNullOrBlank()) {
                     MediaScannerConnection.scanFile(
                         applicationContext,
                         arrayOf(path),
                         null
-                    ) { _, _ -> }
-                    result.success(null)
+                    ) { scannedPath, uri ->
+                        runOnUiThread {
+                            if (uri != null) {
+                                result.success(uri.toString())
+                            } else {
+                                result.error(
+                                    "SCAN_FAILED",
+                                    "O Android não conseguiu indexar o arquivo.",
+                                    scannedPath
+                                )
+                            }
+                        }
+                    }
                 } else {
                     result.error("INVALID_PATH", "Path é nulo ou inválido", null)
                 }

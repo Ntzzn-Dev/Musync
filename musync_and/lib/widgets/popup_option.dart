@@ -97,13 +97,15 @@ Future<void> showPopupOptions(
                                 onTap: () {
                                   setState(() {
                                     if (action.label == 'Up') {
-                                      actionState?.isUp = true;
+                                      final wasActive = isActive('Up');
+                                      actionState?.isUp = !wasActive;
                                       actionState?.isDesup = false;
                                     } else if (action.label == 'Check') {
                                       actionState?.isCheck = true;
                                     } else if (action.label == 'Desup') {
+                                      final wasActive = isActive('Desup');
                                       actionState?.isUp = false;
-                                      actionState?.isDesup = true;
+                                      actionState?.isDesup = !wasActive;
                                     }
                                   });
 

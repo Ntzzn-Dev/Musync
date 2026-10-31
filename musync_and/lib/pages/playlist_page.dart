@@ -49,6 +49,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     modeAtual = enumFromInt(widget.pl?.orderMode ?? 4, ModeOrderEnum.values);
 
     playlistUpdateNotifier.addListener(_onPlaylistChanged);
+    mscAudPl.queueOrderVersion.addListener(_onQueueOrderChanged);
 
     mscAudPl.actlist.setSetList(
       SetListType.view,
@@ -69,9 +70,41 @@ class _PlaylistPageState extends State<PlaylistPage> {
     });
   }
 
+  Future<void> _onQueueOrderChanged() async {
+    final activeTag = mscAudPl.actlist.atualPlaylist.value.tag;
+    final viewingTag = widget.pl?.id.toString() ?? widget.plTitle;
+    if (!mounted ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        activeTag != viewingTag) {
+      return;
+    }
+
+    final reordered = await DatabaseHelper.instance.reorderToUp(
+      activeTag,
+      songsNowTranslated,
+    );
+    if (!mounted) return;
+
+    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      modeAtual = ModeOrderEnum.up;
+      if (widget.pl != null) {
+        widget.pl!.orderMode = enumToInt(ModeOrderEnum.up);
+      }
+      songsNowTranslated = reordered;
+      songsPlaylist =
+          query.isEmpty
+              ? reordered
+              : reordered
+                  .where((song) => song.title.toLowerCase().contains(query))
+                  .toList();
+    });
+  }
+
   @override
   void dispose() {
     playlistUpdateNotifier.removeListener(_onPlaylistChanged);
+    mscAudPl.queueOrderVersion.removeListener(_onQueueOrderChanged);
     super.dispose();
   }
 
@@ -290,9 +323,29 @@ class _PlaylistPageState extends State<PlaylistPage> {
                   onSelectMsc: (indexMsc) async {
                     return await moreOptionsSelected(indexMsc);
                   },
-                  onModeChanged: (novoModo) {
+                  onModeChanged: (novoModo) async {
+                    final reordered = await reorderMusics(
+                      novoModo,
+                      songsNowTranslated,
+                    );
+                    if (!mounted) return;
+                    final query = _searchController.text.trim().toLowerCase();
+                    final filtered =
+                        query.isEmpty
+                            ? reordered
+                            : reordered
+                                .where(
+                                  (song) =>
+                                      song.title.toLowerCase().contains(query),
+                                )
+                                .toList();
+                    if (widget.pl != null) {
+                      widget.pl!.orderMode = enumToInt(novoModo);
+                    }
                     setState(() {
                       modeAtual = novoModo;
+                      songsNowTranslated = reordered;
+                      songsPlaylist = filtered;
                     });
                   },
                 ),

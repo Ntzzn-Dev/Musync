@@ -318,15 +318,29 @@ class DatabaseHelper {
     String idMusic,
     String title,
   ) async {
-    final db = await database;
+    await _setPlaylistMarker(
+      markerTable: 'up_musics',
+      otherTable: 'desup_musics',
+      idPlaylist: idPlaylist,
+      idMusic: idMusic,
+      title: title,
+      toggleLatest: true,
+    );
+  }
 
-    await retireUpDesup([idMusic, idPlaylist]);
-
-    await db.insert('up_musics', {
-      'id_playlist': idPlaylist,
-      'id_music': idMusic,
-      'title': title,
-    });
+  Future<void> upInPlaylistForBulk(
+    String idPlaylist,
+    String idMusic,
+    String title,
+  ) async {
+    await _setPlaylistMarker(
+      markerTable: 'up_musics',
+      otherTable: 'desup_musics',
+      idPlaylist: idPlaylist,
+      idMusic: idMusic,
+      title: title,
+      toggleLatest: false,
+    );
   }
 
   Future<bool> isLastUped({
@@ -340,7 +354,7 @@ class DatabaseHelper {
       columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idPlaylist],
-      orderBy: 'added_at DESC',
+      orderBy: 'added_at DESC, rowid DESC',
       limit: 1,
     );
 
@@ -381,7 +395,7 @@ class DatabaseHelper {
       columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
-      orderBy: 'added_at DESC',
+      orderBy: 'added_at DESC, rowid DESC',
     );
 
     return List.generate(idsFromPlaylists.length, (i) {
@@ -395,15 +409,14 @@ class DatabaseHelper {
     String idMusic,
     String title,
   ) async {
-    final db = await database;
-
-    await retireUpDesup([idMusic, idPlaylist]);
-
-    await db.insert('desup_musics', {
-      'id_playlist': idPlaylist,
-      'id_music': idMusic,
-      'title': title,
-    });
+    await _setPlaylistMarker(
+      markerTable: 'desup_musics',
+      otherTable: 'up_musics',
+      idPlaylist: idPlaylist,
+      idMusic: idMusic,
+      title: title,
+      toggleLatest: true,
+    );
   }
 
   Future<bool> isLastDesuped({
@@ -417,7 +430,7 @@ class DatabaseHelper {
       columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idPlaylist],
-      orderBy: 'added_at DESC',
+      orderBy: 'added_at DESC, rowid DESC',
       limit: 1,
     );
 
@@ -433,7 +446,7 @@ class DatabaseHelper {
       columns: ['id_music'],
       where: 'id_playlist = ?',
       whereArgs: [idplaylist],
-      orderBy: 'added_at ASC',
+      orderBy: 'added_at ASC, rowid ASC',
     );
 
     return List.generate(idsFromPlaylists.length, (i) {
@@ -441,19 +454,54 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> retireUpDesup(List<Object> ids) async {
+  Future<void> _setPlaylistMarker({
+    required String markerTable,
+    required String otherTable,
+    required String idPlaylist,
+    required String idMusic,
+    required String title,
+    required bool toggleLatest,
+  }) async {
     final db = await database;
     await db.transaction((txn) async {
+      final latest = await txn.query(
+        markerTable,
+        columns: ['id_music'],
+        where: 'id_playlist = ?',
+        whereArgs: [idPlaylist],
+        orderBy: 'added_at DESC, rowid DESC',
+        limit: 1,
+      );
+      final isAlreadyLatest =
+          latest.isNotEmpty && latest.first['id_music'] == idMusic;
+
+      final maxRows = await txn.rawQuery(
+        'SELECT MAX(added_at) AS latest FROM $markerTable WHERE id_playlist = ?',
+        [idPlaylist],
+      );
+      final lastTimestamp = (maxRows.first['latest'] as int?) ?? 0;
+
       await txn.delete(
-        'up_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: ids,
+        markerTable,
+        where: 'id_playlist = ? AND id_music = ?',
+        whereArgs: [idPlaylist, idMusic],
       );
       await txn.delete(
-        'desup_musics',
-        where: 'id_music = ? AND id_playlist = ?',
-        whereArgs: ids,
+        otherTable,
+        where: 'id_playlist = ? AND id_music = ?',
+        whereArgs: [idPlaylist, idMusic],
       );
+
+      if (!toggleLatest || !isAlreadyLatest) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final addedAt = now > lastTimestamp ? now : lastTimestamp + 1;
+        await txn.insert(markerTable, {
+          'id_playlist': idPlaylist,
+          'id_music': idMusic,
+          'added_at': addedAt,
+          'title': title,
+        });
+      }
     });
   }
 
@@ -466,28 +514,20 @@ class DatabaseHelper {
 
     final mapById = {for (var item in setList) item.id: item};
 
-    List<MediaItem> resultadoUps =
+    final resultadoUps =
         ordemDasUps
-            .asMap()
-            .entries
-            .map((entry) => mapById[entry.value]!)
+            .where(mapById.containsKey)
+            .map((id) => mapById[id]!)
             .toList();
-
-    List<MediaItem> resultadoDesups =
+    final resultadoDesups =
         ordemDasDesups
-            .asMap()
-            .entries
-            .map((entry) => mapById[entry.value]!)
+            .where(mapById.containsKey)
+            .map((id) => mapById[id]!)
             .toList();
-
-    List<MediaItem> resultadoResto =
-        setList
-            .where(
-              (x) => !resultadoUps.contains(x) && !resultadoDesups.contains(x),
-            )
-            .toList();
-
-    List<MediaItem> restoReordenado = await reorderMusics(
+    final idsMarcados = {...ordemDasUps, ...ordemDasDesups};
+    final resultadoResto =
+        setList.where((song) => !idsMarcados.contains(song.id)).toList();
+    final restoReordenado = await reorderMusics(
       ModeOrderEnum.dataZA,
       resultadoResto,
     );
