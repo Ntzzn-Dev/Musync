@@ -14,6 +14,7 @@ import 'package:musync_and/widgets/popup_option.dart';
 import 'package:musync_and/widgets/popup_add.dart';
 import 'package:musync_and/widgets/popup_list.dart';
 import 'package:collection/collection.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ListContent extends StatefulWidget {
@@ -44,19 +45,26 @@ class ListContent extends StatefulWidget {
   State<ListContent> createState() => _ListContentState();
 }
 
-class _ListContentState extends State<ListContent> {
+abstract class ListContentState extends State<ListContent> {
+  void scrollToCurrentSong();
+}
+
+class _ListContentState extends ListContentState {
   late final ScrollController _scrollController;
+  late final ItemScrollController _itemScrollController;
   late bool listaEmUso;
   late List<int> idsSelecoes;
   late ValueNotifier<List<bool>> musicasSelecionadas;
 
   late List<MediaItem> mutableSongs;
   late ModeOrderEnum mode;
+  int? _lastScrolledIndex;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _itemScrollController = ItemScrollController();
     listaEmUso = const ListEquality().equals(
       widget.songsNow,
       mscAudPl.actlist.getMediaItemsFromQueue(),
@@ -351,12 +359,96 @@ class _ListContentState extends State<ListContent> {
   }
 
   void scrollToIndex(int index) {
-    final double position = index * 65;
+    if (index < 0 || index >= mutableSongs.length) {
+      return;
+    }
+
+    if (!(widget.withReorder ?? false)) {
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.scrollTo(
+          index: index,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.2,
+        );
+      }
+      return;
+    }
+    if (!_scrollController.hasClients) return;
+
+    // Each song row has a fixed height; grouped lists add a 30px header at
+    // each boundary. Account for those headers instead of assuming every
+    // item occupies exactly 65px.
+    final double position = _offsetForIndex(index);
+    final maxExtent = _scrollController.position.maxScrollExtent;
     _scrollController.animateTo(
-      position,
-      duration: Duration(seconds: 1),
+      position.clamp(0.0, maxExtent).toDouble(),
+      duration: const Duration(milliseconds: 450),
       curve: Curves.easeInOut,
     );
+  }
+
+  void scrollToCurrentSong() {
+    final index = mscAudPl.currentIndex.value;
+    if (index < 0 ||
+        index >= mscAudPl.actlist.getLengthMusicListAtual() ||
+        !listaEmUso) {
+      return;
+    }
+    final currentSong = mscAudPl.actlist.getMusicAtual(index);
+    final visibleIndex = mutableSongs.indexWhere(
+      (song) => song.id == currentSong.id,
+    );
+    if (visibleIndex != -1) scrollToIndex(visibleIndex);
+  }
+
+  double _offsetForIndex(int index) {
+    double offset = index * 65.0;
+    if (!(widget.showSlices ?? true) ||
+        mode == ModeOrderEnum.manual ||
+        mode == ModeOrderEnum.up) {
+      return offset;
+    }
+
+    for (var i = 0; i <= index; i++) {
+      if (i == 0 ||
+          _sliceFor(mutableSongs[i]) != _sliceFor(mutableSongs[i - 1])) {
+        offset += 30.0;
+      }
+    }
+    return offset;
+  }
+
+  String _sliceFor(MediaItem item) {
+    if (mode == ModeOrderEnum.dataZA || mode == ModeOrderEnum.dataAZ) {
+      return getDateCategory(DateTime.parse(item.extras?['lastModified']));
+    }
+    if (mode == ModeOrderEnum.titleZA || mode == ModeOrderEnum.titleAZ) {
+      return item.title.isEmpty ? '' : item.title[0].toUpperCase();
+    }
+    return '';
+  }
+
+  Widget _artworkFor(MediaItem item) {
+    final artUri = item.artUri;
+    if (artUri != null && artUri.scheme == 'file') {
+      return Image.file(
+        File(artUri.toFilePath()),
+        width: 55,
+        height: 45,
+        fit: BoxFit.cover,
+      );
+    }
+    if (artUri != null &&
+        (artUri.scheme == 'http' || artUri.scheme == 'https')) {
+      return Image.network(
+        artUri.toString(),
+        width: 55,
+        height: 45,
+        fit: BoxFit.cover,
+      );
+    }
+    return const SizedBox(width: 55, height: 45, child: Icon(Icons.music_note));
   }
 
   void toggleSelecao(
@@ -406,50 +498,28 @@ class _ListContentState extends State<ListContent> {
       mscAudPl.reorganizeQueue(songs: mutableSongs);
     }
 
-    List<Widget> imgs =
-        mutableSongs.map((item) {
-          final artUri = item.artUri;
-
-          if (artUri != null) {
-            if (artUri.scheme == 'file') {
-              return Image.file(
-                File(artUri.toFilePath()),
-                width: 55,
-                height: 45,
-                fit: BoxFit.cover,
-              );
-            } else if (artUri.scheme == 'http' || artUri.scheme == 'https') {
-              return Image.network(
-                artUri.toString(),
-                width: 55,
-                height: 45,
-                fit: BoxFit.cover,
-              );
-            }
-          }
-
-          return SizedBox(width: 55, height: 45, child: Icon(Icons.music_note));
-        }).toList();
-
     return ValueListenableBuilder<int>(
       valueListenable: mscAudPl.currentIndex,
       builder: (context, value, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients && listaEmUso) {
-            scrollToIndex(value);
-          }
-        });
+        if (listaEmUso && value != _lastScrolledIndex) {
+          _lastScrolledIndex = value;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final canScroll =
+                (widget.withReorder ?? false)
+                    ? _scrollController.hasClients
+                    : _itemScrollController.isAttached;
+            if (mounted && canScroll && listaEmUso) {
+              scrollToIndex(value);
+            }
+          });
+        }
 
         return ValueListenableBuilder<List<bool>>(
           valueListenable: musicasSelecionadas,
           builder: (context, selecionada, child) {
-            return ReorderableListView.builder(
-              onReorder: onReorder,
-              scrollController: _scrollController,
-              itemCount: mutableSongs.length,
-              itemBuilder: (context, index) {
-                MediaItem item = mutableSongs[index];
-                final currentMusic = mscAudPl.actlist.getMusicAtual(value);
+            Widget itemBuilder(BuildContext context, int index) {
+              MediaItem item = mutableSongs[index];
+              final currentMusic = mscAudPl.actlist.getMusicAtual(value);
 
                 final bool isSelecionada =
                     index < selecionada.length && selecionada[index];
@@ -576,7 +646,7 @@ class _ListContentState extends State<ListContent> {
                                 children: [
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(3),
-                                    child: imgs[index],
+                                    child: _artworkFor(item),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -691,12 +761,31 @@ class _ListContentState extends State<ListContent> {
                   ),
                 );
 
-                return Column(
-                  key: ValueKey(item.id),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: children,
-                );
-              },
+              return Column(
+                key: ValueKey(item.id),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              );
+            }
+
+            if (widget.withReorder ?? false) {
+              return ReorderableListView.builder(
+                onReorder: onReorder,
+                scrollController: _scrollController,
+                cacheExtent: 650,
+                itemCount: mutableSongs.length,
+                itemBuilder: itemBuilder,
+              );
+            }
+
+            return ScrollablePositionedList.builder(
+              itemScrollController: _itemScrollController,
+              itemCount: mutableSongs.length,
+              itemBuilder: itemBuilder,
+              minCacheExtent: 650,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
             );
           },
         );

@@ -30,6 +30,7 @@ class MusicPage extends StatefulWidget {
 
 class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey<ListContentState> _mainListKey = GlobalKey<ListContentState>();
   ValueNotifier<bool> toDown = ValueNotifier(false);
   ValueNotifier<double> topPosition = ValueNotifier(-68);
   int abaSelect = 0;
@@ -217,6 +218,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     switch (pageIndex) {
       case 0:
         return ListContent(
+          key: _mainListKey,
           songsNow: songsNow,
           modeReorder: modeAtual,
           idPlaylist: mscAudPl.actlist.mainPlaylist.tag.toString(),
@@ -689,6 +691,8 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
                 child: searchMenu(
                   context,
                   _searchController,
+                  onScrollToCurrent:
+                      _mainListKey.currentState?.scrollToCurrentSong,
                   onChanged: (value) {
                     setState(() {
                       songsNow =

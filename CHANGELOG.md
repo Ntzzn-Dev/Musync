@@ -449,6 +449,13 @@ Todas as mudanças neste projeto serão documentadas aqui.
 - Correção do espaçamento dos botões de remoção de UP nas configurações.  
 - Centralização das regras de arquivos ignorados no `.gitignore` da raiz.  
 
+### version 6.3
+- Uso de lista posicionável para rolagem suave e precisa até a música atual.
+- Adição de botão para localizar a música atual ao lado da pesquisa.
+- Carregamento sob demanda das capas e pré-carregamento de itens próximos para melhorar a fluidez da lista.
+- Correção do cálculo manual do scroll em listas com cabeçalhos de agrupamento.
+- Preservação da reordenação manual nas listas de playlists.
+
 ### TO FUTURE VERSIONS  
 + Repensar conceito de setList dinamica.
 

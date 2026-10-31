@@ -342,6 +342,7 @@ Widget searchMenu(
   TextEditingController searchController, {
   void Function(String)? onChanged,
   void Function()? onClear,
+  void Function()? onScrollToCurrent,
 }) {
   return Container(
     color: Theme.of(context).extension<CustomColors>()!.backgroundForce,
@@ -349,6 +350,13 @@ Widget searchMenu(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Row(
         children: [
+          if (onScrollToCurrent != null)
+            IconButton(
+              onPressed: onScrollToCurrent,
+              icon: const Icon(Icons.my_location),
+              color: baseAppColor,
+              visualDensity: VisualDensity.compact,
+            ),
           Expanded(
             child: TextField(
               controller: searchController,
